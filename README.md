@@ -56,9 +56,9 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 ### Available Commands
 
 ```bash
-/ewh:doit <name> [description]    # run a workflow
 /ewh:doit list                    # list all available workflows
 /ewh:doit init                    # bootstrap project for EWH
+/ewh:doit <name> [description]    # run a workflow
 ```
 
 ## How It Works
@@ -69,9 +69,9 @@ Here's what happens when you run `/ewh:doit add-feature "add CSV export"`:
 flowchart TD
     A["/ewh:doit add-feature 'add CSV export'"] --> B[Dispatcher]
     B --> C["1. plan — structural gate\n(plan mode / brainstorming)"]
-    C --> D["2. code — structural gate\n(coder agent)"]
-    D --> E["3. review — auto gate\n(reviewer agent)"]
-    E --> F["4. test — auto gate\n(tester agent)"]
+    C --> D["2. code — structural gate\nagent: coder\nrules: coding"]
+    D --> E["3. review — auto gate\nagent: reviewer\nrules: review"]
+    E --> F["4. test — auto gate\nagent: tester\nrules: testing"]
     F --> G["Workflow complete — summary"]
 ```
 
