@@ -22,6 +22,8 @@ A reusable workflow orchestration system for Claude Code. Standardizes how Claud
 
 ## Project Integration
 
+**Note:** The full content of the project's CLAUDE.md is injected into every agent's ## Project Context section. Large or unfocused CLAUDE.md files will degrade agent context quality by including irrelevant information. Prefer concise, high-signal content. Detailed documentation belongs in dedicated files, not CLAUDE.md.
+
 Projects opt in at three levels:
 
 1. **Zero config** — `/ewh:doit <name>` works anywhere. Dispatcher asks for missing values inline.

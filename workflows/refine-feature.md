@@ -10,6 +10,7 @@ trigger: "/ewh:doit refine-feature"
   agent: scanner
   gate: auto
   rules: [review]
+  context: []
   artifact: .claude/artifacts/scan-findings.md
   description: >
     Scan the target code area for improvement opportunities.
@@ -21,6 +22,9 @@ trigger: "/ewh:doit refine-feature"
   agent: null
   gate: structural
   rules: []
+  context:
+    - step: scan
+      detail: full
   reads: [.claude/artifacts/scan-findings.md]
   artifact: .claude/artifacts/approved-improvements.md
   requires:
@@ -35,6 +39,9 @@ trigger: "/ewh:doit refine-feature"
   agent: coder
   gate: structural
   rules: [coding]
+  context:
+    - step: propose
+      detail: full
   reads: [.claude/artifacts/approved-improvements.md]
   requires:
     - file_exists: .claude/artifacts/approved-improvements.md
@@ -47,6 +54,9 @@ trigger: "/ewh:doit refine-feature"
   agent: reviewer
   gate: auto
   rules: [review]
+  context:
+    - step: code
+      detail: full
   requires:
     - prior_step: code
       has: files_modified
@@ -59,6 +69,11 @@ trigger: "/ewh:doit refine-feature"
   agent: tester
   gate: auto
   rules: [testing]
+  context:
+    - step: code
+      detail: full
+    - step: review
+      detail: summary
   requires:
     - prior_step: code
       has: files_modified

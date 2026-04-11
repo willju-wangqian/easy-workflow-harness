@@ -48,7 +48,9 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 
 **Harness Config**: The `init` workflow appends a `## Harness Config` section to the project's CLAUDE.md. The dispatcher reads this for test commands, source patterns, etc. Agents receive it under `## Project Context`.
 
-**Prompt assembly order**: agent template → `## Required Reading` → `## Active Rules` → `## Prior Steps` → `## Task` → `## Project Context`. Maintain this order when editing the dispatcher.
+**Prompt assembly order**: agent template → `## Required Reading` → `## Active Rules` → `## Prior Steps` (from `context:` field) → `## Task` → `## Project Context`. Maintain this order when editing the dispatcher.
+
+**CLAUDE.md size impact**: Every spawned agent receives the project's CLAUDE.md under ## Project Context. Large CLAUDE.md files inject irrelevant sections into agents that don't need them, consuming context window and potentially diluting focus. Keep CLAUDE.md concise — architecture overview, key commands, conventions, and Harness Config only.
 
 **Gate types**: `structural` always pauses for user confirmation. `auto` proceeds silently. Compliance failures always gate regardless of step gate type.
 
@@ -61,6 +63,7 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 - `requires:` — preconditions evaluated before the step runs. If any fail, the step is skipped with a log entry. Two forms:
   - `prior_step: <name>` + `has: <field>` — the named prior step's summary must contain a non-empty value for that field (e.g., `files_modified`)
   - `file_exists: <path>` — the file must exist on disk (typically an artifact from a prior step)
+- `context: [{step: <name>, detail: raw|full|summary}, ...]` — declares which prior steps the agent receives under ## Prior Steps and at what compression level. `full` (~5-10 bullets with decisions and file detail), `summary` (1-3 bullets + file list), `raw` (uncompressed agent output). Steps not listed are excluded. If omitted or empty, the agent gets no ## Prior Steps section.
 
 **New rule**: add `rules/<name>.md` with frontmatter (`name`, `description`, `scope`, `severity`, `inject_into`, `verify`). `inject_into` is advisory metadata (not enforced — workflow `rules:` lists control injection). Set `severity: critical` and provide a `verify` shell command to trigger automatic compliance checks.
 

@@ -10,6 +10,7 @@ trigger: "/ewh:doit fact-check"
   agent: scanner
   gate: auto
   rules: [knowledge]
+  context: []
   artifact: .claude/artifacts/claims-checklist.md
   description: >
     Scan all maintained documentation files (CLAUDE.md, specs, memory files,
@@ -21,6 +22,9 @@ trigger: "/ewh:doit fact-check"
   agent: scanner
   gate: auto
   rules: [knowledge]
+  context:
+    - step: scan-docs
+      detail: full
   reads: [.claude/artifacts/claims-checklist.md]
   artifact: .claude/artifacts/validation-results.md
   requires:
@@ -40,6 +44,9 @@ trigger: "/ewh:doit fact-check"
   agent: null
   gate: structural
   rules: [knowledge]
+  context:
+    - step: validate
+      detail: full
   reads: [.claude/artifacts/validation-results.md]
   requires:
     - file_exists: .claude/artifacts/validation-results.md
@@ -52,6 +59,9 @@ trigger: "/ewh:doit fact-check"
   agent: coder
   gate: auto
   rules: [knowledge, coding]
+  context:
+    - step: propose-fixes
+      detail: full
   reads: [.claude/artifacts/validation-results.md]
   requires:
     - file_exists: .claude/artifacts/validation-results.md

@@ -10,6 +10,7 @@ trigger: "/ewh:doit init"
   agent: null
   gate: auto
   rules: []
+  context: []
   description: >
     Dispatcher scans project root directly (no agent needed):
     - Detect language/framework from marker files:
@@ -26,6 +27,7 @@ trigger: "/ewh:doit init"
   agent: null
   gate: structural
   rules: [knowledge]
+  context: []
   description: >
     Present detected config to user for confirmation:
     - Language, test command, check command, source patterns, conventions
@@ -38,6 +40,7 @@ trigger: "/ewh:doit init"
   agent: null
   gate: structural
   rules: [knowledge]
+  context: []
   description: >
     Append ## Harness Config section to CLAUDE.md.
     Never overwrite existing content — only append.

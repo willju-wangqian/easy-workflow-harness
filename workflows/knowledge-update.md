@@ -10,6 +10,7 @@ trigger: "/ewh:doit knowledge-update"
   agent: null
   gate: auto
   rules: [knowledge]
+  context: []
   description: >
     Dispatcher reads the project's maintenance rules or governance docs
     directly (no agent needed). Identifies which files are maintained,
@@ -20,6 +21,9 @@ trigger: "/ewh:doit knowledge-update"
   agent: scanner
   gate: auto
   rules: [knowledge]
+  context:
+    - step: read-governance
+      detail: summary
   artifact: .claude/artifacts/inspection-results.md
   description: >
     Inspect current project state against maintained documentation:
@@ -34,6 +38,9 @@ trigger: "/ewh:doit knowledge-update"
   agent: coder
   gate: structural
   rules: [knowledge, coding]
+  context:
+    - step: inspect-state
+      detail: full
   reads: [.claude/artifacts/inspection-results.md]
   requires:
     - file_exists: .claude/artifacts/inspection-results.md

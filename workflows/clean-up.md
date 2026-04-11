@@ -10,6 +10,7 @@ trigger: "/ewh:doit clean-up"
   agent: null
   gate: auto
   rules: [testing]
+  context: []
   description: >
     Dispatcher runs test command from Harness Config directly.
     No agent needed — single command execution.
@@ -19,6 +20,9 @@ trigger: "/ewh:doit clean-up"
   agent: null
   gate: auto
   rules: []
+  context:
+    - step: test
+      detail: summary
   description: >
     Dispatcher runs check command from Harness Config.
     (e.g., devtools::check(), npm run lint, cargo clippy)
@@ -28,6 +32,11 @@ trigger: "/ewh:doit clean-up"
   agent: null
   gate: auto
   rules: []
+  context:
+    - step: test
+      detail: summary
+    - step: check
+      detail: summary
   description: >
     Dispatcher runs doc build command from Harness Config.
     If project has a README source (README.Rmd, README.qmd, etc.),
@@ -37,6 +46,13 @@ trigger: "/ewh:doit clean-up"
   agent: null
   gate: auto
   rules: [knowledge]
+  context:
+    - step: test
+      detail: summary
+    - step: check
+      detail: summary
+    - step: build-docs
+      detail: summary
   description: >
     Trigger the knowledge-update workflow as a sub-workflow.
     Sub-workflow: /ewh:doit knowledge-update

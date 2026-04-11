@@ -11,6 +11,7 @@ trigger: "/ewh:doit add-feature"
   skill: null
   gate: structural
   rules: []
+  context: []
   artifact: .claude/artifacts/plan.md
   description: >
     Enter plan mode to design the feature before implementation.
@@ -26,6 +27,9 @@ trigger: "/ewh:doit add-feature"
   gate: structural
   rules: [coding]
   reads: [.claude/artifacts/plan.md]
+  context:
+    - step: plan
+      detail: full
   requires:
     - file_exists: .claude/artifacts/plan.md
   description: >
@@ -37,6 +41,9 @@ trigger: "/ewh:doit add-feature"
   agent: reviewer
   gate: auto
   rules: [review]
+  context:
+    - step: code
+      detail: full
   requires:
     - prior_step: code
       has: files_modified
@@ -49,6 +56,11 @@ trigger: "/ewh:doit add-feature"
   agent: tester
   gate: auto
   rules: [testing]
+  context:
+    - step: code
+      detail: full
+    - step: review
+      detail: summary
   requires:
     - prior_step: code
       has: files_modified
