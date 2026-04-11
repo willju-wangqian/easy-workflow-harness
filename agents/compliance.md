@@ -40,3 +40,6 @@ For each critical rule:
 ```
 
 Final verdict: all_pass | has_failures | has_unclear
+
+At the very end of your response, after all other output, emit exactly:
+AGENT_COMPLETE

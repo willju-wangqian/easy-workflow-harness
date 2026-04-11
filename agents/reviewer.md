@@ -38,3 +38,6 @@ You will receive:
 - findings: [{file, line, severity, rule_violated, description}]
 - verdict: pass / pass-with-warnings / fail
 - summary: 1-2 sentence overall assessment
+
+At the very end of your response, after all other output, emit exactly:
+AGENT_COMPLETE

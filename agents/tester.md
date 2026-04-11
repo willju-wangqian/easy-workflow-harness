@@ -41,3 +41,6 @@ You will receive:
 - suite_results: {total, passing, failing, skipped}
 - bugs_found: [list, if any — {file, line, description}]
 - notes: [any concerns about test coverage gaps]
+
+At the very end of your response, after all other output, emit exactly:
+AGENT_COMPLETE

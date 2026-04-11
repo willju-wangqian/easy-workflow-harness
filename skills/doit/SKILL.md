@@ -88,12 +88,59 @@ Use the Agent tool:
 ### 6. Collect Result
 
 - Read agent output
-- Compress into step summary:
+- Check for sentinel: if output does **not** contain the exact string `AGENT_COMPLETE` on its own line → output is partial, enter **§6a Split Flow**
+- If sentinel present: compress into step summary:
   - Status: completed / failed
   - Key decisions or findings (1-3 bullets)
   - Files modified/created (list)
   - Test results if applicable (pass/fail counts)
 - Store summary for injection into subsequent steps under ## Prior Steps
+
+### 6a. Split Flow (partial output detected)
+
+1. **Infer item count** from the original agent prompt: count lines matching `^\s*[A-Z]?\d+[.):] ` (numbered) or `^\s*[-*•] ` (bulleted)
+2. **Threshold**:
+   - Count ≤ 30 → do NOT split. Gate — show partial output, offer: retry / skip / abort
+   - Count > 30 → split into chunks of 30 items each
+3. **Build chunk prompts**: for each chunk of 30 items:
+   - Preamble = everything in the original prompt before the first matched item line
+   - Chunk body = items N through N+29
+   - Postamble = everything after the last item line (output format instructions, project context)
+   - Each chunk prompt = preamble + chunk body + postamble
+4. **Execute**: spawn all chunk agents in parallel (same `subagent_type`, same rules as original step)
+5. **Chunk failure**: if any chunk returns without `AGENT_COMPLETE` → gate, ask user: retry that chunk / skip / abort. Do NOT split further.
+6. If all chunks complete → enter **§6b Merge**
+
+### 6b. Merge Agent
+
+Spawn one final agent with the same `subagent_type` as the original step:
+
+```
+## Role
+You are synthesizing results from N parallel verification chunks into one unified report.
+Do not re-verify anything. Combine and deduplicate only.
+
+## Chunk Results
+[chunk 1 output]
+---
+[chunk 2 output]
+---
+...
+
+## Task
+Produce a single unified report in the output format defined below.
+Remove duplicate findings. Preserve all stale/wrong claims with their evidence.
+Aggregate confirmed counts across chunks.
+
+## Output Format
+[same output format block as the original agent template]
+
+At the very end of your response, after all other output, emit exactly:
+AGENT_COMPLETE
+```
+
+- If merge agent returns without `AGENT_COMPLETE` → gate, ask user: retry merge / skip / abort
+- If merge agent completes → treat its output as the canonical step result, return to §6 Collect Result
 
 ### 7. Compliance Check (after step)
 

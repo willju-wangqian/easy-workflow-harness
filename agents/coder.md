@@ -38,3 +38,6 @@ Return a structured summary:
 - tests_run: true/false
 - tests_passing: true/false
 - notes: [any concerns, deviations from rules, or decisions made]
+
+At the very end of your response, after all other output, emit exactly:
+AGENT_COMPLETE
