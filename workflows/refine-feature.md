@@ -9,7 +9,7 @@ trigger: "/ewh:doit refine-feature"
 - name: scan
   agent: scanner
   gate: auto
-  rules: [coding, review]
+  rules: [review]
   artifact: .claude/artifacts/scan-findings.md
   description: >
     Scan the target code area for improvement opportunities.
@@ -46,7 +46,7 @@ trigger: "/ewh:doit refine-feature"
 - name: review
   agent: reviewer
   gate: auto
-  rules: [coding, review]
+  rules: [review]
   requires:
     - prior_step: code
       has: files_modified

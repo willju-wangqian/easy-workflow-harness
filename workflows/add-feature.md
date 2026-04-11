@@ -36,7 +36,7 @@ trigger: "/ewh:doit add-feature"
 - name: review
   agent: reviewer
   gate: auto
-  rules: [coding, review]
+  rules: [review]
   requires:
     - prior_step: code
       has: files_modified

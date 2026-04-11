@@ -99,9 +99,9 @@ Assemble in this order:
 1. **Agent template** — role, behavior, output format (from resolved agent file)
 2. **## Required Reading** (only if `step.reads` exists) — list file paths the agent must read before starting: "Before beginning work, read these files for context: [list]. These contain output from prior steps that you need."
 3. **## Active Rules** — full prose body of each collected rule, grouped by name, severity shown
-4. **## Prior Steps** — compressed summaries from completed steps
+4. **## Prior Steps** — compressed summaries from **relevant** prior steps only. Include a step's summary if: (a) it is named in `step.requires` via `prior_step:`, (b) it produced an artifact listed in `step.reads` (but note "see Required Reading for full output"), or (c) it is the immediately preceding step. Omit summaries from steps that are neither dependencies nor the immediate predecessor.
 5. **## Task** — user's original request + step-specific description from workflow. If `step.artifact` exists, append: "Write your primary output to `<artifact path>`. This file will be read by downstream steps — make it self-contained."
-6. **## Project Context** — relevant CLAUDE.md sections + Harness Config values
+6. **## Project Context** — relevant CLAUDE.md sections + applicable Harness Config values. Omit Harness Config fields irrelevant to the agent's role (e.g., test command for reviewers/scanners, doc build for testers, all fields for compliance).
 
 ### 4b. Context Validation
 
@@ -284,4 +284,4 @@ After all steps complete:
 - If a step has no agent and no skill, execute it directly (e.g., run a shell command).
 - Keep your messages concise: status updates, gate prompts, and summaries only.
 - When presenting gate prompts, show enough context for the user to decide, not more.
-- Step summaries passed to subsequent agents must be compressed (1-3 bullets + file list). Do not pass full agent output between steps.
+- Step summaries passed to subsequent agents must be compressed (1-3 bullets + file list). Do not pass full agent output between steps. Only include summaries from relevant prior steps — not all completed steps (see §4 step 4).
