@@ -66,12 +66,3 @@ trigger: "/ewh:doit refine-feature"
     Write or update tests for the refined code.
     Cover any new behavior introduced by improvements.
     Run full test suite and report results.
-
-- name: compliance
-  agent: compliance
-  gate: auto
-  rules: [coding, testing]
-  only_if: has_critical_rules
-  description: >
-    Verify critical rules were followed.
-    Only runs if any active rule has severity: critical.

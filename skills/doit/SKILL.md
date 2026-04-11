@@ -43,22 +43,22 @@ Special commands:
 
 For each step in order:
 
-### 1. Gate Check (before step)
-
-- `gate: structural` → present step summary, wait for user to confirm
-- `gate: auto` → proceed silently
-- Compliance gates are checked AFTER the step, not before
-
-### 1b. Precondition Check
+### 1. Precondition Check
 
 If `step.requires` exists, evaluate each precondition:
 - `prior_step: <name>` + `has: <field>` — check that the named prior step's summary contains a non-empty value for that field
 - `file_exists: <path>` — check that the file exists on disk
 
 If any precondition fails:
-- Skip the step
+- Skip the step (do NOT show gate prompt)
 - Log: "Skipping `<step.name>`: precondition not met — `<which one>`"
 - Store a skip summary for ## Prior Steps and proceed to next step
+
+### 1b. Gate Check (before step)
+
+- `gate: structural` → present step summary, wait for user to confirm
+- `gate: auto` → proceed silently
+- Compliance gates are checked AFTER the step, not before
 
 ### 2. Resolve Executor
 
@@ -73,6 +73,12 @@ If any precondition fails:
   - If the step description mentions plan mode, enter plan mode
   - Otherwise execute step directly (e.g., run shell commands from Harness Config)
 
+### 2b. Early Validation
+
+Before loading rules or building prompts, evaluate:
+1. **Already done?** — If all work described in the step is already visible in prior step summaries or on disk, skip the step. Log: "Skipping `<step.name>`: work already complete."
+2. **Trivial task?** — If the step's task resolves to a single, mechanical action (rename one file, toggle one config value, delete one line), handle it directly without spawning an agent. Mark step complete.
+
 ### 3. Load and Inject Rules
 
 For each rule name in `step.rules`:
@@ -81,6 +87,8 @@ For each rule name in `step.rules`:
 3. If both exist, concatenate: plugin rule body + project supplement under `### Project-Specific`
 4. If only plugin exists, use it alone
 5. If only project exists, use it alone (custom project rule)
+
+Note: The `inject_into` field in rule frontmatter is advisory metadata indicating the rule's intended audience. The dispatcher does NOT filter by it — all rules listed in a step's `rules:` array are injected regardless of `inject_into`. Workflow authors control injection via the step's `rules:` list.
 
 ### 4. Build Agent Prompt
 
@@ -92,15 +100,13 @@ Assemble in this order:
 5. **## Task** — user's original request + step-specific description from workflow. If `step.artifact` exists, append: "Write your primary output to `<artifact path>`. This file will be read by downstream steps — make it self-contained."
 6. **## Project Context** — relevant CLAUDE.md sections + Harness Config values
 
-### 4b. Pre-Spawn Validation
+### 4b. Context Validation
 
-Before spawning, evaluate:
-1. **Already done?** — If all work described in the step is already visible in prior step summaries or on disk, skip the step. Log: "Skipping `<step.name>`: work already complete."
-2. **Trivial task?** — If the step's task resolves to a single, mechanical action (rename one file, toggle one config value, delete one line), handle it directly without spawning an agent. Mark step complete.
-3. **Sufficient context?** — Verify the assembled prompt contains:
-   - A concrete task (not just "implement the plan" with no plan reference or Required Reading)
-   - File paths or references the agent can act on
-   - If context is insufficient → gate: tell user what's missing, offer: provide context / skip / abort
+Before spawning, verify the assembled prompt contains:
+- A concrete task (not just "implement the plan" with no plan reference or Required Reading)
+- File paths or references the agent can act on
+
+If context is insufficient → gate: tell user what's missing, offer: provide context / skip / abort
 
 ### 5. Spawn Agent
 
@@ -120,10 +126,11 @@ Use the Agent tool:
   - Files modified/created (list)
   - Test results if applicable (pass/fail counts)
 - Store summary for injection into subsequent steps under ## Prior Steps
+- If `step.artifact` exists, verify the file was written to disk. If missing → gate: tell user the step completed but did not produce the expected artifact at `<path>`, offer: retry step / skip / abort
 
 ### 6c. Continuation Flow (partial output detected)
 
-Spawn one continuation agent with the same `subagent_type` and `model` as the original step. Assemble the prompt in standard order, with two additions after `## Prior Steps` and `## Task` respectively:
+Spawn one continuation agent with the same `subagent_type` and `model` as the original step. Assemble the prompt in standard order (including `## Required Reading` if `step.reads` exists, and the `artifact:` write instruction in `## Task` if `step.artifact` exists), with two additions after `## Prior Steps` and `## Task` respectively:
 
 ```
 ## Partial Output (Previous Attempt)
@@ -176,6 +183,7 @@ Do not re-verify anything. Combine and deduplicate only.
 Produce a single unified report in the output format defined below.
 Remove duplicate findings. Preserve all stale/wrong claims with their evidence.
 Aggregate confirmed counts across chunks.
+[If step.artifact exists: "Write your merged output to `<artifact path>`. This file will be read by downstream steps — make it self-contained."]
 
 ## Output Format
 [same output format block as the original agent template]
@@ -216,11 +224,12 @@ AGENT_COMPLETE
 | Agent file missing | Gate — tell user which agent is missing |
 | Harness Config missing | Gate — ask user to run `/ewh:doit init` or provide value |
 | Sub-workflow fails | Propagate failure to parent, gate at parent level |
-| Precondition fails (§1b) | Skip step, log reason, proceed to next step |
-| Pre-spawn: work already done (§4b) | Skip step, log reason, proceed to next step |
-| Pre-spawn: trivial task (§4b) | Handle directly without agent, mark step complete |
-| Pre-spawn: insufficient context (§4b) | Gate — tell user what's missing, offer: provide context / skip / abort |
+| Precondition fails (§1) | Skip step (no gate), log reason, proceed to next step |
+| Early validation: work already done (§2b) | Skip step, log reason, proceed to next step |
+| Early validation: trivial task (§2b) | Handle directly without agent, mark step complete |
+| Context validation: insufficient context (§4b) | Gate — tell user what's missing, offer: provide context / skip / abort |
 | Agent self-gates (## Before You Start) | Treat as completed with "missing context" status, proceed to next step |
+| Artifact not written after step | Gate — tell user artifact missing at `<path>`, offer: retry step / skip / abort |
 | User says "abort" | Stop workflow, report completed steps, leave files as-is |
 
 ## Sub-Workflow Invocation
@@ -228,6 +237,7 @@ AGENT_COMPLETE
 If a step description contains `Sub-workflow: /ewh:doit <name>`:
 - Load that workflow definition
 - Execute its steps as nested steps within the current workflow
+- **Skip startup step 5** (artifact workspace prep) — sub-workflows share the parent's artifact workspace, do not clear it
 - Prior steps context carries forward from parent
 - Failures propagate up to parent gate
 

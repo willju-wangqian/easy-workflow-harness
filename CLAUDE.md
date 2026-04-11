@@ -29,7 +29,7 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 1. Reads `HARNESS.md` for paths/settings
 2. Resolves the workflow from `workflows/<name>.md` (project `.claude/workflows/` takes precedence)
 3. Prepares `.claude/artifacts/` workspace (clears stale artifacts from prior runs)
-4. For each step: checks gate, evaluates preconditions (`requires:`), resolves rules, builds prompt (with `reads:` and `artifact:` directives), validates context, spawns agent, and checks the `AGENT_COMPLETE` sentinel
+4. For each step: evaluates preconditions (`requires:`), checks gate, validates early (already-done/trivial), resolves rules, builds prompt (with `reads:` and `artifact:` directives), validates context, spawns agent, checks `AGENT_COMPLETE` sentinel, verifies artifact written
 5. If sentinel is absent (partial output): chunks the prompt into 30-item batches, runs in parallel, merges results
 6. After steps with `severity: critical` rules: spawns the compliance agent to verify
 7. On completion: cleans up `.claude/artifacts/`
@@ -62,7 +62,7 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
   - `prior_step: <name>` + `has: <field>` — the named prior step's summary must contain a non-empty value for that field (e.g., `files_modified`)
   - `file_exists: <path>` — the file must exist on disk (typically an artifact from a prior step)
 
-**New rule**: add `rules/<name>.md` with frontmatter (`name`, `description`, `scope`, `severity`, `inject_into`, `verify`). Set `severity: critical` and provide a `verify` shell command to trigger automatic compliance checks.
+**New rule**: add `rules/<name>.md` with frontmatter (`name`, `description`, `scope`, `severity`, `inject_into`, `verify`). `inject_into` is advisory metadata (not enforced — workflow `rules:` lists control injection). Set `severity: critical` and provide a `verify` shell command to trigger automatic compliance checks.
 
 **New agent**: add `agents/<name>.md` with frontmatter (`name`, `description`, `model`, `tools`, `maxTurns`). Must include a `## Before You Start` self-gating section (verify context sufficiency, bail with `AGENT_COMPLETE` if missing) and output format instructions ending with the `AGENT_COMPLETE` sentinel instruction.
 
