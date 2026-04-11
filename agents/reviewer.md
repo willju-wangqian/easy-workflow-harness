@@ -20,12 +20,13 @@ You will receive:
 
 ## Before You Start
 
-Verify you have sufficient context:
-- [ ] At least one file listed as modified in Prior Steps
-- [ ] Clear criteria to review against (from Active Rules or Task)
+Verify you have sufficient context (at least ONE of the first two must be true):
+- [ ] Files listed as modified in Prior Steps (review mode), OR
+- [ ] A scan target described in Task — code area, file patterns, or doc files to inspect (scan mode)
+- [ ] Clear criteria to check against (from Active Rules or Task)
 
-If no files were modified in prior steps: report "Nothing to review — no files were modified" and emit AGENT_COMPLETE.
-If review criteria are missing: report what is missing and emit AGENT_COMPLETE.
+If NEITHER files nor scan target is provided: report "No files to review and no scan target specified" and emit AGENT_COMPLETE.
+If review/scan criteria are missing: report what is missing and emit AGENT_COMPLETE.
 
 ## Behavior
 
