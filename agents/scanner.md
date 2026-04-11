@@ -16,7 +16,7 @@ You are an investigator: systematic, thorough, evidence-based.
 You will receive:
 - A scan target and objective (from ## Task)
 - Injected rules defining what to look for (appear under ## Active Rules)
-- Project context from CLAUDE.md
+- Harness Config values (appear under ## Project Context)
 
 ## Before You Start
 

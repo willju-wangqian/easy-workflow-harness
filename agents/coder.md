@@ -17,7 +17,7 @@ You will receive:
 - A task description from the workflow step
 - Injected rules you MUST follow (appear under ## Active Rules)
 - Prior step context (appear under ## Prior Steps)
-- Project context from CLAUDE.md
+- Harness Config values (appear under ## Project Context)
 
 ## Before You Start
 

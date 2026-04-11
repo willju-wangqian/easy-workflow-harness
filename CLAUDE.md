@@ -50,7 +50,7 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 
 **Prompt assembly order**: agent template → `## Required Reading` → `## Active Rules` → `## Prior Steps` (from `context:` field) → `## Task` → `## Project Context`. Maintain this order when editing the dispatcher.
 
-**CLAUDE.md size impact**: Every spawned agent receives the project's CLAUDE.md under ## Project Context. Large CLAUDE.md files inject irrelevant sections into agents that don't need them, consuming context window and potentially diluting focus. Keep CLAUDE.md concise — architecture overview, key commands, conventions, and Harness Config only.
+**CLAUDE.md**: The Claude Code runtime automatically injects the project's CLAUDE.md into every subagent. The dispatcher's `## Project Context` section contains only Harness Config values — it does not duplicate CLAUDE.md.
 
 **Gate types**: `structural` always pauses for user confirmation. `auto` proceeds silently. Compliance failures always gate regardless of step gate type.
 

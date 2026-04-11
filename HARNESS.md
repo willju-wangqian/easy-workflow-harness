@@ -1,5 +1,5 @@
 ---
-version: 0.9.1
+version: 0.9.2
 ---
 
 # Easy Workflow Harness
@@ -22,7 +22,7 @@ A reusable workflow orchestration system for Claude Code. Standardizes how Claud
 
 ## Project Integration
 
-**Note:** The full content of the project's CLAUDE.md is injected into every agent's ## Project Context section. Large or unfocused CLAUDE.md files will degrade agent context quality by including irrelevant information. Prefer concise, high-signal content. Detailed documentation belongs in dedicated files, not CLAUDE.md.
+**Note:** The Claude Code runtime automatically injects the project's CLAUDE.md into every subagent. The dispatcher does NOT duplicate it — `## Project Context` contains only applicable Harness Config values.
 
 Projects opt in at three levels:
 

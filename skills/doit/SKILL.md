@@ -105,7 +105,7 @@ Assemble in this order:
    - `summary`: compressed — status, 1-3 key bullets, file list
    If `step.context` is absent or empty, omit the ## Prior Steps section entirely. Steps not listed in `context:` are never included.
 5. **## Task** — user's original request + step-specific description from workflow. If `step.artifact` exists, append: "Write your primary output to `<artifact path>`. This file will be read by downstream steps — make it self-contained."
-6. **## Project Context** — relevant CLAUDE.md sections + applicable Harness Config values. Omit Harness Config fields irrelevant to the agent's role (e.g., test command for reviewers/scanners, doc build for testers, all fields for compliance).
+6. **## Project Context** — applicable Harness Config values only. Omit fields irrelevant to the agent's role (e.g., test command for reviewers/scanners, doc build for testers, all fields for compliance). Do NOT include CLAUDE.md content — the runtime already injects it into every subagent automatically.
 
 ### 4b. Context Validation
 

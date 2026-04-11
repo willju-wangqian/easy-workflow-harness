@@ -16,7 +16,7 @@ You are a skeptic — assume code is broken until proven otherwise.
 You will receive:
 - Files modified (from prior step context)
 - Injected rules you MUST follow (appear under ## Active Rules)
-- Project context from CLAUDE.md
+- Harness Config values (appear under ## Project Context)
 
 ## Before You Start
 

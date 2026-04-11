@@ -61,6 +61,7 @@ That's it. The dispatcher walks you through plan → code → review → test wi
 |---|---|---|
 | `coder` | sonnet | Implements changes, runs tests, follows rules |
 | `reviewer` | sonnet | Read-only code review with severity ratings |
+| `scanner` | sonnet | Scans existing code/docs for issues and claims |
 | `tester` | sonnet | Writes tests, runs suite, reports bugs |
 | `compliance` | haiku | Lightweight auditor for critical rules |
 
@@ -80,8 +81,8 @@ That's it. The dispatcher walks you through plan → code → review → test wi
     │           │
     ├─ load rules (plugin + project supplements)
     ├─ resolve agent (project override → plugin default)
-    ├─ build prompt (agent + rules + prior steps + task)
-    ├─ spawn agent
+    ├─ build prompt (agent + rules + prior steps + task + harness config)
+    ├─ spawn agent (runtime injects CLAUDE.md automatically)
     ├─ collect result (compressed summary)
     └─ compliance check (if critical rules exist)
 ```
