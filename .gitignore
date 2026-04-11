@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude local dev state
+.claude/settings.local.json
+.claude/todos/
+.claude/memory/
