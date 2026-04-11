@@ -7,6 +7,10 @@ All notable changes to Easy Workflow Harness are documented here.
 ### Added
 - Explicit `context:` field on workflow steps — replaces implicit Prior Steps heuristic. Steps now declare exactly which prior steps they receive and at what detail level (`raw`, `full`, `summary`).
 - Scanner agent — dedicated read-only agent for analyzing existing code and documentation, split out from the reviewer role.
+- Three scaffold workflows: `create-rules`, `create-agents`, `create-workflow` — guided creation of project-specific rules, agents, and workflows with plan, propose, create, and review steps.
+
+### Changed
+- README restructured: reference-first content order, navigational catalog, Mermaid flow diagram, "Creating Your Own" content moved to `docs/customization.md`.
 
 ### Fixed
 - Dispatcher no longer injects CLAUDE.md into `## Project Context` (the runtime already provides it to subagents).

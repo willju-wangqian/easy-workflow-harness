@@ -53,4 +53,4 @@ Projects opt in at three levels:
 
 ## Design Spec
 
-Full design rationale: see `ewh-plugin-design.md` in the originating project's `.claude/specs/`.
+Design decisions are tracked in `specs/` within this repository.

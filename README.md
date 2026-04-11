@@ -13,6 +13,22 @@ EWH fixes this by:
 - **Providing guardrails** — gates pause the workflow at key decision points so you stay in control
 - **Passing context selectively** — each agent receives only the information it needs, keeping prompts focused and effective
 
+## About This Plugin
+
+EWH ships with predefined workflows, agents, and rules that work out of the box. These components are built into the plugin and cover common development tasks — you can use them as-is or override them for your project. Code examples in this README and in [docs/customization.md](docs/customization.md) are for demonstration purposes — adapt them to your project's needs.
+
+## Catalog
+
+- [Getting Started](#getting-started) — install and first workflow
+- [How It Works](#how-it-works) — dispatcher flow with diagram
+- [Workflows](#workflows) — 9 built-in workflows
+- [Agents](#agents) — 5 specialized agents
+- [Rules](#rules) — 4 injectable rule sets
+- [Gates](#gates) — control flow types
+- [Customizing](#customizing-ewh-for-your-project) — three levels of project integration
+- [Extending](#extending-ewh) — create your own workflows, agents, rules
+- [License](#license)
+
 ## Getting Started
 
 ### Install
@@ -45,9 +61,59 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 /ewh:doit init                    # bootstrap project for EWH
 ```
 
+## How It Works
+
+Here's what happens when you run `/ewh:doit add-feature "add CSV export"`:
+
+```mermaid
+flowchart TD
+    A["/ewh:doit add-feature 'add CSV export'"] --> B[Dispatcher]
+    B --> C["1. plan — structural gate\n(plan mode / brainstorming)"]
+    C --> D["2. code — structural gate\n(coder agent)"]
+    D --> E["3. review — auto gate\n(reviewer agent)"]
+    E --> F["4. test — auto gate\n(tester agent)"]
+    F --> G["Workflow complete — summary"]
+```
+
+<details>
+<summary>Text version (for terminals)</summary>
+
+```
+/ewh:doit add-feature "add CSV export"
+         |
+         v
+   +-------------+
+   |  Dispatcher  |  reads workflow definition, presents plan
+   +------+------+
+          |
+   Step 1: plan (gate: structural)
+          |  You design the feature (brainstorming or plan mode)
+          |  Output: .claude/artifacts/plan.md
+          v
+   Step 2: code (gate: structural)
+          |  Coder agent reads plan, implements changes, runs tests
+          |  Rules: coding
+          v
+   Step 3: review (gate: auto)
+          |  Reviewer agent checks code for bugs and rule compliance
+          |  Rules: review
+          v
+   Step 4: test (gate: auto)
+          |  Tester agent writes tests, runs full suite
+          |  Rules: testing
+          v
+   Workflow complete -- summary of all steps
+```
+
+</details>
+
+Each step receives only the context it needs — the coder reads the plan artifact, the reviewer sees what the coder changed, the tester gets a summary of both. Gates pause the workflow at decision points so you stay in control.
+
+For details on artifact handoff between steps and partial output recovery, see [docs/customization.md](docs/customization.md#internals).
+
 ## Workflows
 
-A workflow is a sequence of steps. Each step runs an agent (or a skill, or a direct command) with specific rules and context. EWH ships with six built-in workflows:
+A workflow is a sequence of steps. Each step runs an agent (or a skill, or a direct command) with specific rules and context. EWH ships with nine built-in workflows:
 
 | Workflow | What it does | Steps |
 |---|---|---|
@@ -57,6 +123,9 @@ A workflow is a sequence of steps. Each step runs an agent (or a skill, or a dir
 | `fact-check` | Verify that documentation (README, CLAUDE.md, specs) matches actual source code | scan-docs, validate, propose-fixes, apply-fixes |
 | `knowledge-update` | Update CLAUDE.md and project docs to reflect current project state | read-governance, inspect-state, apply-updates |
 | `clean-up` | Full repo health check — run tests, linter, doc build, then update docs | test, check, build-docs, knowledge-update |
+| `create-rules` | Design and scaffold a project-specific rule file in .claude/rules/ | plan, propose, create, review |
+| `create-agents` | Design and scaffold a project-specific agent file in .claude/agents/ | plan, propose, create, review |
+| `create-workflow` | Design and scaffold a project-specific workflow file in .claude/workflows/ | plan, propose, create, review |
 
 ## Agents
 
@@ -109,50 +178,6 @@ Gates control where the workflow pauses for your input:
 - **compliance** — triggered automatically when a step has critical rules with `verify` commands. If verification fails, the workflow always stops, regardless of the step's gate type. You can choose to fix, override, or abort.
 
 You're never locked in — at any gate, you can abort the workflow. Completed work is preserved as-is.
-
-## How It Works
-
-Here's what happens when you run `/ewh:doit add-feature "add CSV export"`:
-
-```
-/ewh:doit add-feature "add CSV export"
-         |
-         v
-   +-------------+
-   |  Dispatcher  |  reads workflow definition, presents plan
-   +------+------+
-          |
-   Step 1: plan (gate: structural)
-          |  You design the feature (brainstorming or plan mode)
-          |  Output: .claude/artifacts/plan.md
-          v
-   Step 2: code (gate: structural)
-          |  Coder agent reads plan, implements changes, runs tests
-          |  Rules: coding
-          v
-   Step 3: review (gate: auto)
-          |  Reviewer agent checks code for bugs and rule compliance
-          |  Rules: review
-          v
-   Step 4: test (gate: auto)
-          |  Tester agent writes tests, runs full suite
-          |  Rules: testing
-          v
-   Workflow complete -- summary of all steps
-```
-
-### Artifact Handoff
-
-Steps can produce **artifacts** — files written to `.claude/artifacts/` that downstream steps consume. For example, the plan step writes a plan file, and the code step reads it via `reads:`. This keeps each agent focused on its own job while maintaining a clear chain of information.
-
-### Partial Output Recovery
-
-If an agent's output is cut off (no `AGENT_COMPLETE` sentinel detected), the dispatcher automatically:
-1. Spawns a continuation agent to finish the remaining work
-2. If that also fails, splits the work into parallel chunks of 30 items each
-3. Merges chunk results into a unified report
-
-You don't need to manage this — it happens transparently.
 
 ## Customizing EWH for Your Project
 
@@ -222,140 +247,11 @@ Project rules are appended to the plugin rule, so both apply:
 
 #### Replace a Workflow
 
-Create `.claude/workflows/add-feature.md` with your own step definitions. It completely replaces the plugin's version. See [Creating Your Own Workflow](#creating-your-own-workflow) for the format.
+Create `.claude/workflows/add-feature.md` with your own step definitions. It completely replaces the plugin's version. See [docs/customization.md](docs/customization.md#creating-your-own-workflow) for the format.
 
-## Creating Your Own Workflow
+## Extending EWH
 
-Add a Markdown file to `.claude/workflows/` (project-level) or contribute to the plugin's `workflows/` directory:
-
-```yaml
----
-name: my-workflow
-description: What this workflow does
-trigger: "/ewh:doit my-workflow"
----
-
-## Steps
-
-- name: analyze
-  agent: scanner          # which agent runs this step
-  gate: auto              # auto or structural
-  rules: [review]         # rules injected into the agent's prompt
-  context: []             # which prior steps to include (none for first step)
-  description: >
-    Scan the codebase for issues in the target area.
-
-- name: fix
-  agent: coder
-  gate: structural
-  rules: [coding]
-  context:                # receive the analyze step's output
-    - step: analyze
-      detail: full        # full = 5-10 bullets with decisions and file detail
-  requires:               # skip this step if precondition fails
-    - prior_step: analyze
-      has: findings
-  description: >
-    Fix the issues found in the analyze step.
-```
-
-### Step Fields Reference
-
-| Field | Required | Description |
-|---|---|---|
-| `name` | Yes | Unique name for the step |
-| `agent` | Yes | Agent to run (`coder`, `reviewer`, `scanner`, `tester`, or `null` for direct execution) |
-| `gate` | Yes | `structural` (pause for confirmation) or `auto` (proceed silently) |
-| `rules` | Yes | List of rule names to inject into the agent's prompt |
-| `description` | Yes | What the step does — becomes part of the agent's task prompt |
-| `context` | No | Which prior steps to include and at what detail level (`raw`, `full`, or `summary`) |
-| `artifact` | No | File path (under `.claude/artifacts/`) for the step's primary output |
-| `reads` | No | List of files the agent must read before starting (typically artifacts from prior steps) |
-| `requires` | No | Preconditions that must be met or the step is skipped |
-
-### Context Detail Levels
-
-When a step declares which prior steps it needs via `context:`, it also chooses a compression level:
-
-- **`raw`** — full uncompressed agent output (use sparingly — can be very long)
-- **`full`** — 5-10 bullets covering key decisions, file-level changes, approach taken, issues encountered
-- **`summary`** — 1-3 bullets plus a file list (most compact)
-
-Steps not listed in `context:` are excluded entirely. This keeps agent prompts focused — a tester doesn't need the full planning discussion, just a summary of what was coded and any reviewer warnings.
-
-## Creating Your Own Rule
-
-```yaml
----
-name: my-rule
-description: What this rule enforces
-scope: [when-it-applies]
-severity: default          # default or critical
-inject_into: [coder]      # advisory — indicates intended audience
-verify: null               # shell command for compliance check (critical only)
----
-
-## Section Name
-
-- Standards described as bullet points
-- These are injected verbatim into agent prompts
-- Be specific — agents follow these as instructions
-```
-
-Set `severity: critical` and provide a `verify` command to trigger automatic compliance checks after each step that uses this rule.
-
-Note: The `inject_into` field is advisory metadata — it tells workflow authors which agents the rule is designed for, but the dispatcher doesn't enforce it. The step's `rules:` list is what actually controls injection.
-
-## Creating Your Own Agent
-
-```yaml
----
-name: my-agent
-description: What this agent does
-model: sonnet              # sonnet or haiku
-tools: [Read, Write, Edit, Bash, Glob, Grep]
-maxTurns: 30
----
-
-## Role
-
-One-line description of what this agent does.
-
-## Inputs
-
-You will receive:
-- A task description from the workflow step
-- Injected rules (appear under ## Active Rules)
-- Harness Config values (appear under ## Project Context)
-
-## Before You Start
-
-Verify you have sufficient context:
-- [ ] Concrete task with enough detail to act on
-- [ ] File paths or references to work with
-
-If ANY item is missing: report what is missing and emit AGENT_COMPLETE.
-
-## Behavior
-
-- What the agent should do
-- What it should NOT do
-
-## Output Format
-
-- Structured summary of results
-
-At the very end of your response, after all other output, emit exactly:
-AGENT_COMPLETE
-```
-
-Key requirements:
-- The **Before You Start** section is mandatory — it prevents agents from guessing when context is missing
-- The **AGENT_COMPLETE** sentinel must be the last line — the dispatcher uses it to detect partial output
-
-## Recommended: Brainstorming Skill
-
-The `add-feature` workflow's plan step works best with a dedicated brainstorming skill that provides structured design facilitation — understanding lock, decision log, alternatives exploration. Without it, the step falls back to Claude's built-in plan mode, which still works but provides less structure.
+Create your own workflows, agents, and rules — see [docs/customization.md](docs/customization.md) for full documentation with examples, field references, and detail on internals like artifact handoff and partial output recovery.
 
 ## License
 
