@@ -7,7 +7,7 @@ trigger: "/ewh:doit refine-feature"
 ## Steps
 
 - name: scan
-  agent: reviewer
+  agent: scanner
   gate: auto
   rules: [coding, review]
   artifact: .claude/artifacts/scan-findings.md

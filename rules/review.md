@@ -3,7 +3,7 @@ name: review
 description: Standards for code review — what the reviewer checks for
 scope: [review]
 severity: default
-inject_into: [reviewer]
+inject_into: [reviewer, scanner]
 verify: null
 ---
 

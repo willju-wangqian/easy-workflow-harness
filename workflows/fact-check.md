@@ -7,7 +7,7 @@ trigger: "/ewh:doit fact-check"
 ## Steps
 
 - name: scan-docs
-  agent: reviewer
+  agent: scanner
   gate: auto
   rules: [knowledge]
   artifact: .claude/artifacts/claims-checklist.md
@@ -18,7 +18,7 @@ trigger: "/ewh:doit fact-check"
     Write the checklist of claims to .claude/artifacts/claims-checklist.md.
 
 - name: validate
-  agent: reviewer
+  agent: scanner
   gate: auto
   rules: [knowledge]
   reads: [.claude/artifacts/claims-checklist.md]

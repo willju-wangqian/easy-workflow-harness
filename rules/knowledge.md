@@ -3,7 +3,7 @@ name: knowledge
 description: Standards for maintaining project documentation and harness state
 scope: [knowledge-update, fact-check]
 severity: default
-inject_into: [coder, reviewer]
+inject_into: [coder, scanner]
 verify: null
 ---
 

@@ -17,7 +17,7 @@ trigger: "/ewh:doit knowledge-update"
     If no governance docs exist, use the knowledge rule defaults.
 
 - name: inspect-state
-  agent: reviewer
+  agent: scanner
   gate: auto
   rules: [knowledge]
   artifact: .claude/artifacts/inspection-results.md
