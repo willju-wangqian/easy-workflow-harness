@@ -63,13 +63,16 @@ If any precondition fails:
 ### 2. Resolve Executor
 
 - If `step.skill` exists → invoke that skill (e.g., brainstorming)
-  - Pass the user's task description as skill input
+  - If `step.reads` exists, read those files first and include their content as context for the skill input
+  - Pass the user's task description as skill input. If `step.artifact` exists, instruct: "Write your primary output to `<artifact path>`."
   - Wait for skill to complete, capture key decisions
 - If `step.agent` exists:
   - Resolve agent file: check project `.claude/agents/<agent>.md` first, then `${CLAUDE_PLUGIN_ROOT}/agents/<agent>.md`
   - If project agent has `extends: ewh:<name>`, load plugin agent template first, then concatenate project-specific instructions
   - Proceed to rule loading and prompt building
 - If neither (agent: null, skill: null):
+  - If `step.reads` exists, read those files first for context
+  - If `step.artifact` exists, ensure the output is written to the artifact path
   - If the step description mentions plan mode, enter plan mode
   - Otherwise execute step directly (e.g., run shell commands from Harness Config)
 
@@ -195,6 +198,14 @@ AGENT_COMPLETE
 - If merge agent returns without `AGENT_COMPLETE` → gate, ask user: retry merge / skip / abort
 - If merge agent completes → treat its output as the canonical step result, return to §6 Collect Result
 
+### 6e. Artifact Verification (all step types)
+
+This check runs after **every** step that has `step.artifact`, regardless of executor type (agent, skill, or null):
+- Verify the artifact file exists on disk at the declared path
+- If missing → gate: tell user the step completed but did not produce the expected artifact at `<path>`, offer: retry step / skip / abort
+
+For agent steps, this duplicates the check in §6 — that is intentional (belt and suspenders). For skill and null-agent steps, this is the **only** artifact check.
+
 ### 7. Compliance Check (after step)
 
 - Collect all rules for this step
@@ -229,7 +240,7 @@ AGENT_COMPLETE
 | Early validation: trivial task (§2b) | Handle directly without agent, mark step complete |
 | Context validation: insufficient context (§4b) | Gate — tell user what's missing, offer: provide context / skip / abort |
 | Agent self-gates (## Before You Start) | Treat as completed with "missing context" status, proceed to next step |
-| Artifact not written after step | Gate — tell user artifact missing at `<path>`, offer: retry step / skip / abort |
+| Artifact not written after step (§6e) | Gate — tell user artifact missing at `<path>`, offer: retry step / skip / abort |
 | User says "abort" | Stop workflow, report completed steps, leave files as-is |
 
 ## Sub-Workflow Invocation
@@ -258,7 +269,7 @@ After all steps complete:
 2. Present summary:
 
 > **Workflow `<name>` complete.**
-> - Steps: N/N passed
+> - Steps: N passed, M skipped, K failed (of T total)
 > - Files modified: [list]
 > - Files created: [list]
 > - Tests: [pass/fail counts if applicable]
