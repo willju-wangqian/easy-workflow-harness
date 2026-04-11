@@ -147,7 +147,3 @@ If an agent's output is cut off (no `AGENT_COMPLETE` sentinel detected), the dis
 3. Merges chunk results into a unified report
 
 You don't need to manage this — it happens transparently.
-
-## Recommended: Brainstorming Skill
-
-The `add-feature` workflow's plan step works best with a dedicated brainstorming skill that provides structured design facilitation — understanding lock, decision log, alternatives exploration. Without it, the step falls back to Claude's built-in plan mode, which still works but provides less structure.

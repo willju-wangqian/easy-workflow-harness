@@ -17,7 +17,7 @@ EWH fixes this by:
 
 EWH ships with predefined workflows, agents, and rules that work out of the box. These components are built into the plugin and cover common development tasks — you can use them as-is or override them for your project. Code examples in this README and in [docs/customization.md](docs/customization.md) are for demonstration purposes — adapt them to your project's needs.
 
-## Catalog
+## Contents
 
 - [Getting Started](#getting-started) — install and first workflow
 - [How It Works](#how-it-works) — dispatcher flow with diagram
@@ -252,6 +252,11 @@ Create `.claude/workflows/add-feature.md` with your own step definitions. It com
 ## Extending EWH
 
 Create your own workflows, agents, and rules — see [docs/customization.md](docs/customization.md) for full documentation with examples, field references, and detail on internals like artifact handoff and partial output recovery.
+
+## Recommended: [Brainstorming](https://github.com/obra/superpowers/tree/main/skills/brainstorming) Skill
+
+The `add-feature` workflow's plan step works best with a dedicated brainstorming skill that provides structured design facilitation — understanding lock, decision log, alternatives exploration. Without it, the step falls back to Claude's built-in plan mode, which still works but provides less structure.
+
 
 ## License
 
