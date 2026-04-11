@@ -30,7 +30,10 @@ Special commands:
 3. Parse the workflow steps
 4. Read project CLAUDE.md → extract `## Harness Config` section
    - If missing and workflow is not `init` → ask user: run `/ewh:doit init` first, or provide values now
-5. Present workflow plan to user:
+5. Prepare artifact workspace:
+   - If `.claude/artifacts/` exists and is non-empty → warn user: "Artifacts from a prior run exist. Clear them?" Wait for confirmation before clearing.
+   - Create `.claude/artifacts/` if it does not exist
+6. Present workflow plan to user:
    > **Workflow: `<name>`** — `<description>`
    > Steps: step1 → step2 → step3 → ...
    > Gates: step1 (structural), step2 (auto), ...
@@ -45,6 +48,17 @@ For each step in order:
 - `gate: structural` → present step summary, wait for user to confirm
 - `gate: auto` → proceed silently
 - Compliance gates are checked AFTER the step, not before
+
+### 1b. Precondition Check
+
+If `step.requires` exists, evaluate each precondition:
+- `prior_step: <name>` + `has: <field>` — check that the named prior step's summary contains a non-empty value for that field
+- `file_exists: <path>` — check that the file exists on disk
+
+If any precondition fails:
+- Skip the step
+- Log: "Skipping `<step.name>`: precondition not met — `<which one>`"
+- Store a skip summary for ## Prior Steps and proceed to next step
 
 ### 2. Resolve Executor
 
@@ -72,10 +86,21 @@ For each rule name in `step.rules`:
 
 Assemble in this order:
 1. **Agent template** — role, behavior, output format (from resolved agent file)
-2. **## Active Rules** — full prose body of each collected rule, grouped by name, severity shown
-3. **## Prior Steps** — compressed summaries from completed steps
-4. **## Task** — user's original request + step-specific description from workflow
-5. **## Project Context** — relevant CLAUDE.md sections + Harness Config values
+2. **## Required Reading** (only if `step.reads` exists) — list file paths the agent must read before starting: "Before beginning work, read these files for context: [list]. These contain output from prior steps that you need."
+3. **## Active Rules** — full prose body of each collected rule, grouped by name, severity shown
+4. **## Prior Steps** — compressed summaries from completed steps
+5. **## Task** — user's original request + step-specific description from workflow. If `step.artifact` exists, append: "Write your primary output to `<artifact path>`. This file will be read by downstream steps — make it self-contained."
+6. **## Project Context** — relevant CLAUDE.md sections + Harness Config values
+
+### 4b. Pre-Spawn Validation
+
+Before spawning, evaluate:
+1. **Already done?** — If all work described in the step is already visible in prior step summaries or on disk, skip the step. Log: "Skipping `<step.name>`: work already complete."
+2. **Trivial task?** — If the step's task resolves to a single, mechanical action (rename one file, toggle one config value, delete one line), handle it directly without spawning an agent. Mark step complete.
+3. **Sufficient context?** — Verify the assembled prompt contains:
+   - A concrete task (not just "implement the plan" with no plan reference or Required Reading)
+   - File paths or references the agent can act on
+   - If context is insufficient → gate: tell user what's missing, offer: provide context / skip / abort
 
 ### 5. Spawn Agent
 
@@ -191,6 +216,11 @@ AGENT_COMPLETE
 | Agent file missing | Gate — tell user which agent is missing |
 | Harness Config missing | Gate — ask user to run `/ewh:doit init` or provide value |
 | Sub-workflow fails | Propagate failure to parent, gate at parent level |
+| Precondition fails (§1b) | Skip step, log reason, proceed to next step |
+| Pre-spawn: work already done (§4b) | Skip step, log reason, proceed to next step |
+| Pre-spawn: trivial task (§4b) | Handle directly without agent, mark step complete |
+| Pre-spawn: insufficient context (§4b) | Gate — tell user what's missing, offer: provide context / skip / abort |
+| Agent self-gates (## Before You Start) | Treat as completed with "missing context" status, proceed to next step |
 | User says "abort" | Stop workflow, report completed steps, leave files as-is |
 
 ## Sub-Workflow Invocation
@@ -212,7 +242,10 @@ When user types `/ewh:doit list` or `/ewh:doit` with no name:
 
 ## Completion
 
-After all steps complete, present summary:
+After all steps complete:
+
+1. Clean up artifact workspace: delete all files in `.claude/artifacts/` (keep the directory)
+2. Present summary:
 
 > **Workflow `<name>` complete.**
 > - Steps: N/N passed

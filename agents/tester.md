@@ -18,6 +18,15 @@ You will receive:
 - Injected rules you MUST follow (appear under ## Active Rules)
 - Project context from CLAUDE.md
 
+## Before You Start
+
+Verify you have sufficient context:
+- [ ] At least one source file listed as modified in Prior Steps
+- [ ] Test framework/patterns available (from Project Context or existing test files)
+
+If no source files were modified: report "Nothing to test — no source files were modified" and emit AGENT_COMPLETE.
+If test infrastructure is missing or unclear: report what is missing and emit AGENT_COMPLETE.
+
 ## Behavior
 
 - Read the modified source files to understand what changed

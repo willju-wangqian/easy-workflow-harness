@@ -28,9 +28,11 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 
 1. Reads `HARNESS.md` for paths/settings
 2. Resolves the workflow from `workflows/<name>.md` (project `.claude/workflows/` takes precedence)
-3. For each step: checks the gate, resolves rules, builds a prompt, spawns an agent via the Agent tool, and checks the `AGENT_COMPLETE` sentinel
-4. If sentinel is absent (partial output): chunks the prompt into 30-item batches, runs in parallel, merges results
-5. After steps with `severity: critical` rules: spawns the compliance agent to verify
+3. Prepares `.claude/artifacts/` workspace (clears stale artifacts from prior runs)
+4. For each step: checks gate, evaluates preconditions (`requires:`), resolves rules, builds prompt (with `reads:` and `artifact:` directives), validates context, spawns agent, and checks the `AGENT_COMPLETE` sentinel
+5. If sentinel is absent (partial output): chunks the prompt into 30-item batches, runs in parallel, merges results
+6. After steps with `severity: critical` rules: spawns the compliance agent to verify
+7. On completion: cleans up `.claude/artifacts/`
 
 **Resolution order** (project always wins for agents and workflows; rules concatenate):
 
@@ -46,17 +48,23 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 
 **Harness Config**: The `init` workflow appends a `## Harness Config` section to the project's CLAUDE.md. The dispatcher reads this for test commands, source patterns, etc. Agents receive it under `## Project Context`.
 
-**Prompt assembly order**: agent template → `## Active Rules` → `## Prior Steps` → `## Task` → `## Project Context`. Maintain this order when editing the dispatcher.
+**Prompt assembly order**: agent template → `## Required Reading` → `## Active Rules` → `## Prior Steps` → `## Task` → `## Project Context`. Maintain this order when editing the dispatcher.
 
 **Gate types**: `structural` always pauses for user confirmation. `auto` proceeds silently. Compliance failures always gate regardless of step gate type.
 
 ## Extending the Harness
 
-**New workflow**: add `workflows/<name>.md` with frontmatter (`name`, `description`, `trigger`) and a `## Steps` list. Each step needs: `name`, `agent`, `gate`, `rules`, `description`.
+**New workflow**: add `workflows/<name>.md` with frontmatter (`name`, `description`, `trigger`) and a `## Steps` list. Each step needs: `name`, `agent`, `gate`, `rules`, `description`. Optional step fields:
+
+- `artifact: <path>` — the step writes its primary output to this file (under `.claude/artifacts/`). The dispatcher appends a write instruction to the agent's `## Task` section. Downstream steps use `reads:` to consume it.
+- `reads: [<path>, ...]` — files the agent must read before starting. The dispatcher injects a `## Required Reading` section into the prompt listing these paths. Use for artifact handoff between steps.
+- `requires:` — preconditions evaluated before the step runs. If any fail, the step is skipped with a log entry. Two forms:
+  - `prior_step: <name>` + `has: <field>` — the named prior step's summary must contain a non-empty value for that field (e.g., `files_modified`)
+  - `file_exists: <path>` — the file must exist on disk (typically an artifact from a prior step)
 
 **New rule**: add `rules/<name>.md` with frontmatter (`name`, `description`, `scope`, `severity`, `inject_into`, `verify`). Set `severity: critical` and provide a `verify` shell command to trigger automatic compliance checks.
 
-**New agent**: add `agents/<name>.md` with frontmatter (`name`, `description`, `model`, `tools`, `maxTurns`). Must include output format instructions ending with the `AGENT_COMPLETE` sentinel instruction.
+**New agent**: add `agents/<name>.md` with frontmatter (`name`, `description`, `model`, `tools`, `maxTurns`). Must include a `## Before You Start` self-gating section (verify context sufficiency, bail with `AGENT_COMPLETE` if missing) and output format instructions ending with the `AGENT_COMPLETE` sentinel instruction.
 
 **Project overrides**: `.claude/agents/<name>.md` replaces the plugin agent (or extends via `extends: ewh:<name>`). `.claude/rules/<name>.md` supplements (concatenated). `.claude/workflows/<name>.md` replaces entirely.
 

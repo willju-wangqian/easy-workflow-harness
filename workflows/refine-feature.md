@@ -10,24 +10,34 @@ trigger: "/ewh:doit refine-feature"
   agent: reviewer
   gate: auto
   rules: [coding, review]
+  artifact: .claude/artifacts/scan-findings.md
   description: >
     Scan the target code area for improvement opportunities.
     Report findings organized by severity.
     Focus on the area described by the user.
+    Write findings to .claude/artifacts/scan-findings.md.
 
 - name: propose
   agent: null
   gate: structural
   rules: []
+  reads: [.claude/artifacts/scan-findings.md]
+  artifact: .claude/artifacts/approved-improvements.md
+  requires:
+    - file_exists: .claude/artifacts/scan-findings.md
   description: >
     Present scan findings to user for approval.
     User selects which improvements to implement.
+    Write the approved list to .claude/artifacts/approved-improvements.md.
     This is a decision gate — no changes until confirmed.
 
 - name: code
   agent: coder
   gate: structural
   rules: [coding]
+  reads: [.claude/artifacts/approved-improvements.md]
+  requires:
+    - file_exists: .claude/artifacts/approved-improvements.md
   description: >
     Implement the approved improvements.
     Follow coding rules and project conventions.
@@ -37,6 +47,9 @@ trigger: "/ewh:doit refine-feature"
   agent: reviewer
   gate: auto
   rules: [coding, review]
+  requires:
+    - prior_step: code
+      has: files_modified
   description: >
     Review all changes from the code step.
     Check for bugs, quality issues, and rule compliance.
@@ -46,6 +59,9 @@ trigger: "/ewh:doit refine-feature"
   agent: tester
   gate: auto
   rules: [testing]
+  requires:
+    - prior_step: code
+      has: files_modified
   description: >
     Write or update tests for the refined code.
     Cover any new behavior introduced by improvements.

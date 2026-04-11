@@ -11,17 +11,23 @@ trigger: "/ewh:doit add-feature"
   skill: null
   gate: structural
   rules: []
+  artifact: .claude/artifacts/plan.md
   description: >
     Enter plan mode to design the feature before implementation.
     If the brainstorming skill is available, it is highly recommended
     for structured design (understanding lock, decision log, alternatives).
     Otherwise, use Claude's built-in plan mode to explore approaches,
     validate understanding, and produce a design before coding.
+    Write the final plan to .claude/artifacts/plan.md — include:
+    files to create/modify, approach, key decisions, and acceptance criteria.
 
 - name: code
   agent: coder
   gate: structural
   rules: [coding]
+  reads: [.claude/artifacts/plan.md]
+  requires:
+    - file_exists: .claude/artifacts/plan.md
   description: >
     Implement the design from the plan step.
     Follow coding rules and project conventions.
@@ -31,6 +37,9 @@ trigger: "/ewh:doit add-feature"
   agent: reviewer
   gate: auto
   rules: [coding, review]
+  requires:
+    - prior_step: code
+      has: files_modified
   description: >
     Review all changes from the code step.
     Check for bugs, quality issues, and rule compliance.
@@ -40,6 +49,9 @@ trigger: "/ewh:doit add-feature"
   agent: tester
   gate: auto
   rules: [testing]
+  requires:
+    - prior_step: code
+      has: files_modified
   description: >
     Write tests for the new feature.
     Cover happy path, error cases, and edge cases.

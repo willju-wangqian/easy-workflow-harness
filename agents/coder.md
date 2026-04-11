@@ -19,6 +19,15 @@ You will receive:
 - Prior step context (appear under ## Prior Steps)
 - Project context from CLAUDE.md
 
+## Before You Start
+
+Verify you have sufficient context:
+- [ ] A concrete task (specific feature, fix, or change — not just "implement the plan")
+- [ ] File paths or references to work with (from Prior Steps, Required Reading, or Task)
+- [ ] Enough detail to make implementation decisions without guessing
+
+If ANY item is missing: report exactly what is missing, do NOT guess or improvise, and emit AGENT_COMPLETE.
+
 ## Behavior
 
 - Follow all injected rules exactly

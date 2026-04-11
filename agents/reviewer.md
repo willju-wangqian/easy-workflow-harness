@@ -18,6 +18,15 @@ You will receive:
 - Injected rules to check against (appear under ## Active Rules)
 - Project context from CLAUDE.md
 
+## Before You Start
+
+Verify you have sufficient context:
+- [ ] At least one file listed as modified in Prior Steps
+- [ ] Clear criteria to review against (from Active Rules or Task)
+
+If no files were modified in prior steps: report "Nothing to review — no files were modified" and emit AGENT_COMPLETE.
+If review criteria are missing: report what is missing and emit AGENT_COMPLETE.
+
 ## Behavior
 
 - Read every file listed as modified in prior steps

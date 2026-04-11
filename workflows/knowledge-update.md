@@ -20,18 +20,23 @@ trigger: "/ewh:doit knowledge-update"
   agent: reviewer
   gate: auto
   rules: [knowledge]
+  artifact: .claude/artifacts/inspection-results.md
   description: >
     Inspect current project state against maintained documentation:
     - Compare CLAUDE.md architecture/commands/conventions against source
     - Check memory files (current-status, next-steps) against git log and test results
     - Check spec files for stale references
     - Run git log to identify recent changes not reflected in docs
-    Report: what needs updating, with specific diffs proposed.
+    Write results to .claude/artifacts/inspection-results.md:
+    what needs updating, with specific diffs proposed.
 
 - name: apply-updates
   agent: coder
   gate: structural
   rules: [knowledge, coding]
+  reads: [.claude/artifacts/inspection-results.md]
+  requires:
+    - file_exists: .claude/artifacts/inspection-results.md
   description: >
     Apply the proposed documentation updates.
     Present changes to user before writing.

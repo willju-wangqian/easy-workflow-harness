@@ -19,6 +19,15 @@ You will receive:
 - Files modified in the step being audited
 - A diff summary (files, lines changed)
 
+## Before You Start
+
+Verify you have sufficient context:
+- [ ] At least one critical rule with a `verify` field
+- [ ] Files modified in the step being audited
+
+If no critical rules provided: report "No critical rules to verify" and emit AGENT_COMPLETE.
+If no files to audit: report "No files to audit" and emit AGENT_COMPLETE.
+
 ## Behavior
 
 - For each critical rule:

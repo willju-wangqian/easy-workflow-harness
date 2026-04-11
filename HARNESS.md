@@ -1,5 +1,5 @@
 ---
-version: 0.9.0
+version: 0.9.1
 ---
 
 # Easy Workflow Harness
@@ -12,6 +12,7 @@ A reusable workflow orchestration system for Claude Code. Standardizes how Claud
 - Workflows: ${CLAUDE_PLUGIN_ROOT}/workflows/
 - Agents: ${CLAUDE_PLUGIN_ROOT}/agents/
 - Dispatcher: ${CLAUDE_PLUGIN_ROOT}/skills/doit/SKILL.md
+- Artifacts: .claude/artifacts/ (ephemeral, per-workflow-run, cleaned up on completion)
 
 ## Settings
 
@@ -29,6 +30,7 @@ Projects opt in at three levels:
    - `.claude/agents/` — override or extend plugin agents (via `extends: ewh:<name>`)
    - `.claude/rules/` — supplement plugin rules (concatenated, not replaced)
    - `.claude/workflows/` — replace plugin workflows entirely
+   - `.claude/artifacts/` — ephemeral step output (auto-created by dispatcher, should be gitignored)
 
 ## Override Resolution
 
