@@ -38,12 +38,13 @@ That's it. The dispatcher walks you through plan → code → review → test wi
 
 | Workflow | Steps | What it does |
 |---|---|---|
+| `init` | scan → propose → apply | Bootstrap a project for EWH |
 | `add-feature` | plan → code → review → test | Design and implement a new feature |
 | `refine-feature` | scan → propose → code → review → test | Improve existing code |
 | `fact-check` | scan-docs → validate → propose → apply | Verify docs match source code |
 | `knowledge-update` | read-governance → inspect → apply | Update CLAUDE.md and memory files |
 | `clean-up` | test → check → build-docs → knowledge-update | Full repo health check |
-| `init` | scan → propose → apply | Bootstrap a project for EWH |
+
 
 ### Rules
 

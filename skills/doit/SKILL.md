@@ -88,7 +88,7 @@ Use the Agent tool:
 ### 6. Collect Result
 
 - Read agent output
-- Check for sentinel: if output does **not** contain the exact string `AGENT_COMPLETE` on its own line → output is partial, enter **§6a Split Flow**
+- Check for sentinel: if output does **not** contain the exact string `AGENT_COMPLETE` on its own line → output is partial, enter **§6c Continuation Flow**
 - If sentinel present: compress into step summary:
   - Status: completed / failed
   - Key decisions or findings (1-3 bullets)
@@ -96,17 +96,37 @@ Use the Agent tool:
   - Test results if applicable (pass/fail counts)
 - Store summary for injection into subsequent steps under ## Prior Steps
 
-### 6a. Split Flow (partial output detected)
+### 6c. Continuation Flow (partial output detected)
 
-1. **Infer item count** from the original agent prompt: count lines matching `^\s*[A-Z]?\d+[.):] ` (numbered) or `^\s*[-*•] ` (bulleted)
+Spawn one continuation agent with the same `subagent_type` and `model` as the original step. Assemble the prompt in standard order, with two additions after `## Prior Steps` and `## Task` respectively:
+
+```
+## Partial Output (Previous Attempt)
+[raw partial output from the interrupted agent]
+
+## Continuation Instructions
+The previous attempt was interrupted before completing.
+The Partial Output section above shows what was already addressed.
+- Skip all items already present in the Partial Output
+- Continue only with remaining items
+- Produce output in the same format, as if completing the full task
+- At the very end of your response, emit exactly: AGENT_COMPLETE
+```
+
+- AGENT_COMPLETE present → treat as canonical result, return to §6 Collect Result
+- Still absent, or agent crashes → silent fallthrough to §6a with remaining items (no user gate)
+
+### 6a. Split Flow (fallthrough from §6c)
+
+1. **Infer remaining item count**: diff original prompt items against the §6c partial output — an item is done if its text (stripped of leading numbering/bullets) appears anywhere in the partial output. If §6c crashed with no partial output, use the full original item set. Count lines matching `^\s*[A-Z]?\d+[.):] ` (numbered) or `^\s*[-*•] ` (bulleted).
 2. **Threshold**:
    - Count ≤ 30 → do NOT split. Gate — show partial output, offer: retry / skip / abort
    - Count > 30 → split into chunks of 30 items each
-3. **Build chunk prompts**: for each chunk of 30 items:
+3. **Build chunk prompts**: for each chunk of 30 remaining items:
    - Preamble = everything in the original prompt before the first matched item line
-   - Chunk body = items N through N+29
+   - Chunk body = remaining items N through N+29
    - Postamble = everything after the last item line (output format instructions, project context)
-   - Each chunk prompt = preamble + chunk body + postamble
+   - Each chunk prompt = preamble + chunk body + postamble — do **not** include `## Partial Output`
 4. **Execute**: spawn all chunk agents in parallel (same `subagent_type`, same rules as original step)
 5. **Chunk failure**: if any chunk returns without `AGENT_COMPLETE` → gate, ask user: retry that chunk / skip / abort. Do NOT split further.
 6. If all chunks complete → enter **§6b Merge**
@@ -164,6 +184,7 @@ AGENT_COMPLETE
 | Scenario | Behavior |
 |---|---|
 | Agent crashes or hits max turns | Gate — show error, offer: retry / skip / abort |
+| Continuation agent (§6c) returns partial or crashes | Silent fallthrough to §6a — no gate |
 | Agent reports tests failing | Gate — show failures, offer: fix (re-run code step) / proceed |
 | Compliance fails | Gate — show findings, offer: fix / override / abort |
 | Rule file missing | Warn, proceed without that rule |
