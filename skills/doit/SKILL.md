@@ -1,7 +1,7 @@
 ---
 name: doit
 description: "Dispatcher for the Easy Workflow Harness. Orchestrates workflows by reading definitions, injecting rules into agents, managing gates, and running compliance checks."
-user_invocable: true
+user-invocable: true
 ---
 
 # Workflow Dispatcher
