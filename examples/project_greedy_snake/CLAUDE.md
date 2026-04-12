@@ -13,13 +13,16 @@ A vanilla JavaScript snake game using HTML5 Canvas. No frameworks, no build tool
 
 ## Architecture
 
-Single-page app with three files:
+Single-page app with four files:
 
-- `index.html` — Canvas element (400x400), score display, game-over overlay
+- `index.html` — Canvas element (400x400), score display, game-over overlay, `#difficulty-bar` with 4 `.diff-btn` buttons
 - `style.css` — Dark theme, centered layout, overlay positioning
-- `game.js` — All game logic: 20x20 grid, 150ms tick via `setInterval`, snake as array of `{x, y}` segments
+- `game.js` — All game logic: 20x20 grid, dynamic tick via `setInterval`, snake as array of `{x, y}` segments
+- `game.test.js` — Node vm-based tests
 
-Game loop flow: `init()` → `setInterval(tick, 150)` → each `tick()`: apply buffered direction, compute new head, check wall/self collision, grow or move, `draw()`.
+Difficulty system: `DIFFICULTIES` object defines four levels (`easy/medium/hard/extreme`), each with `startMs` (200–70ms), acceleration config, and block counts. Hard and extreme add obstacle blocks via `placeBlock()`; `.diff-btn` click handlers set `currentDiff` and restart.
+
+Game loop flow: `init()` reads `DIFFICULTIES[currentDiff]`, places initial blocks, sets `currentMs = config.startMs`, then calls `setInterval(tick, currentMs)`. Each `tick()`: apply buffered direction, compute new head, check wall/self/blocks collision, grow or move, `draw()`. On food eaten: accelerate interval if score hits `accelEvery` threshold; spawn new block if `blockSpawnEvery` threshold met.
 
 Input is buffered: `keydown` sets `nextDir`, which `tick()` commits to `dir` before moving. Reversal guard prevents 180° turns.
 
@@ -29,7 +32,7 @@ Tests use Node's built-in `vm` module to run `game.js` in a sandboxed context wi
 
 ## Known Issues
 
-- `placeFood()` uses an unbounded `do-while` loop — hangs if snake fills the entire grid (no win condition)
+- `placeFood()` and `placeBlock()` both use unbounded `do-while` loops — hang if the grid is full (no win condition)
 - Reversal guard checks `dir` instead of `nextDir` — rapid buffered-then-opposite input can bypass 180° prevention
 
 ## Harness Config

@@ -87,7 +87,7 @@ trigger: "/ewh:doit add-game-feature"
 - name: celebrate
   agent: ergo
   gate: auto
-  rules: []
+  rules: [ergo-voice]
   context:
     - step: code
       detail: summary
