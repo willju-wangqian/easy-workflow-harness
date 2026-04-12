@@ -253,6 +253,11 @@ Create `.claude/workflows/add-feature.md` with your own step definitions. It com
 
 Create your own workflows, agents, and rules — see [docs/customization.md](docs/customization.md) for full documentation with examples, field references, and detail on internals like artifact handoff and partial output recovery.
 
+For a working example, see the [greedy snake project](examples/project_greedy_snake/) which demonstrates all three customization types:
+- **Custom agent**: [`ergo`](examples/project_greedy_snake/.claude/agents/ergo.md) — a deadpan one-liner commentator that reacts to workflow results
+- **Custom rule**: [`ergo-voice`](examples/project_greedy_snake/.claude/rules/ergo-voice.md) — personality consistency rules for the ergo agent's dry-wit tone
+- **Custom workflow**: [`add-game-feature`](examples/project_greedy_snake/.claude/workflows/add-game-feature.md) — extends add-feature with a manual browser verification step
+
 ## Recommended: [Brainstorming](https://github.com/obra/superpowers/tree/main/skills/brainstorming) Skill
 
 The `add-feature` workflow's plan step works best with a dedicated brainstorming skill that provides structured design facilitation — understanding lock, decision log, alternatives exploration. Without it, the step falls back to Claude's built-in plan mode, which still works but provides less structure.
