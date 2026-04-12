@@ -15,3 +15,7 @@
 .claude/memory/
 .claude/ewh-state.json
 .ewh-artifacts/
+
+# Docs build output
+node_modules/
+out/

@@ -39,7 +39,7 @@ Projects opt in at three levels:
 
 ## Usage
 
-```
+```bash
 /ewh:doit init                                      # bootstrap project CLAUDE.md
 /ewh:doit list                                      # list available workflows
 /ewh:doit <name> [description]                      # run a workflow

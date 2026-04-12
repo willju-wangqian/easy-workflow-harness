@@ -31,6 +31,7 @@ EWH ships with predefined workflows, agents, and rules that work out of the box.
 - [Customizing EWH for Your Project](#customizing-ewh-for-your-project) — three levels of integration (zero config / init'd / custom overrides)
 - [Extending EWH](#extending-ewh) — create your own workflows, agents, rules; example project
 - [Recommended: Brainstorming Skill](#recommended-brainstorming-skill) — better plan-step facilitation
+- [Testing Checklist](#testing-checklist) — manual verification for contributors and project owners
 - [License](#license)
 
 ## Getting Started
@@ -307,6 +308,12 @@ For a working example, see the [greedy snake project](examples/project_greedy_sn
 
 The `add-feature` workflow's plan step works best with a dedicated brainstorming skill that provides structured design facilitation — understanding lock, decision log, alternatives exploration. Without it, the step falls back to Claude's built-in plan mode, which still works but provides less structure.
 
+
+## Testing Checklist
+
+Before merging changes to the dispatcher or override resolution logic, run the manual checks in [docs/testing-overrides.md](docs/testing-overrides.md). The checklist covers the three resolution paths — agent override, rule concatenation, and workflow override — with concrete fixture files and pass/fail signals for each.
+
+Project owners can also use it to confirm that their `.claude/` overrides are picked up correctly.
 
 ## License
 
