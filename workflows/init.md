@@ -48,7 +48,7 @@ trigger: "/ewh:doit init"
     - Project description placeholder
     - Harness Config section
     Show the user exactly what will be written before writing.
-    Also ensure `.claude/artifacts/` is in the project's .gitignore
+    Also ensure `.ewh-artifacts/` is in the project's .gitignore
     (add the line if .gitignore exists and doesn't already contain it;
     create .gitignore with that line if it doesn't exist).
 

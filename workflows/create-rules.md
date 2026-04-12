@@ -12,7 +12,7 @@ trigger: "/ewh:doit create-rules"
   gate: structural
   rules: []
   context: []
-  artifact: .claude/artifacts/plan.md
+  artifact: .ewh-artifacts/plan.md
   description: >
     Enter plan mode to design the rule.
     Scan existing rules in rules/ and .claude/rules/ for format patterns — show
@@ -20,7 +20,7 @@ trigger: "/ewh:doit create-rules"
     If the brainstorming skill is available, use it for structured design.
     Gather user requirements: rule name, description, scope, severity,
     inject_into targets, and verify command (shell command for automated checking).
-    Write the final plan with all gathered requirements to .claude/artifacts/plan.md.
+    Write the final plan with all gathered requirements to .ewh-artifacts/plan.md.
 
 - name: propose
   agent: null
@@ -29,17 +29,17 @@ trigger: "/ewh:doit create-rules"
   context:
     - step: plan
       detail: full
-  reads: [.claude/artifacts/plan.md]
-  artifact: .claude/artifacts/proposed-rule.md
+  reads: [.ewh-artifacts/plan.md]
+  artifact: .ewh-artifacts/proposed-rule.md
   requires:
-    - file_exists: .claude/artifacts/plan.md
+    - file_exists: .ewh-artifacts/plan.md
   description: >
     Draft the complete rule file with proper frontmatter (name, description,
     scope, severity, inject_into, verify) and rule body sections.
     Suggest improvements: verify commands for automated checking, severity tuning
     (default vs critical), scope coverage, additional actionable sections.
     Present the full proposed content to the user for approval.
-    Write the approved content to .claude/artifacts/proposed-rule.md.
+    Write the approved content to .ewh-artifacts/proposed-rule.md.
 
 - name: create
   agent: coder
@@ -48,9 +48,9 @@ trigger: "/ewh:doit create-rules"
   context:
     - step: propose
       detail: full
-  reads: [.claude/artifacts/proposed-rule.md]
+  reads: [.ewh-artifacts/proposed-rule.md]
   requires:
-    - file_exists: .claude/artifacts/proposed-rule.md
+    - file_exists: .ewh-artifacts/proposed-rule.md
   description: >
     Write the approved rule file to .claude/rules/<name>.md exactly as proposed.
     Ensure the .claude/rules/ directory exists (create it if needed).

@@ -31,8 +31,8 @@ Special commands:
 4. Read project CLAUDE.md → extract `## Harness Config` section
    - If missing and workflow is not `init` → ask user: run `/ewh:doit init` first, or provide values now
 5. Prepare artifact workspace:
-   - If `.claude/artifacts/` exists and is non-empty → warn user: "Artifacts from a prior run exist. Clear them?" Wait for confirmation before clearing.
-   - Create `.claude/artifacts/` if it does not exist
+   - If `.ewh-artifacts/` exists and is non-empty → warn user: "Artifacts from a prior run exist. Clear them?" Wait for confirmation before clearing.
+   - Create `.ewh-artifacts/` if it does not exist
 6. Present workflow plan to user:
    > **Workflow: `<name>`** — `<description>`
    > Steps: step1 → step2 → step3 → ...
@@ -271,7 +271,7 @@ When user types `/ewh:doit list` or `/ewh:doit` with no name:
 
 After all steps complete:
 
-1. Clean up artifact workspace: delete all files in `.claude/artifacts/` (keep the directory)
+1. Clean up artifact workspace: delete all files in `.ewh-artifacts/` (keep the directory)
 2. Present summary:
 
 > **Workflow `<name>` complete.**

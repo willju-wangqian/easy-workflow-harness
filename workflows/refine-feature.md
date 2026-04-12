@@ -11,12 +11,12 @@ trigger: "/ewh:doit refine-feature"
   gate: auto
   rules: [review]
   context: []
-  artifact: .claude/artifacts/scan-findings.md
+  artifact: .ewh-artifacts/scan-findings.md
   description: >
     Scan the target code area for improvement opportunities.
     Report findings organized by severity.
     Focus on the area described by the user.
-    Write findings to .claude/artifacts/scan-findings.md.
+    Write findings to .ewh-artifacts/scan-findings.md.
 
 - name: propose
   agent: null
@@ -25,14 +25,14 @@ trigger: "/ewh:doit refine-feature"
   context:
     - step: scan
       detail: full
-  reads: [.claude/artifacts/scan-findings.md]
-  artifact: .claude/artifacts/approved-improvements.md
+  reads: [.ewh-artifacts/scan-findings.md]
+  artifact: .ewh-artifacts/approved-improvements.md
   requires:
-    - file_exists: .claude/artifacts/scan-findings.md
+    - file_exists: .ewh-artifacts/scan-findings.md
   description: >
     Present scan findings to user for approval.
     User selects which improvements to implement.
-    Write the approved list to .claude/artifacts/approved-improvements.md.
+    Write the approved list to .ewh-artifacts/approved-improvements.md.
     This is a decision gate — no changes until confirmed.
 
 - name: code
@@ -42,9 +42,9 @@ trigger: "/ewh:doit refine-feature"
   context:
     - step: propose
       detail: full
-  reads: [.claude/artifacts/approved-improvements.md]
+  reads: [.ewh-artifacts/approved-improvements.md]
   requires:
-    - file_exists: .claude/artifacts/approved-improvements.md
+    - file_exists: .ewh-artifacts/approved-improvements.md
   description: >
     Implement the approved improvements.
     Follow coding rules and project conventions.

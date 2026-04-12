@@ -49,7 +49,7 @@ trigger: "/ewh:doit my-workflow"
 | `rules` | Yes | List of rule names to inject into the agent's prompt |
 | `description` | Yes | What the step does — becomes part of the agent's task prompt |
 | `context` | No | Which prior steps to include and at what detail level (`raw`, `full`, or `summary`) |
-| `artifact` | No | File path (under `.claude/artifacts/`) for the step's primary output |
+| `artifact` | No | File path (under `.ewh-artifacts/`) for the step's primary output |
 | `reads` | No | List of files the agent must read before starting (typically artifacts from prior steps) |
 | `requires` | No | Preconditions that must be met or the step is skipped |
 
@@ -137,7 +137,7 @@ Key requirements:
 
 ### Artifact Handoff
 
-Steps can produce **artifacts** — files written to `.claude/artifacts/` that downstream steps consume. For example, the plan step writes a plan file, and the code step reads it via `reads:`. This keeps each agent focused on its own job while maintaining a clear chain of information.
+Steps can produce **artifacts** — files written to `.ewh-artifacts/` that downstream steps consume. For example, the plan step writes a plan file, and the code step reads it via `reads:`. This keeps each agent focused on its own job while maintaining a clear chain of information.
 
 ### Partial Output Recovery
 
@@ -147,3 +147,15 @@ If an agent's output is cut off (no `AGENT_COMPLETE` sentinel detected), the dis
 3. Merges chunk results into a unified report
 
 You don't need to manage this — it happens transparently.
+
+### Artifact Directory
+
+EWH uses `.ewh-artifacts/` in the project root as a scratch space during workflow runs. The dispatcher creates it automatically and cleans it up when the workflow completes.
+
+**Why it's useful to you:** While a workflow is running, you can inspect `.ewh-artifacts/` to see exactly what each step produced and what context downstream agents will receive. For example, after the plan step of `add-feature`, `.ewh-artifacts/plan.md` contains the full plan that the coder agent will read. This makes the workflow transparent — you can see the chain of information flowing between agents.
+
+The directory is:
+- **Created automatically** by the dispatcher at workflow start
+- **Cleaned up** after the workflow completes (files deleted, directory kept)
+- **Gitignored** by default (the `init` workflow adds it to `.gitignore`)
+- **Ephemeral** — do not store anything permanent here; it is cleared between runs

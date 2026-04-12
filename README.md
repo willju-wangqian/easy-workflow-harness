@@ -88,7 +88,7 @@ flowchart TD
           |
    Step 1: plan (gate: structural)
           |  You design the feature (brainstorming or plan mode)
-          |  Output: .claude/artifacts/plan.md
+          |  Output: .ewh-artifacts/plan.md
           v
    Step 2: code (gate: structural)
           |  Coder agent reads plan, implements changes, runs tests
@@ -115,17 +115,17 @@ For details on artifact handoff between steps and partial output recovery, see [
 
 A workflow is a sequence of steps. Each step runs an agent (or a skill, or a direct command) with specific rules and context. EWH ships with nine built-in workflows:
 
-| Workflow | What it does | Steps |
-|---|---|---|
-| `init` | Bootstrap a project for EWH — detects language, test framework, and conventions, then appends a Harness Config section to your CLAUDE.md | scan, propose, apply |
-| `add-feature` | Design and implement a new feature from scratch | plan, code, review, test |
-| `refine-feature` | Improve existing code — scan for issues, propose fixes, implement approved changes | scan, propose, code, review, test |
-| `fact-check` | Verify that documentation (README, CLAUDE.md, specs) matches actual source code | scan-docs, validate, propose-fixes, apply-fixes |
-| `knowledge-update` | Update CLAUDE.md and project docs to reflect current project state | read-governance, inspect-state, apply-updates |
-| `clean-up` | Full repo health check — run tests, linter, doc build, then update docs | test, check, build-docs, knowledge-update |
-| `create-rules` | Design and scaffold a project-specific rule file in .claude/rules/ | plan, propose, create, review |
-| `create-agents` | Design and scaffold a project-specific agent file in .claude/agents/ | plan, propose, create, review |
-| `create-workflow` | Design and scaffold a project-specific workflow file in .claude/workflows/ | plan, propose, create, review |
+| Workflow | What it does | Steps | Details |
+|---|---|---|---|
+| `init` | Bootstrap a project for EWH — detects language, test framework, and conventions | scan, propose, apply | [docs](docs/workflow-init.md) |
+| `add-feature` | Design and implement a new feature from scratch | plan, code, review, test | [docs](docs/workflow-add-feature.md) |
+| `refine-feature` | Improve existing code — scan for issues, propose fixes, implement | scan, propose, code, review, test | [docs](docs/workflow-refine-feature.md) |
+| `fact-check` | Verify that documentation matches actual source code | scan-docs, validate, propose-fixes, apply-fixes | [docs](docs/workflow-fact-check.md) |
+| `knowledge-update` | Update CLAUDE.md and project docs to reflect current state | read-governance, inspect-state, apply-updates | [docs](docs/workflow-knowledge-update.md) |
+| `clean-up` | Full repo health check — run tests, linter, doc build, then update docs | test, check, build-docs, knowledge-update | [docs](docs/workflow-clean-up.md) |
+| `create-rules` | Scaffold a project-specific rule file in .claude/rules/ | plan, propose, create, review | [docs](docs/workflow-create-rules.md) |
+| `create-agents` | Scaffold a project-specific agent file in .claude/agents/ | plan, propose, create, review | [docs](docs/workflow-create-agents.md) |
+| `create-workflow` | Scaffold a project-specific workflow file in .claude/workflows/ | plan, propose, create, review | [docs](docs/workflow-create-workflow.md) |
 
 ## Agents
 

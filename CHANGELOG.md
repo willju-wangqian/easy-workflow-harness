@@ -11,6 +11,7 @@ All notable changes to Easy Workflow Harness are documented here.
 
 ### Changed
 - README restructured: reference-first content order, navigational catalog, Mermaid flow diagram, "Creating Your Own" content moved to `docs/customization.md`.
+- Artifact workspace path renamed from `.claude/artifacts/` to `.ewh-artifacts/` — update `.gitignore` entries in existing projects.
 
 ### Fixed
 - Dispatcher no longer injects CLAUDE.md into `## Project Context` (the runtime already provides it to subagents).

@@ -12,13 +12,7 @@ A reusable workflow orchestration system for Claude Code. Standardizes how Claud
 - Workflows: ${CLAUDE_PLUGIN_ROOT}/workflows/
 - Agents: ${CLAUDE_PLUGIN_ROOT}/agents/
 - Dispatcher: ${CLAUDE_PLUGIN_ROOT}/skills/doit/SKILL.md
-- Artifacts: .claude/artifacts/ (ephemeral, per-workflow-run, cleaned up on completion)
-
-## Settings
-
-- default_gate: auto
-- compliance_enabled: true
-- compliance_model: haiku
+- Artifacts: .ewh-artifacts/ (ephemeral, per-workflow-run, cleaned up on completion)
 
 ## Project Integration
 
@@ -32,7 +26,7 @@ Projects opt in at three levels:
    - `.claude/agents/` — override or extend plugin agents (via `extends: ewh:<name>`)
    - `.claude/rules/` — supplement plugin rules (concatenated, not replaced)
    - `.claude/workflows/` — replace plugin workflows entirely
-   - `.claude/artifacts/` — ephemeral step output (auto-created by dispatcher, should be gitignored)
+   - `.ewh-artifacts/` — ephemeral step output (auto-created by dispatcher, should be gitignored)
 
 ## Override Resolution
 

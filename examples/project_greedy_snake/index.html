@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="container">
+    <div id="score-display">Score: <span id="score">0</span></div>
+    <div id="difficulty-bar">
+      <button class="diff-btn" data-diff="easy">Easy</button>
+      <button class="diff-btn active" data-diff="medium">Medium</button>
+      <button class="diff-btn" data-diff="hard">Hard</button>
+      <button class="diff-btn" data-diff="extreme">Extreme</button>
+    </div>
+    <canvas id="game-canvas" width="400" height="400"></canvas>
+    <div id="overlay" class="hidden">
+      <p id="overlay-message">Game Over</p>
+      <p id="overlay-sub">Press any arrow key to restart</p>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

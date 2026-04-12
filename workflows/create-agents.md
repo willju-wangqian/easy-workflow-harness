@@ -12,7 +12,7 @@ trigger: "/ewh:doit create-agents"
   gate: structural
   rules: []
   context: []
-  artifact: .claude/artifacts/plan.md
+  artifact: .ewh-artifacts/plan.md
   description: >
     Enter plan mode to design the agent.
     Scan existing agents in agents/ and .claude/agents/ for format patterns — show
@@ -20,7 +20,7 @@ trigger: "/ewh:doit create-agents"
     If the brainstorming skill is available, use it for structured design.
     Gather user requirements: agent name, description, model, tools, maxTurns,
     role description, and behavior constraints.
-    Write the final plan with all gathered requirements to .claude/artifacts/plan.md.
+    Write the final plan with all gathered requirements to .ewh-artifacts/plan.md.
 
 - name: propose
   agent: null
@@ -29,10 +29,10 @@ trigger: "/ewh:doit create-agents"
   context:
     - step: plan
       detail: full
-  reads: [.claude/artifacts/plan.md]
-  artifact: .claude/artifacts/proposed-agent.md
+  reads: [.ewh-artifacts/plan.md]
+  artifact: .ewh-artifacts/proposed-agent.md
   requires:
-    - file_exists: .claude/artifacts/plan.md
+    - file_exists: .ewh-artifacts/plan.md
   description: >
     Draft the complete agent file with proper frontmatter (name, description,
     model, tools, maxTurns) and all required sections: Role, Inputs, Before You
@@ -41,7 +41,7 @@ trigger: "/ewh:doit create-agents"
     Suggest improvements: tool selection, maxTurns tuning, self-gating conditions,
     output format fields.
     Present the full proposed content to the user for approval.
-    Write the approved content to .claude/artifacts/proposed-agent.md.
+    Write the approved content to .ewh-artifacts/proposed-agent.md.
 
 - name: create
   agent: coder
@@ -50,9 +50,9 @@ trigger: "/ewh:doit create-agents"
   context:
     - step: propose
       detail: full
-  reads: [.claude/artifacts/proposed-agent.md]
+  reads: [.ewh-artifacts/proposed-agent.md]
   requires:
-    - file_exists: .claude/artifacts/proposed-agent.md
+    - file_exists: .ewh-artifacts/proposed-agent.md
   description: >
     Write the approved agent file to .claude/agents/<name>.md exactly as proposed.
     Ensure the .claude/agents/ directory exists (create it if needed).

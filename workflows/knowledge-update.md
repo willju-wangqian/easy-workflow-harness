@@ -24,14 +24,14 @@ trigger: "/ewh:doit knowledge-update"
   context:
     - step: read-governance
       detail: summary
-  artifact: .claude/artifacts/inspection-results.md
+  artifact: .ewh-artifacts/inspection-results.md
   description: >
     Inspect current project state against maintained documentation:
     - Compare CLAUDE.md architecture/commands/conventions against source
     - Check memory files (current-status, next-steps) against git log and test results
     - Check spec files for stale references
     - Run git log to identify recent changes not reflected in docs
-    Write results to .claude/artifacts/inspection-results.md:
+    Write results to .ewh-artifacts/inspection-results.md:
     what needs updating, with specific diffs proposed.
 
 - name: apply-updates
@@ -41,9 +41,9 @@ trigger: "/ewh:doit knowledge-update"
   context:
     - step: inspect-state
       detail: full
-  reads: [.claude/artifacts/inspection-results.md]
+  reads: [.ewh-artifacts/inspection-results.md]
   requires:
-    - file_exists: .claude/artifacts/inspection-results.md
+    - file_exists: .ewh-artifacts/inspection-results.md
   description: >
     Apply the proposed documentation updates.
     Present changes to user before writing.

@@ -28,11 +28,11 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 
 1. Reads `HARNESS.md` for paths/settings
 2. Resolves the workflow from `workflows/<name>.md` (project `.claude/workflows/` takes precedence)
-3. Prepares `.claude/artifacts/` workspace (clears stale artifacts from prior runs)
+3. Prepares `.ewh-artifacts/` workspace (warns if stale artifacts exist and waits for user confirmation before clearing)
 4. For each step: evaluates preconditions (`requires:`), checks gate, validates early (already-done/trivial), resolves rules, builds prompt (with `reads:` and `artifact:` directives), validates context, spawns agent, checks `AGENT_COMPLETE` sentinel, verifies artifact written
-5. If sentinel is absent (partial output): chunks the prompt into 30-item batches, runs in parallel, merges results
+5. If sentinel is absent (partial output): spawns one continuation agent to finish remaining work; if that also fails, splits into 30-item parallel chunks and merges results
 6. After steps with `severity: critical` rules: spawns the compliance agent to verify
-7. On completion: cleans up `.claude/artifacts/`
+7. On completion: cleans up `.ewh-artifacts/`
 
 **Resolution order** (project always wins for agents and workflows; rules concatenate):
 
@@ -58,7 +58,7 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 
 **New workflow**: add `workflows/<name>.md` with frontmatter (`name`, `description`, `trigger`) and a `## Steps` list. Each step needs: `name`, `agent`, `gate`, `rules`, `description`. Optional step fields:
 
-- `artifact: <path>` — the step writes its primary output to this file (under `.claude/artifacts/`). The dispatcher appends a write instruction to the agent's `## Task` section. Downstream steps use `reads:` to consume it.
+- `artifact: <path>` — the step writes its primary output to this file (under `.ewh-artifacts/`). The dispatcher appends a write instruction to the agent's `## Task` section. Downstream steps use `reads:` to consume it.
 - `reads: [<path>, ...]` — files the agent must read before starting. The dispatcher injects a `## Required Reading` section into the prompt listing these paths. Use for artifact handoff between steps.
 - `requires:` — preconditions evaluated before the step runs. If any fail, the step is skipped with a log entry. Two forms:
   - `prior_step: <name>` + `has: <field>` — the named prior step's summary must contain a non-empty value for that field (e.g., `files_modified`)
