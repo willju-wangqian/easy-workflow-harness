@@ -8,8 +8,58 @@ agent override, rule concatenation, and workflow override.
 - *Project owners* — run to confirm your `.claude/` overrides are picked up correctly
 
 **Verification signals:**
-- **Assembled prompt** — the full text passed to the Agent tool, visible in Claude Code's turn output. Agent template content opens the prompt; rules appear under `## Active Rules`.
-- **Dispatcher log** — messages Claude emits before spawning an agent (e.g., "Skipping rule: not found").
+- **Dispatcher log** — text the dispatcher emits before spawning an agent. Includes agent resolution notes (e.g., "Using project agent override: `.claude/agents/coder.md`", "Extending ewh:scanner with project instructions"), rule loading warnings (e.g., "Skipping rule: not found"), and gate step summaries.
+- **Agent tool call prompt** — the `prompt:` parameter passed to the Agent tool, visible in Claude Code's output after gate confirmation. Contains `## Active Rules`, `## Task`, `## Required Reading`, and `## Prior Steps` sections. Does **not** contain the agent template body — that is loaded by Claude Code's runtime from the resolved agent file via `subagent_type`, separately from the assembled prompt text.
+- **Agent output** — for agent override checks, let the agent run to completion; its behavior reflects which template it received.
+
+---
+
+## Reading the Dispatcher Log
+
+The dispatcher log is Claude's own conversational output during a `/ewh:doit` session — the text it prints to the terminal before spawning agents, at gates, and between steps. There is no separate log file written by EWH itself.
+
+**Live:** The log is visible in real time in the terminal (or IDE conversation pane) as the dispatcher runs.
+
+**After the fact:** Claude Code automatically saves every session as a `.jsonl` file:
+
+```
+~/.claude/projects/<encoded-project-path>/<session-uuid>.jsonl
+```
+
+For the `/tmp/ewh-test` fixture project, the path is:
+
+```
+~/.claude/projects/-private-tmp-ewh-test/
+```
+
+To find the most recent session and extract dispatcher text:
+
+```bash
+# Most recent session file for the test project
+LATEST=$(ls -t ~/.claude/projects/-private-tmp-ewh-test/*.jsonl 2>/dev/null | head -1)
+echo "Session file: $LATEST"
+
+# Extract all assistant (dispatcher) text blocks
+python3 - <<'EOF'
+import json, os, sys
+
+path = os.environ.get('LATEST') or \
+    sorted((__import__('glob').glob(
+        os.path.expanduser('~/.claude/projects/-private-tmp-ewh-test/*.jsonl')
+    )), key=os.path.getmtime)[-1]
+
+with open(path) as f:
+    for line in f:
+        obj = json.loads(line)
+        if obj.get('type') == 'assistant':
+            for block in obj.get('message', {}).get('content', []):
+                if block.get('type') == 'text':
+                    print(block['text'])
+                    print('---')
+EOF
+```
+
+Each `---` separator marks one assistant turn. Gate prompts, resolution notes, and rule loading warnings all appear as text blocks in assistant turns.
 
 ---
 
@@ -66,11 +116,11 @@ EOF
 /ewh:doit test-override "hello"
 ```
 
-Stop at the structural gate before the agent spawns.
+Let the agent run to completion (the agent template is not in the assembled prompt — it is loaded by the runtime via `subagent_type`; the only way to observe which template was used is through agent behavior).
 
-**Pass:** `PROJECT-OVERRIDE-MARKER` present in assembled prompt; plugin coder role description absent.
+**Pass:** Dispatcher log shows it resolved `.claude/agents/coder.md` (project override). Agent output is brief and constrained (maxTurns: 3, Read-only tools) — matching the project override's declared capabilities, not the plugin coder's.
 
-**Fail:** Plugin content appears instead — dispatcher resolved wrong file.
+**Fail:** Dispatcher log references the plugin agent path, or agent uses Write/Edit/Bash tools — override not applied.
 
 **Cleanup**
 
@@ -121,14 +171,13 @@ EOF
 /ewh:doit test-override "scan for issues"
 ```
 
-Stop at the structural gate.
+Let the agent run to completion (same reason as Check 1 — agent template content is not in the assembled prompt).
 
-**Pass:** Plugin scanner content present; `PROJECT-EXTENSION-MARKER` appears after it.
+**Pass:** Dispatcher log shows `extends: ewh:scanner` was resolved — plugin template loaded first, project instructions appended. Agent behavior reflects both the plugin scanner's read-only, issue-reporting role and the project-specific instructions from `PROJECT-EXTENSION-MARKER`.
 
 **Fail signals:**
-- `PROJECT-EXTENSION-MARKER` absent → extension not concatenated
-- Plugin content absent → treated as full override instead of extension
-- Marker appears before plugin content → wrong concatenation order
+- Dispatcher log shows no extension resolution → project agent treated as full override
+- Agent ignores plugin scanner constraints (e.g., attempts to edit files) → plugin template not loaded
 
 **Cleanup**
 
