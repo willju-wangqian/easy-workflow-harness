@@ -39,7 +39,7 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 | Artifact | Resolution |
 |---|---|
 | Agent | `.claude/agents/<name>.md` → `agents/<name>.md` |
-| Rule | `rules/<name>.md` + `.claude/rules/<name>.md` (both applied) |
+| Rule | `rules/**/<name>.md` + `.claude/rules/**/<name>.md` (recursive glob, all matches concatenated) |
 | Workflow | `.claude/workflows/<name>.md` → `workflows/<name>.md` |
 
 ## Key Contracts
@@ -69,7 +69,7 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 
 **New agent**: add `agents/<name>.md` with frontmatter (`name`, `description`, `model`, `tools`, `maxTurns`). Must include a `## Before You Start` self-gating section (verify context sufficiency, bail with `AGENT_COMPLETE` if missing) and output format instructions ending with the `AGENT_COMPLETE` sentinel instruction.
 
-**Project overrides**: `.claude/agents/<name>.md` replaces the plugin agent (or extends via `extends: ewh:<name>`). `.claude/rules/<name>.md` supplements (concatenated). `.claude/workflows/<name>.md` replaces entirely.
+**Project overrides**: `.claude/agents/<name>.md` replaces the plugin agent (or extends via `extends: ewh:<name>`). `.claude/rules/<name>.md` supplements (concatenated; recursive — `.claude/rules/ewh/<name>.md` and other subfolders are discovered automatically). `.claude/workflows/<name>.md` replaces entirely.
 
 ## Harness Config
 
@@ -82,4 +82,3 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 - Test pattern: none
 - Doc build: none
 - Conventions: frontmatter on all agent/rule/workflow files; AGENT_COMPLETE sentinel in all agent definitions
-- Auto-approve start: false

@@ -6,7 +6,7 @@ Full repo health check — run tests, linter, doc build, then update documentati
 
 ## When to Use
 
-For routine maintenance — verify everything builds, passes, and is documented. Runs the full gauntlet of checks and finishes by updating docs via the `knowledge-update` sub-workflow.
+For routine maintenance — verify everything builds, passes, and is documented. Runs the full gauntlet of checks and finishes by updating docs via the `update-knowledge` sub-workflow.
 
 ```bash
 /ewh:doit clean-up
@@ -37,10 +37,10 @@ Runs the check command from Harness Config (e.g., `ruff check .`, `npm run lint`
 
 Runs the doc build command from Harness Config. If the project has a README source (README.Rmd, README.qmd, etc.), renders it too. Reports build errors.
 
-### 4. knowledge-update (auto gate)
+### 4. update-knowledge (auto gate)
 
 - **Agent**: none (triggers sub-workflow)
 - **Rules**: `knowledge`
 - **Context**: test (summary), check (summary), build-docs (summary)
 
-Triggers the [`knowledge-update`](workflow-knowledge-update.md) workflow as a sub-workflow. Prior steps context carries forward. Updates CLAUDE.md and project docs based on current state.
+Triggers the [`update-knowledge`](workflow-update-knowledge.md) workflow as a sub-workflow. Prior steps context carries forward. Updates CLAUDE.md and project docs based on current state.

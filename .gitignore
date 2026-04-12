@@ -13,4 +13,5 @@
 .claude/settings.local.json
 .claude/todos/
 .claude/memory/
+.claude/ewh-state.json
 .ewh-artifacts/

@@ -2,6 +2,7 @@
 name: clean-up
 description: Run tests, check package, build docs, then update knowledge
 trigger: "/ewh:doit clean-up"
+auto_approve_start: false
 ---
 
 ## Steps
@@ -42,7 +43,7 @@ trigger: "/ewh:doit clean-up"
     If project has a README source (README.Rmd, README.qmd, etc.),
     render it too. Report any build errors.
 
-- name: knowledge-update
+- name: update-knowledge
   agent: null
   gate: auto
   rules: [knowledge]
@@ -54,6 +55,6 @@ trigger: "/ewh:doit clean-up"
     - step: build-docs
       detail: summary
   description: >
-    Trigger the knowledge-update workflow as a sub-workflow.
-    Sub-workflow: /ewh:doit knowledge-update
+    Trigger the update-knowledge workflow as a sub-workflow.
+    Sub-workflow: /ewh:doit update-knowledge
     Prior steps context carries forward from parent.

@@ -2,6 +2,21 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [0.9.3] - 2026-04-12
+
+### Added
+- `Auto-approve start` Harness Config flag — skips only the startup "Proceed?" gate; all other gates (structural, compliance, error, artifact, context) are unaffected. Set via `/ewh:doit init` or manually in `## Harness Config`.
+- 9 per-workflow reference docs under `docs/` (`docs/workflow-<name>.md`) covering steps, agents, rules, artifacts, and example outputs.
+- Greedy snake example project (`examples/project_greedy_snake/`) — full project with custom `ergo` agent, `ergo-voice` rule, `add-game-feature` workflow, game source, and test suite.
+
+### Changed
+- Renamed `fact-check` → `check-fact` and `knowledge-update` → `update-knowledge` for consistent verb-noun naming across all workflows.
+- `init` workflow now reminds users to add `.ewh-artifacts/` and `.claude/ewh-state.json` to other ignore files (`.dockerignore`, `.npmignore`, etc.) beyond `.gitignore`, which init manages automatically.
+
+### Fixed
+- Removed three inoperative HARNESS.md settings (`default_gate`, `compliance_enabled`, `compliance_model`) that were never consumed by the dispatcher.
+- Dispatcher missing-config log message now names Easy Workflow Harness explicitly and recommends running `/ewh:doit init`.
+
 ## [0.9.2] - 2026-04-11
 
 ### Added
@@ -40,7 +55,7 @@ All notable changes to Easy Workflow Harness are documented here.
 Initial release.
 
 - Dispatcher (`/ewh:doit`) with workflow resolution, gate system, and prompt assembly.
-- 6 workflows: `add-feature`, `refine-feature`, `fact-check`, `knowledge-update`, `clean-up`, `init`.
+- 6 workflows: `add-feature`, `refine-feature`, `check-fact`, `update-knowledge`, `clean-up`, `init`.
 - 4 agents: coder, reviewer, tester, compliance.
 - 4 rules: coding, review, testing, knowledge.
 - Three-level project integration: zero-config, init'd, customized.

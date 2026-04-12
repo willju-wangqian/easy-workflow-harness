@@ -2,6 +2,7 @@
 name: create-agents
 description: Design and scaffold a project-specific agent file in .claude/agents/
 trigger: "/ewh:doit create-agents"
+auto_approve_start: false
 ---
 
 ## Steps

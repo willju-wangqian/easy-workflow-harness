@@ -2,6 +2,7 @@
 name: create-rules
 description: Design and scaffold a project-specific rule file in .claude/rules/
 trigger: "/ewh:doit create-rules"
+auto_approve_start: false
 ---
 
 ## Steps

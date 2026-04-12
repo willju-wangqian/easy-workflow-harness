@@ -15,7 +15,7 @@ You coordinate agents and skills that do.
 The user types `/ewh:doit <name> [--auto-approval|--need-approval] [description]`.
 - `<name>` matches a workflow file name (without .md extension)
 - `[description]` is the user's free-form task context (optional)
-- `--auto-approval` / `--need-approval` (optional, position-independent, mutually exclusive) — toggle the persisted "Auto-approve start" switch in the project `## Harness Config`. Strip the flag from args before treating the rest as `<name>` + `[description]`.
+- `--auto-approval` / `--need-approval` (optional, position-independent, mutually exclusive) — toggle the persisted **per-workflow** "Auto-approve start" switch for `<name>` (stored in `.claude/ewh-state.json`). Strip the flag from args before treating the rest as `<name>` + `[description]`.
 
 Special commands:
 - `/ewh:doit list` — list all available workflows
@@ -23,15 +23,41 @@ Special commands:
 
 ### Auto-Approve Start Switch
 
-A persisted per-project switch controlling only the startup "Proceed?" gate (§6 of Startup Sequence). Default: off (ask).
+A **per-workflow, per-project** switch controlling only the startup "Proceed?" gate (§6 of Startup Sequence). Each workflow has its own switch — auto-approving `add-feature` does NOT affect `clean-up`. Default: off (ask).
 
-- Stored in project CLAUDE.md `## Harness Config` as a line: `- Auto-approve start: true|false`
-- `--auto-approval` on the command line → set the line to `true`, persist, and apply for this run
-- `--need-approval` on the command line → set the line to `false`, persist, and apply for this run
-- Neither flag → read the current value; if the line is missing, default to `false`
+**Resolution order** (highest precedence first):
+
+1. `.claude/ewh-state.json` → `auto_approve_start.<workflow_name>` (project-scoped user preference)
+2. Workflow file frontmatter → `auto_approve_start: true|false` (workflow author's default)
+3. `false` (hardcoded fallback)
+
+**Sidecar file**: `.claude/ewh-state.json` (per-project, recommended to gitignore for developer-local preferences). Schema:
+
+```json
+{
+  "auto_approve_start": {
+    "add-feature": true,
+    "clean-up": false
+  }
+}
+```
+
+**Flag behavior**:
+
+- `--auto-approval` → set `.auto_approve_start.<name>` to `true` in `.claude/ewh-state.json`, persist, apply for this run
+- `--need-approval` → set the same key to `false`, persist, apply for this run
+- Neither flag → resolve via the order above
 - Both flags on the same invocation → error, ask user to pick one, do not run
 
-This switch ONLY affects the startup "Proceed?" gate. All other gates (structural per-step, compliance, errors, artifact verification, context validation) are unaffected.
+**Persistence semantics**:
+
+- The flag never modifies workflow markdown files (plugin or project override). It only writes to `.claude/ewh-state.json`.
+- If `.claude/ewh-state.json` does not exist, create it with the single key needed.
+- If `.claude/` does not exist, create it.
+- If the write fails (read-only filesystem, permission denied), warn user: "Could not persist `--<flag>` to `.claude/ewh-state.json` — applies for this run only." and proceed.
+- The first write to this file may trigger a Claude Code permission prompt depending on the user's permission mode — that is normal and expected. The dispatcher does not bypass it.
+
+This switch ONLY affects the startup "Proceed?" gate. All other gates (structural per-step, compliance, errors, artifact verification, context validation, stale-artifact cleanup at startup §5) are unaffected.
 
 ## Startup Sequence
 
@@ -43,12 +69,18 @@ This switch ONLY affects the startup "Proceed?" gate. All other gates (structura
 3. Parse the workflow steps
 4. Read project CLAUDE.md → extract `## Harness Config` section
    - If missing and workflow is not `init` → log: "No Easy Workflow Harness config found in project CLAUDE.md. Recommended: run `/ewh:doit init` to bootstrap it. You can also provide values inline for this run only." Then ask the user to run init or provide values now.
-   - Parse `Auto-approve start: true|false` if present (default `false` if absent)
-   - If `--auto-approval` / `--need-approval` was passed on the command line, apply it now:
-     - If `## Harness Config` exists → update the `Auto-approve start` line in place (add it if missing), save CLAUDE.md, and log: "Auto-approve start switch set to `<value>` (persisted in `## Harness Config`)."
-     - If `## Harness Config` does not exist → log: "No Easy Workflow Harness config found in project CLAUDE.md — `--<flag>` applied for this run only, not persisted. Recommended: run `/ewh:doit init` to bootstrap the config so this setting sticks across runs."
+
+4b. Resolve the Auto-Approve Start switch for this specific workflow:
+    - Read `.claude/ewh-state.json` if it exists; look up `auto_approve_start.<workflow_name>`
+    - If absent there, fall back to the resolved workflow file's frontmatter `auto_approve_start` field
+    - If absent there too, default to `false`
+    - If `--auto-approval` / `--need-approval` was passed on the command line, apply it now:
+      - Read `.claude/ewh-state.json` (create empty `{}` if missing; create `.claude/` if missing)
+      - Set `auto_approve_start.<workflow_name>` to `true` (for `--auto-approval`) or `false` (for `--need-approval`)
+      - Write back; log: "Auto-approve start switch for `<workflow_name>` set to `<value>` (persisted in `.claude/ewh-state.json`)."
+      - If write fails → log: "Could not persist `--<flag>` to `.claude/ewh-state.json` — applies for this run only." and use the flag value for this run only.
 5. Prepare artifact workspace:
-   - If `.ewh-artifacts/` exists and is non-empty → warn user: "Artifacts from a prior run exist. Clear them?" Wait for confirmation before clearing.
+   - If `.ewh-artifacts/` exists and is non-empty → warn user: "Artifacts from a prior run exist in `.ewh-artifacts/`. Clear them? (This confirmation is required even with `--auto-approval` — clearing files is destructive and is a separate gate from the startup 'Proceed?' prompt.)" Wait for confirmation before clearing.
    - Create `.ewh-artifacts/` if it does not exist
 6. Present workflow plan to user:
    > **Workflow: `<name>`** — `<description>`
@@ -56,7 +88,7 @@ This switch ONLY affects the startup "Proceed?" gate. All other gates (structura
    > Gates: step1 (structural), step2 (auto), ...
    > Proceed?
 
-   If the effective `Auto-approve start` value (from §4) is `true`, skip the "Proceed?" confirmation and log: "Auto-approved start (Auto-approve start: true). Use `--need-approval` to re-enable the confirmation." The plan is still printed so the user sees what is about to run.
+   If the effective Auto-approve start value (from §4b) for this workflow is `true`, skip the "Proceed?" confirmation and log: "Auto-approved start for `<workflow_name>` (resolved from `.claude/ewh-state.json` or workflow frontmatter). Use `--need-approval` to re-enable the confirmation for this workflow." The plan is still printed so the user sees what is about to run. Other workflows are unaffected — the switch is per-workflow.
 
 ## Step Execution Loop
 
@@ -103,12 +135,16 @@ Before loading rules or building prompts, evaluate:
 
 ### 3. Load and Inject Rules
 
-For each rule name in `step.rules`:
-1. Load `${CLAUDE_PLUGIN_ROOT}/rules/<name>.md` (base rule)
-2. Check `.claude/rules/<name>.md` (project supplement)
-3. If both exist, concatenate: plugin rule body + project supplement under `### Project-Specific`
-4. If only plugin exists, use it alone
-5. If only project exists, use it alone (custom project rule)
+For each rule name in `step.rules`, resolve **recursively** on both sides and concatenate every match:
+
+1. **Plugin side** — glob `${CLAUDE_PLUGIN_ROOT}/rules/**/<name>.md`. In practice the plugin ships a flat `rules/` so this returns 0 or 1 file.
+2. **Project side** — glob `.claude/rules/**/<name>.md`. May return 0, 1, or many files (users can organize their `.claude/rules/` into subfolders however they like).
+3. **Combine**:
+   - Plugin matches found → emit each plugin file's body in lex-sorted path order
+   - Project matches found → append each project file's body under `### Project-Specific (<relative path>)` in lex-sorted path order
+   - Neither side matched → warn "rule `<name>` not found" and proceed without it (per §8 error table)
+
+This mirrors Claude Code's own `.claude/rules/` recursive discovery, so users can group EWH rules under `.claude/rules/ewh/` (or any other subfolder layout) without breaking resolution. Multiple project-side files with the same basename are all applied — subfolders are organizational, not namespacing. The dispatcher does not deduplicate or error on multiple matches; that's a user-side decision.
 
 Note: The `inject_into` field in rule frontmatter is advisory metadata indicating the rule's intended audience. The dispatcher does NOT filter by it — all rules listed in a step's `rules:` array are injected regardless of `inject_into`. Workflow authors control injection via the step's `rules:` list.
 

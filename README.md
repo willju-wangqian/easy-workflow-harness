@@ -19,14 +19,18 @@ EWH ships with predefined workflows, agents, and rules that work out of the box.
 
 ## Contents
 
-- [Getting Started](#getting-started) — install and first workflow
+- [Getting Started](#getting-started) — install, first workflow, available commands
 - [How It Works](#how-it-works) — dispatcher flow with diagram
 - [Workflows](#workflows) — 9 built-in workflows
 - [Agents](#agents) — 5 specialized agents
+  - [How Agents Receive Context](#how-agents-receive-context)
+  - [Self-Gating](#self-gating)
 - [Rules](#rules) — 4 injectable rule sets
 - [Gates](#gates) — control flow types
-- [Customizing](#customizing-ewh-for-your-project) — three levels of project integration
-- [Extending](#extending-ewh) — create your own workflows, agents, rules
+  - [Auto-Approve Start](#auto-approve-start) — per-workflow switch to skip the startup "Proceed?" gate
+- [Customizing EWH for Your Project](#customizing-ewh-for-your-project) — three levels of integration (zero config / init'd / custom overrides)
+- [Extending EWH](#extending-ewh) — create your own workflows, agents, rules; example project
+- [Recommended: Brainstorming Skill](#recommended-brainstorming-skill) — better plan-step facilitation
 - [License](#license)
 
 ## Getting Started
@@ -56,10 +60,14 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 ### Available Commands
 
 ```bash
-/ewh:doit list                    # list all available workflows
-/ewh:doit init                    # bootstrap project for EWH
-/ewh:doit <name> [description]    # run a workflow
+/ewh:doit list                                         # list all available workflows
+/ewh:doit init                                         # bootstrap project for EWH
+/ewh:doit <name> [description]                         # run a workflow
+/ewh:doit <name> --auto-approval [description]         # skip the startup "Proceed?" gate (persisted)
+/ewh:doit <name> --need-approval [description]         # re-enable the startup "Proceed?" gate (persisted)
 ```
+
+See [Auto-Approve Start](#auto-approve-start) for what these flags do and don't bypass.
 
 ## How It Works
 
@@ -120,9 +128,9 @@ A workflow is a sequence of steps. Each step runs an agent (or a skill, or a dir
 | `init` | Bootstrap a project for EWH — detects language, test framework, and conventions | scan, propose, apply | [docs](docs/workflow-init.md) |
 | `add-feature` | Design and implement a new feature from scratch | plan, code, review, test | [docs](docs/workflow-add-feature.md) |
 | `refine-feature` | Improve existing code — scan for issues, propose fixes, implement | scan, propose, code, review, test | [docs](docs/workflow-refine-feature.md) |
-| `fact-check` | Verify that documentation matches actual source code | scan-docs, validate, propose-fixes, apply-fixes | [docs](docs/workflow-fact-check.md) |
-| `knowledge-update` | Update CLAUDE.md and project docs to reflect current state | read-governance, inspect-state, apply-updates | [docs](docs/workflow-knowledge-update.md) |
-| `clean-up` | Full repo health check — run tests, linter, doc build, then update docs | test, check, build-docs, knowledge-update | [docs](docs/workflow-clean-up.md) |
+| `check-fact` | Verify that documentation matches actual source code | scan-docs, validate, propose-fixes, apply-fixes | [docs](docs/workflow-check-fact.md) |
+| `update-knowledge` | Update CLAUDE.md and project docs to reflect current state | read-governance, inspect-state, apply-updates | [docs](docs/workflow-update-knowledge.md) |
+| `clean-up` | Full repo health check — run tests, linter, doc build, then update docs | test, check, build-docs, update-knowledge | [docs](docs/workflow-clean-up.md) |
 | `create-rules` | Scaffold a project-specific rule file in .claude/rules/ | plan, propose, create, review | [docs](docs/workflow-create-rules.md) |
 | `create-agents` | Scaffold a project-specific agent file in .claude/agents/ | plan, propose, create, review | [docs](docs/workflow-create-agents.md) |
 | `create-workflow` | Scaffold a project-specific workflow file in .claude/workflows/ | plan, propose, create, review | [docs](docs/workflow-create-workflow.md) |
@@ -179,6 +187,43 @@ Gates control where the workflow pauses for your input:
 
 You're never locked in — at any gate, you can abort the workflow. Completed work is preserved as-is.
 
+### Auto-Approve Start
+
+Before any workflow runs, the dispatcher prints the plan (steps, gates, expected artifacts) and asks "Proceed?". If a particular workflow feels safe enough that you don't need this prompt, you can suppress it with a **per-workflow** persisted switch:
+
+```bash
+/ewh:doit add-feature --auto-approval "your task"   # persist: skip "Proceed?" for add-feature
+/ewh:doit add-feature --need-approval "your task"   # persist: re-enable "Proceed?" for add-feature
+```
+
+**The switch is per-workflow, not project-wide.** Auto-approving `add-feature` does NOT auto-approve `clean-up`, `refine-feature`, or anything else — each workflow has its own switch, so your sense of safety for one workflow doesn't leak to others.
+
+**Where it's stored.** The flag writes to `.claude/ewh-state.json` in your project, under `auto_approve_start.<workflow_name>`:
+
+```json
+{
+  "auto_approve_start": {
+    "add-feature": true,
+    "clean-up": false
+  }
+}
+```
+
+Each workflow's markdown file also declares an `auto_approve_start: false` default in its frontmatter — `.claude/ewh-state.json` overrides it on a per-project basis. Default behavior when neither is set: ask. The plan is still printed when auto-approved — you just don't have to confirm it.
+
+**Recommended:** add `.claude/ewh-state.json` to your project's `.gitignore`. The auto-approve switches express developer-local trust judgments, so they shouldn't be committed. New projects: `/ewh:doit init` adds this line for you automatically (alongside `.ewh-artifacts/`). Existing projects that ran `init` before this line was added: re-run `/ewh:doit init` — the gitignore step is idempotent and will append only the missing line without disturbing anything else.
+
+**Permission prompt on first write.** The first time the dispatcher writes to `.claude/ewh-state.json`, Claude Code may show a normal file-write permission prompt. That's expected — accept it to allow future toggles.
+
+**This switch only bypasses the startup "Proceed?" gate.** Every other gate is unaffected:
+
+- **Stale artifact cleanup gate** — if `.ewh-artifacts/` from a prior run exists, the dispatcher always asks "Clear them?" before wiping the workspace. This gate exists to protect in-progress work and is *not* covered by `--auto-approval` — clearing files is a destructive action that always requires explicit confirmation.
+- All per-step **structural** gates
+- All **compliance** failure gates
+- All **error** / **artifact verification** gates
+
+If you want truly hands-off execution, you also need to manually clear `.ewh-artifacts/` before starting (or accept the one extra prompt at the top).
+
 ## Customizing EWH for Your Project
 
 EWH works at three levels of customization:
@@ -212,7 +257,7 @@ Add project-specific overrides in your `.claude/` directory:
 | What | Where | How it merges |
 |---|---|---|
 | Agents | `.claude/agents/<name>.md` | Replaces the plugin agent, or extends it |
-| Rules | `.claude/rules/<name>.md` | Concatenated with the plugin rule (both apply) |
+| Rules | `.claude/rules/<name>.md` (subfolders allowed, e.g. `.claude/rules/ewh/<name>.md`) | Concatenated with the plugin rule (both apply); discovered recursively |
 | Workflows | `.claude/workflows/<name>.md` | Replaces the plugin workflow entirely |
 
 #### Extend an Agent

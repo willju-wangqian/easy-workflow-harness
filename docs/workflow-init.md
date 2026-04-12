@@ -42,6 +42,6 @@ No changes are made until you confirm.
 - **Agent**: none (dispatcher handles directly)
 - **Rules**: `knowledge`
 
-Appends the `## Harness Config` section to CLAUDE.md. Never overwrites existing content. Also ensures `.ewh-artifacts/` is in the project's `.gitignore`.
+Appends the `## Harness Config` section to CLAUDE.md. Never overwrites existing content. Also ensures both `.ewh-artifacts/` and `.claude/ewh-state.json` are in the project's `.gitignore` (idempotent — re-running on a project that already has one line will only add the missing one).
 
 Shows you exactly what will be written before writing it.

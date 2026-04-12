@@ -2,6 +2,7 @@
 name: init
 description: Scan project and bootstrap CLAUDE.md with harness config section
 trigger: "/ewh:doit init"
+auto_approve_start: false
 ---
 
 ## Steps
@@ -48,9 +49,17 @@ trigger: "/ewh:doit init"
     - Project description placeholder
     - Harness Config section
     Show the user exactly what will be written before writing.
-    Also ensure `.ewh-artifacts/` is in the project's .gitignore
-    (add the line if .gitignore exists and doesn't already contain it;
-    create .gitignore with that line if it doesn't exist).
+    Also ensure `.ewh-artifacts/` and `.claude/ewh-state.json` are in the
+    project's .gitignore (add each line if .gitignore exists and doesn't
+    already contain it; create .gitignore with both lines if it doesn't exist).
+    `.claude/ewh-state.json` is the per-workflow auto-approve sidecar — it's
+    created lazily by the dispatcher on first `--auto-approval` / `--need-approval`
+    use, NOT during init. Init only ensures the gitignore line is in place
+    so the file (when it appears later) won't be committed.
+    After writing .gitignore, tell the user: if the project uses other ignore
+    files (.dockerignore, .npmignore, .eslintignore, etc.), they should
+    manually add `.ewh-artifacts/` and `.claude/ewh-state.json` to those files
+    as well — init only manages .gitignore.
 
 ## Harness Config Template
 
@@ -68,5 +77,6 @@ The following is appended to CLAUDE.md:
 - Test pattern: {detected_test_pattern}
 - Doc build: {detected_doc_build}
 - Conventions: {detected_conventions}
-- Auto-approve start: false
 ```
+
+(The auto-approve switch is no longer stored in `## Harness Config`. It is now per-workflow, persisted in `.claude/ewh-state.json` via `--auto-approval` / `--need-approval` flags. See `skills/doit/SKILL.md` § Auto-Approve Start Switch.)

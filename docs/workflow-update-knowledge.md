@@ -1,15 +1,15 @@
-# Workflow: knowledge-update
+# Workflow: update-knowledge
 
-> Source: [`workflows/knowledge-update.md`](../workflows/knowledge-update.md)
+> Source: [`workflows/update-knowledge.md`](../workflows/update-knowledge.md)
 
 Update CLAUDE.md and project documentation to reflect current project state.
 
 ## When to Use
 
-After making significant changes to a project — new features, architecture changes, dependency updates — when the documentation needs to catch up. Unlike `fact-check` (which validates existing claims), this workflow proactively identifies what's missing or outdated.
+After making significant changes to a project — new features, architecture changes, dependency updates — when the documentation needs to catch up. Unlike `check-fact` (which validates existing claims), this workflow proactively identifies what's missing or outdated.
 
 ```bash
-/ewh:doit knowledge-update "sync docs after the auth refactor"
+/ewh:doit update-knowledge "sync docs after the auth refactor"
 ```
 
 ## Steps

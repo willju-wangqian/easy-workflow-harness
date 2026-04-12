@@ -80,7 +80,7 @@ Error handling additions:
 | review | code: full |
 | test | code: full, review: summary |
 
-### fact-check
+### check-fact
 
 | Step | Context |
 |---|---|
@@ -89,7 +89,7 @@ Error handling additions:
 | propose-fixes | validate: full |
 | apply-fixes | propose-fixes: full |
 
-### knowledge-update
+### update-knowledge
 
 | Step | Context |
 |---|---|
@@ -104,7 +104,7 @@ Error handling additions:
 | test | `[]` |
 | check | test: summary |
 | build-docs | test: summary, check: summary |
-| knowledge-update (sub) | test: summary, check: summary, build-docs: summary |
+| update-knowledge (sub) | test: summary, check: summary, build-docs: summary |
 
 ### init
 

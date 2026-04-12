@@ -2,6 +2,7 @@
 name: create-workflow
 description: Design and scaffold a project-specific workflow file in .claude/workflows/
 trigger: "/ewh:doit create-workflow"
+auto_approve_start: false
 ---
 
 ## Steps

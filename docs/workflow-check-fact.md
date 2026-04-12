@@ -1,6 +1,6 @@
-# Workflow: fact-check
+# Workflow: check-fact
 
-> Source: [`workflows/fact-check.md`](../workflows/fact-check.md)
+> Source: [`workflows/check-fact.md`](../workflows/check-fact.md)
 
 Cross-validate documentation against source code — find and fix stale claims.
 
@@ -9,7 +9,7 @@ Cross-validate documentation against source code — find and fix stale claims.
 When you suspect documentation has drifted from reality. Checks that file paths exist, function names match, dependency lists are accurate, and architecture descriptions reflect the actual code.
 
 ```bash
-/ewh:doit fact-check "verify README and CLAUDE.md are accurate"
+/ewh:doit check-fact "verify README and CLAUDE.md are accurate"
 ```
 
 ## Steps
