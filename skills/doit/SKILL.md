@@ -12,13 +12,26 @@ You coordinate agents and skills that do.
 
 ## Invocation
 
-The user types `/ewh:doit <name> [description]`.
+The user types `/ewh:doit <name> [--auto-approval|--need-approval] [description]`.
 - `<name>` matches a workflow file name (without .md extension)
 - `[description]` is the user's free-form task context (optional)
+- `--auto-approval` / `--need-approval` (optional, position-independent, mutually exclusive) — toggle the persisted "Auto-approve start" switch in the project `## Harness Config`. Strip the flag from args before treating the rest as `<name>` + `[description]`.
 
 Special commands:
 - `/ewh:doit list` — list all available workflows
 - `/ewh:doit` with no args — show help and list workflows
+
+### Auto-Approve Start Switch
+
+A persisted per-project switch controlling only the startup "Proceed?" gate (§6 of Startup Sequence). Default: off (ask).
+
+- Stored in project CLAUDE.md `## Harness Config` as a line: `- Auto-approve start: true|false`
+- `--auto-approval` on the command line → set the line to `true`, persist, and apply for this run
+- `--need-approval` on the command line → set the line to `false`, persist, and apply for this run
+- Neither flag → read the current value; if the line is missing, default to `false`
+- Both flags on the same invocation → error, ask user to pick one, do not run
+
+This switch ONLY affects the startup "Proceed?" gate. All other gates (structural per-step, compliance, errors, artifact verification, context validation) are unaffected.
 
 ## Startup Sequence
 
@@ -29,7 +42,11 @@ Special commands:
    - If neither exists → tell user, list available workflows, stop
 3. Parse the workflow steps
 4. Read project CLAUDE.md → extract `## Harness Config` section
-   - If missing and workflow is not `init` → ask user: run `/ewh:doit init` first, or provide values now
+   - If missing and workflow is not `init` → log: "No Easy Workflow Harness config found in project CLAUDE.md. Recommended: run `/ewh:doit init` to bootstrap it. You can also provide values inline for this run only." Then ask the user to run init or provide values now.
+   - Parse `Auto-approve start: true|false` if present (default `false` if absent)
+   - If `--auto-approval` / `--need-approval` was passed on the command line, apply it now:
+     - If `## Harness Config` exists → update the `Auto-approve start` line in place (add it if missing), save CLAUDE.md, and log: "Auto-approve start switch set to `<value>` (persisted in `## Harness Config`)."
+     - If `## Harness Config` does not exist → log: "No Easy Workflow Harness config found in project CLAUDE.md — `--<flag>` applied for this run only, not persisted. Recommended: run `/ewh:doit init` to bootstrap the config so this setting sticks across runs."
 5. Prepare artifact workspace:
    - If `.ewh-artifacts/` exists and is non-empty → warn user: "Artifacts from a prior run exist. Clear them?" Wait for confirmation before clearing.
    - Create `.ewh-artifacts/` if it does not exist
@@ -38,6 +55,8 @@ Special commands:
    > Steps: step1 → step2 → step3 → ...
    > Gates: step1 (structural), step2 (auto), ...
    > Proceed?
+
+   If the effective `Auto-approve start` value (from §4) is `true`, skip the "Proceed?" confirmation and log: "Auto-approved start (Auto-approve start: true). Use `--need-approval` to re-enable the confirmation." The plan is still printed so the user sees what is about to run.
 
 ## Step Execution Loop
 

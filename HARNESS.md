@@ -40,10 +40,14 @@ Projects opt in at three levels:
 ## Usage
 
 ```
-/ewh:doit <name> [description]    # run a workflow
-/ewh:doit list                    # list available workflows
-/ewh:doit init                    # bootstrap project CLAUDE.md
+/ewh:doit init                                      # bootstrap project CLAUDE.md
+/ewh:doit list                                      # list available workflows
+/ewh:doit <name> [description]                      # run a workflow
+/ewh:doit <name> --auto-approval [description]      # skip the startup "Proceed?" gate from now on
+/ewh:doit <name> --need-approval [description]      # re-enable the startup "Proceed?" gate
 ```
+
+The `--auto-approval` / `--need-approval` flags toggle a persisted switch stored as `- Auto-approve start: true|false` in the project's `## Harness Config`. It only affects the startup confirmation gate; structural per-step gates, compliance, and error gates are unaffected. Default is `false` (ask).
 
 ## Design Spec
 

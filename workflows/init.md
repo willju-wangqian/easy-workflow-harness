@@ -68,4 +68,5 @@ The following is appended to CLAUDE.md:
 - Test pattern: {detected_test_pattern}
 - Doc build: {detected_doc_build}
 - Conventions: {detected_conventions}
+- Auto-approve start: false
 ```

@@ -82,3 +82,4 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 - Test pattern: none
 - Doc build: none
 - Conventions: frontmatter on all agent/rule/workflow files; AGENT_COMPLETE sentinel in all agent definitions
+- Auto-approve start: false
