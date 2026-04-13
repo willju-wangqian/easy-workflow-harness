@@ -62,9 +62,9 @@ This switch ONLY affects the startup "Proceed?" gate. All other gates (structura
 ## Startup Sequence
 
 1. Read `${CLAUDE_PLUGIN_ROOT}/HARNESS.md` for paths and settings
-2. Resolve workflow file:
-   - Check `.claude/workflows/<name>.md` first (project override)
-   - Else `${CLAUDE_PLUGIN_ROOT}/workflows/<name>.md`
+2. Resolve workflow file (project always wins):
+   - Use the Read tool on `.claude/workflows/<name>.md`. If it succeeds (no error), this is the project override — use ONLY this file; do not read the plugin workflow.
+   - Only if the project file does not exist: use the Read tool on `${CLAUDE_PLUGIN_ROOT}/workflows/<name>.md`.
    - If neither exists → tell user, list available workflows, stop
 3. Parse the workflow steps
 4. Read project CLAUDE.md → extract `## Harness Config` section
@@ -118,7 +118,10 @@ If any precondition fails:
   - Pass the user's task description as skill input. If `step.artifact` exists, instruct: "Write your primary output to `<artifact path>`."
   - Wait for skill to complete, capture key decisions
 - If `step.agent` exists:
-  - Resolve agent file: check project `.claude/agents/<agent>.md` first, then `${CLAUDE_PLUGIN_ROOT}/agents/<agent>.md`
+  - Resolve agent file:
+    - Try reading `.claude/agents/<agent>.md` (use the Read tool; if no error, file exists and is the project override)
+    - If not found, try reading `${CLAUDE_PLUGIN_ROOT}/agents/<agent>.md` (use the Read tool with the full absolute path)
+    - If neither exists → gate per §8
   - If project agent has `extends: ewh:<name>`, load plugin agent template first, then concatenate project-specific instructions
   - Proceed to rule loading and prompt building
 - If neither (agent: null, skill: null):
@@ -135,11 +138,11 @@ Before loading rules or building prompts, evaluate:
 
 ### 3. Load and Inject Rules
 
-For each rule name in `step.rules`, resolve **recursively** on both sides and concatenate every match:
+For each rule name in `step.rules`, you MUST perform **two independent glob operations** — one for the plugin side, one for the project side — and concatenate every match. **Never skip the plugin-side glob because a project-side match exists, and never skip the project-side glob because a plugin-side match exists. Both operations are always mandatory.**
 
-1. **Plugin side** — glob `${CLAUDE_PLUGIN_ROOT}/rules/**/<name>.md`. In practice the plugin ships a flat `rules/` so this returns 0 or 1 file.
-2. **Project side** — glob `.claude/rules/**/<name>.md`. May return 0, 1, or many files (users can organize their `.claude/rules/` into subfolders however they like).
-3. **Combine**:
+1. **Plugin side** — use the Glob tool with `pattern: **/<name>.md` and `path: ${CLAUDE_PLUGIN_ROOT}/rules`. Collect all matches. Do this step unconditionally — do NOT skip it if a project-side rule was already found.
+2. **Project side** — use the Glob tool with `pattern: **/<name>.md` and `path: .claude/rules`. Collect all matches. Do this step unconditionally — do NOT skip it if a plugin-side rule was already found.
+3. **Combine** (only after both globs are complete):
    - Plugin matches found → emit each plugin file's body in lex-sorted path order
    - Project matches found → append each project file's body under `### Project-Specific (<relative path>)` in lex-sorted path order
    - Neither side matched → warn "rule `<name>` not found" and proceed without it (per §8 error table)
