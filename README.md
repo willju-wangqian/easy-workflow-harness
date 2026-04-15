@@ -44,11 +44,28 @@ EWH ships with predefined workflows, agents, and rules that work out of the box.
 
 ### Install
 
-Test locally by pointing Claude Code at this plugin:
+> **Note.** EWH is in the process of being submitted to Anthropic's official plugin marketplace. Until that listing is live, use one of the two install methods below.
+
+**Option A — Via the marketplace (recommended for users)**
+
+EWH is a self-hosted marketplace as well as a plugin, so you can add it directly from GitHub:
+
+```bash
+/plugin marketplace add willju-wangqian/easy-workflow-harness
+/plugin install ewh@willju-plugins
+```
+
+Verify the install by running `/ewh:doit list` inside any project.
+
+**Option B — Via `--plugin-dir` (for local development)**
+
+Clone the repo and point Claude Code at the local checkout:
 
 ```bash
 claude --plugin-dir /path/to/easy-workflow-harness
 ```
+
+Use this path if you're modifying the plugin and want edits to take effect immediately without pushing a commit.
 
 ### Your First Workflow
 
