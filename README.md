@@ -4,14 +4,19 @@ A Claude Code plugin that turns multi-step development tasks into repeatable, st
 
 ## Why Use This?
 
-When you ask Claude Code to do something complex, it often tries to do everything at once: write code, review it, write tests, and update docs — all in a single pass. The results are inconsistent. Sometimes it skips testing. Sometimes it reviews its own code and declares it perfect.
+When you ask Claude Code to do something complex, it often tries to do everything in one pass: code, review, test, and update docs simultaneously. Results are inconsistent — sometimes it skips tests, sometimes it reviews its own code and declares it perfect, sometimes it loses track of what the plan even was.
 
-EWH fixes this by:
+EWH fixes this by breaking the work into discrete, role-scoped steps. Here's what you get:
 
-- **Separating concerns** — different agents handle coding, reviewing, and testing, so no agent reviews its own work
-- **Enforcing standards** — rules are injected into agent prompts, so coding standards and review criteria are applied consistently
-- **Providing guardrails** — gates pause the workflow at key decision points so you stay in control
-- **Passing context selectively** — each agent receives only the information it needs, keeping prompts focused and effective
+- **Lightweight** — the entire plugin is Markdown. No runtime, no build step, no dependencies to install. The dispatcher itself is a single `SKILL.md` file, a few hundred lines you can read in one sitting.
+- **Beginner-friendly** — `/ewh:doit init` auto-detects your language, test command, and conventions and writes them into your CLAUDE.md. Zero-config mode works in any project without setup. Commands are discoverable via `/ewh:doit list`.
+- **A good starting point for your own harness** — three customization levels (zero-config, init'd, custom overrides), scaffold workflows (`create-rules`, `create-agents`, `create-workflow`) that walk you through authoring your own pieces, and a complete worked example under `examples/project_greedy_snake/`. Fork the project rules, replace the workflows, swap the agents — nothing is locked in.
+- **Separation of concerns** — different agents handle coding, reviewing, and testing. A reviewer literally *cannot* edit code (read-only tool scope), so it can't silently "fix" issues instead of reporting them.
+- **Enforced standards** — rules are injected as prose into agent prompts. Coding conventions, review criteria, and testing requirements apply consistently without you re-pasting them every run.
+- **Guardrails that keep you in control** — structural gates pause at decisions that matter; compliance gates trigger automatically when critical rules are at stake. You can abort any workflow at any gate; completed work is preserved.
+- **Disciplined context management** — each agent receives only what it needs: required reading, active rules, filtered summaries of prior steps. No bloated prompts, no irrelevant history. Self-gating lets agents bail cleanly when context is insufficient instead of guessing.
+
+> **A note on scope.** EWH is a simple, experimental tool — not a production orchestration framework. It is deliberately built from plain Markdown files and a small dispatcher skill, so every behavior lives in a file you can open, read, and change. The goal isn't for everyone to use EWH as-is; it's to show that a useful multi-agent harness can be built out of nothing but Markdown and conventions, and to give you a decent starting point for building your own.
 
 ## About This Plugin
 
@@ -25,6 +30,7 @@ EWH ships with predefined workflows, agents, and rules that work out of the box.
 - [Agents](#agents) — 5 specialized agents
   - [How Agents Receive Context](#how-agents-receive-context)
   - [Self-Gating](#self-gating)
+  - [Extending Agent Tool Pools](#extending-agent-tool-pools)
 - [Rules](#rules) — 4 injectable rule sets
 - [Gates](#gates) — control flow types
   - [Auto-Approve Start](#auto-approve-start) — per-workflow switch to skip the startup "Proceed?" gate
@@ -164,6 +170,14 @@ The project's CLAUDE.md is **not** included in this prompt — the Claude Code r
 ### Self-Gating
 
 Every agent has a "Before You Start" checklist. If an agent doesn't have enough context to do its job (e.g., a reviewer with no files to review), it reports what's missing and exits cleanly instead of guessing.
+
+### Extending Agent Tool Pools
+
+Each agent's `tools` list in its frontmatter is not fixed. You can extend it with tools from any MCP server you have connected — Serena, GitHub MCP, browser automation, your own custom MCP — to give agents new capabilities without changing their role.
+
+The one rule that must hold: **read-only agents may only gain read-only tools**. The `scanner`, `reviewer`, and `compliance` agents are read-only by design; adding a mutation tool (e.g. `mcp__serena__replace_symbol_body` to the reviewer) would silently turn a reviewer into a coder and break the separation-of-concerns guarantee. The `coder` and `tester` agents may safely receive both read-only and read-write tools.
+
+See [docs/expand-agent-tools.md](docs/expand-agent-tools.md) for a copy-paste prompt that walks Claude through the expansion safely, with placeholders for the target tool set and a worked example using Serena MCP.
 
 ## Rules
 

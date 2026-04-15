@@ -2,6 +2,16 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [1.0.0] - 2026-04-14
+
+First stable release for marketplace publication. No dispatcher or workflow behavior changes from 0.9.3.
+
+### Changed
+- README: rewrote "Why Use This?" section to lead with lightweight / beginner-friendly / starting-point framing, tightened the discipline bullets, and added an experimental-scope note clarifying that EWH is meant to inspire users to build their own harness rather than be used as a production framework.
+
+### Added
+- README: "Extending Agent Tool Pools" subsection documenting how agent tool lists can be expanded with external MCP tool sets (Serena, GitHub MCP, etc.), pointing at `docs/expand-agent-tools.md` for the copy-paste prompt and worked example.
+
 ## [0.9.3] - 2026-04-12
 
 ### Added

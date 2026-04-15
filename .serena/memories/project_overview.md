@@ -22,7 +22,7 @@ examples/              — example project overrides
 ```
 
 ## Version
-Currently 0.9.2 (see HARNESS.md frontmatter and CHANGELOG.md)
+Currently 1.0.0 (see HARNESS.md frontmatter and CHANGELOG.md)
 
 ## Key Concepts
 - Dispatcher reads workflow → resolves agents/rules → spawns agents with injected prompts
