@@ -1,0 +1,16 @@
+{
+  "name": "willju-plugins",
+  "owner": {
+    "name": "willju-wangqian"
+  },
+  "metadata": {
+    "description": "Plugins authored by willju-wangqian"
+  },
+  "plugins": [
+    {
+      "name": "ewh",
+      "source": "./",
+      "description": "Opinionated workflow orchestration for Claude Code — rules, agents, workflows, and a dispatcher that ties them together."
+    }
+  ]
+}
