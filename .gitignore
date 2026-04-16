@@ -14,7 +14,6 @@
 .claude/todos/
 .claude/memory/
 .claude/ewh-state.json
-.claude/ewh-scopes.json
 .claude/worktrees/
 .ewh-artifacts/
 

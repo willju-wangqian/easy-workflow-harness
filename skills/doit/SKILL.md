@@ -115,9 +115,9 @@ If any precondition fails:
 
 If `step.chunked` is `true`:
 
-1. **Resolve scope** — read `.claude/ewh-scopes.json`. Look up key `chunked_scopes["<workflow_name>/<step.name>"]`.
+1. **Resolve scope** — read `.claude/ewh-state.json`. Look up key `chunked_scopes["<workflow_name>/<step.name>"]`.
 
-2. **First-run prompt** (scope not cached) — if the key does not exist in `ewh-scopes.json` (or the file does not exist):
+2. **First-run prompt** (scope not cached) — if the key does not exist in `ewh-state.json` (or the file does not exist):
    - Prompt the user:
      > Step `<step.name>` supports chunked dispatch for large file sets.
      > Configure file scope now? (recommended for projects with many documentation or source files)
@@ -127,7 +127,7 @@ If `step.chunked` is `true`:
      > Exclude patterns? (comma-separated, or Enter for none):
    - After user provides exclude (or skips):
      > Max files per chunk? (default: 8, Enter to accept):
-   - Save to `.claude/ewh-scopes.json` (create file and `.claude/` directory if needed):
+   - Save to `.claude/ewh-state.json` (create file and `.claude/` directory if needed) under the `chunked_scopes` key:
      ```json
      {
        "chunked_scopes": {
@@ -141,7 +141,7 @@ If `step.chunked` is `true`:
      }
      ```
    - If user enters empty include (skips configuration) → fall through to normal §2 (single-agent, no chunking). Log: "Chunked dispatch skipped by user — running single agent."
-   - If write to `ewh-scopes.json` fails → warn, use provided values for this run only.
+   - If write to `ewh-state.json` fails → warn, use provided values for this run only.
 
 3. **Enumerate** — for each pattern in `include`, run the Glob tool. Collect all matching file paths. Remove any paths matching `exclude` patterns. Deduplicate. Sort lexicographically.
    - If zero files match → skip step, log: "No files matched chunked scope for `<step.name>`."
