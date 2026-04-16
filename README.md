@@ -9,8 +9,8 @@ When you ask Claude Code to do something complex, it often tries to do everythin
 EWH fixes this by breaking the work into discrete, role-scoped steps. Here's what you get:
 
 - **Lightweight** — the entire plugin is Markdown. No runtime, no build step, no dependencies to install. The dispatcher itself is a single `SKILL.md` file, a few hundred lines you can read in one sitting.
-- **Beginner-friendly** — `/ewh:doit init` auto-detects your language, test command, and conventions and writes them into your CLAUDE.md. Zero-config mode works in any project without setup. Commands are discoverable via `/ewh:doit list`.
-- **A good starting point for your own harness** — three customization levels (zero-config, init'd, custom overrides), scaffold workflows (`create-rules`, `create-agents`, `create-workflow`) that walk you through authoring your own pieces, and a complete worked example under `examples/project_greedy_snake/`. Fork the project rules, replace the workflows, swap the agents — nothing is locked in.
+- **Beginner-friendly** — `/ewh:doit init` auto-detects your language, test command, and conventions, writes them into your CLAUDE.md, and shows an onboarding guide with all available commands. Zero-config mode works in any project without setup. Commands are discoverable via `/ewh:doit list`.
+- **A good starting point for your own harness** — three customization levels (zero-config, init'd, custom overrides), the `create` subcommand (`/ewh:doit create rule|agent|workflow`) that walks you through authoring your own pieces interactively, and a complete worked example under `examples/project_greedy_snake/`. Fork the project rules, replace the workflows, swap the agents — nothing is locked in.
 - **Separation of concerns** — different agents handle coding, reviewing, and testing. A reviewer literally *cannot* edit code (read-only tool scope), so it can't silently "fix" issues instead of reporting them.
 - **Enforced standards** — rules are injected as prose into agent prompts. Coding conventions, review criteria, and testing requirements apply consistently without you re-pasting them every run.
 - **Guardrails that keep you in control** — structural gates pause at decisions that matter; compliance gates trigger automatically when critical rules are at stake. You can abort any workflow at any gate; completed work is preserved.
@@ -27,7 +27,8 @@ EWH ships with predefined workflows, agents, and rules that work out of the box.
 
 - [Getting Started](#getting-started) — install, first workflow, available commands
 - [How It Works](#how-it-works) — dispatcher flow with diagram
-- [Workflows](#workflows) — 9 built-in workflows
+- [Workflows](#workflows) — 4 built-in workflows (multi-step, agent-driven)
+- [Subcommands](#subcommands) — 4 built-in subcommands (lightweight, interactive)
 - [Agents](#agents) — 5 specialized agents
   - [How Agents Receive Context](#how-agents-receive-context)
   - [Self-Gating](#self-gating)
@@ -86,16 +87,25 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 ### Available Commands
 
 ```bash
-/ewh:doit list                                         # list all available workflows
-/ewh:doit init                                         # bootstrap project for EWH
+# Subcommands (lightweight, interactive)
+/ewh:doit init                                         # bootstrap project + onboarding guide
+/ewh:doit clean-up                                     # run configured cleanup tasks
+/ewh:doit clean-up --manage-tasks                      # configure cleanup tasks
+/ewh:doit create [rule|agent|workflow]                  # scaffold a project artifact
+/ewh:doit expand-tools [description]                   # discover and persist agent tool expansions
+
+# Workflows (multi-step, agent-driven)
+/ewh:doit list                                         # list all workflows and subcommands
 /ewh:doit <name> [description]                         # run a workflow
 /ewh:doit <name> --auto-approval [description]         # skip the startup "Proceed?" gate (persisted)
 /ewh:doit <name> --need-approval [description]         # re-enable the startup "Proceed?" gate (persisted)
 /ewh:doit <name> --manage-scripts [description]        # manage cached scripts before running
-/ewh:doit expand-tools [description]                   # discover and persist agent tool expansions
+
+# Override control
+/ewh:doit <subcommand> --no-override                   # force built-in subcommand when a same-name project workflow exists
 ```
 
-See [Auto-Approve Start](#auto-approve-start), [Script Proposal](#script-proposal), and [Extending Agent Tool Pools](#extending-agent-tool-pools) for what these flags and commands do.
+See [Subcommands](#subcommands), [Auto-Approve Start](#auto-approve-start), [Script Proposal](#script-proposal), and [Extending Agent Tool Pools](#extending-agent-tool-pools) for details.
 
 ## How It Works
 
@@ -149,19 +159,33 @@ For details on artifact handoff between steps and partial output recovery, see [
 
 ## Workflows
 
-A workflow is a sequence of steps. Each step runs an agent (or a skill, or a direct command) with specific rules and context. EWH ships with nine built-in workflows:
+A workflow is a sequence of steps. Each step runs an agent (or a skill, or a direct command) with specific rules and context. EWH ships with four built-in workflows:
 
 | Workflow | What it does | Steps | Details |
 |---|---|---|---|
-| `init` | Bootstrap a project for EWH — detects language, test framework, and conventions | scan, propose, apply | [docs](docs/workflow-init.md) |
 | `add-feature` | Design and implement a new feature from scratch | plan, code, review, test | [docs](docs/workflow-add-feature.md) |
 | `refine-feature` | Improve existing code — scan for issues, propose fixes, implement | scan, propose, code, review, test | [docs](docs/workflow-refine-feature.md) |
 | `check-fact` | Verify that documentation matches actual source code | scan-docs, validate, propose-fixes, apply-fixes | [docs](docs/workflow-check-fact.md) |
 | `update-knowledge` | Update CLAUDE.md and project docs to reflect current state | read-governance, inspect-state, apply-updates | [docs](docs/workflow-update-knowledge.md) |
-| `clean-up` | Full repo health check — run tests, linter, doc build, then update docs | test, check, build-docs, update-knowledge | [docs](docs/workflow-clean-up.md) |
-| `create-rules` | Scaffold a project-specific rule file in .claude/rules/ | plan, propose, create, review | [docs](docs/workflow-create-rules.md) |
-| `create-agents` | Scaffold a project-specific agent file in .claude/agents/ | plan, propose, create, review | [docs](docs/workflow-create-agents.md) |
-| `create-workflow` | Scaffold a project-specific workflow file in .claude/workflows/ | plan, propose, create, review | [docs](docs/workflow-create-workflow.md) |
+
+Workflows use the full dispatcher machinery: agents, rules, compliance checks, artifact handoff, context passing, script proposal, and chunked dispatch.
+
+## Subcommands
+
+Subcommands are lightweight, interactive operations handled directly by the dispatcher — no agents, rules, or compliance checks. They're faster and use fewer tokens than workflows.
+
+| Subcommand | What it does | Details |
+|---|---|---|
+| `init` | Bootstrap a project — detect language/framework, write Harness Config, show onboarding guide | [docs](docs/subcommand-init.md) |
+| `clean-up` | Run user-configured cleanup tasks (tests, linting, formatting) | [docs](docs/subcommand-clean-up.md) |
+| `create [type]` | Scaffold a project-specific rule, agent, or workflow interactively | [docs](docs/subcommand-create.md) |
+| `expand-tools` | Discover MCP/plugin tools and persist per-agent expansions | [docs](docs/expand-agent-tools.md) |
+
+**Override control:** If you create a project workflow with the same name as a subcommand (e.g., `.claude/workflows/init.md`), the project workflow takes precedence. Use `--no-override` to force the built-in subcommand:
+
+```bash
+/ewh:doit init --no-override    # run built-in init even if .claude/workflows/init.md exists
+```
 
 ## Agents
 
@@ -242,7 +266,7 @@ Before any workflow runs, the dispatcher prints the plan (steps, gates, expected
 /ewh:doit add-feature --need-approval "your task"   # persist: re-enable "Proceed?" for add-feature
 ```
 
-**The switch is per-workflow, not project-wide.** Auto-approving `add-feature` does NOT auto-approve `clean-up`, `refine-feature`, or anything else — each workflow has its own switch, so your sense of safety for one workflow doesn't leak to others.
+**The switch is per-workflow, not project-wide.** Auto-approving `add-feature` does NOT auto-approve `refine-feature`, `check-fact`, or anything else — each workflow has its own switch, so your sense of safety for one workflow doesn't leak to others.
 
 **Where it's stored.** The flag writes to `.claude/ewh-state.json` in your project, under `auto_approve_start.<workflow_name>`:
 
@@ -250,14 +274,14 @@ Before any workflow runs, the dispatcher prints the plan (steps, gates, expected
 {
   "auto_approve_start": {
     "add-feature": true,
-    "clean-up": false
+    "refine-feature": false
   }
 }
 ```
 
 Each workflow's markdown file also declares an `auto_approve_start: false` default in its frontmatter — `.claude/ewh-state.json` overrides it on a per-project basis. Default behavior when neither is set: ask. The plan is still printed when auto-approved — you just don't have to confirm it.
 
-**Recommended:** add `.claude/ewh-state.json` to your project's `.gitignore`. The auto-approve switches and chunked-dispatch scopes are stored together in this file and express developer-local preferences, so they shouldn't be committed (unless you want shared team-wide scope settings). New projects: `/ewh:doit init` adds these lines for you automatically (alongside `.ewh-artifacts/`). Existing projects that ran `init` before these lines were added: re-run `/ewh:doit init` — the gitignore step is idempotent and will append only the missing lines without disturbing anything else.
+**Recommended:** add `.claude/ewh-state.json` to your project's `.gitignore`. Auto-approve switches, chunked-dispatch scopes, agent tool expansions, and cleanup tasks are stored together in this file and express developer-local preferences, so they shouldn't be committed (unless you want shared team-wide settings). New projects: `/ewh:doit init` adds these lines for you automatically (alongside `.ewh-artifacts/`). Existing projects that ran `init` before these lines were added: re-run `/ewh:doit init` — the gitignore step is idempotent and will append only the missing lines without disturbing anything else.
 
 **Permission prompt on first write.** The first time the dispatcher writes to `.claude/ewh-state.json`, Claude Code may show a normal file-write permission prompt. That's expected — accept it to allow future toggles.
 

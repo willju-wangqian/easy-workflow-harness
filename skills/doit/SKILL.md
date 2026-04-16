@@ -12,16 +12,25 @@ You coordinate agents and skills that do.
 
 ## Invocation
 
-The user types `/ewh:doit <name> [--auto-approval|--need-approval] [--manage-scripts] [description]`.
-- `<name>` matches a workflow file name (without .md extension)
+The user types `/ewh:doit <name> [flags] [description]`.
+- `<name>` matches a workflow name, subcommand name, or special command
 - `[description]` is the user's free-form task context (optional)
-- `--auto-approval` / `--need-approval` (optional, position-independent, mutually exclusive) — toggle the persisted **per-workflow** "Auto-approve start" switch for `<name>` (stored in `.claude/ewh-state.json`). Strip the flag from args before treating the rest as `<name>` + `[description]`.
-- `--manage-scripts` (optional, position-independent) — before running the workflow, enter script management mode: list all cached scripts for this workflow in `.claude/ewh-scripts/<workflow>/`, and for each offer: (v)iew / (e)dit / (d)elete / (r)egenerate / (s)kip. Strip the flag from args before treating the rest as `<name>` + `[description]`.
 
-Special commands:
-- `/ewh:doit list` — list all available workflows
+**Flags** (optional, position-independent — strip from args before parsing `<name>` + `[description]`):
+- `--auto-approval` / `--need-approval` (mutually exclusive) — toggle the persisted **per-workflow** "Auto-approve start" switch for `<name>` (stored in `.claude/ewh-state.json`). Applies to workflows only.
+- `--manage-scripts` — before running a workflow, enter script management mode: list all cached scripts for this workflow in `.claude/ewh-scripts/<workflow>/`, and for each offer: (v)iew / (e)dit / (d)elete / (r)egenerate / (s)kip. Applies to workflows only.
+- `--manage-tasks` — enter cleanup task configuration mode. Applies to the `clean-up` subcommand only.
+- `--no-override` — force the built-in subcommand when a same-name project workflow exists in `.claude/workflows/`. No-op when no project override exists. Applies to subcommands only.
+
+**Special commands:**
+- `/ewh:doit list` — list all available workflows and subcommands
+- `/ewh:doit` with no args — show help and list workflows and subcommands
+
+**Built-in subcommands** (handled inline by the dispatcher, no workflow file):
+- `/ewh:doit init` — bootstrap project and show onboarding guide (see §Subcommand: init)
+- `/ewh:doit clean-up` — run user-configured cleanup tasks (see §Subcommand: clean-up)
+- `/ewh:doit create [rule|agent|workflow]` — scaffold a project artifact (see §Subcommand: create)
 - `/ewh:doit expand-tools [description]` — discover and persist agent tool expansions (see §Expand Tools)
-- `/ewh:doit` with no args — show help and list workflows
 
 ### Auto-Approve Start Switch
 
@@ -38,9 +47,11 @@ A **per-workflow, per-project** switch controlling only the startup "Proceed?" g
 ```json
 {
   "auto_approve_start": {
-    "add-feature": true,
-    "clean-up": false
-  }
+    "add-feature": true
+  },
+  "chunked_scopes": {},
+  "agent_tools": {},
+  "cleanup_tasks": []
 }
 ```
 
@@ -61,7 +72,26 @@ A **per-workflow, per-project** switch controlling only the startup "Proceed?" g
 
 This switch ONLY affects the startup "Proceed?" gate. All other gates (structural per-step, compliance, errors, artifact verification, context validation, stale-artifact cleanup at startup §5) are unaffected.
 
+## Name Resolution
+
+When the user types `/ewh:doit <name>`, resolve in this order:
+
+1. **Special commands** — if `<name>` is `list` or empty → handle directly (see §Listing)
+2. **Project workflow override** — try reading `.claude/workflows/<name>.md`. If it exists AND `--no-override` was NOT passed → run as workflow (enter §Startup Sequence)
+3. **Built-in subcommand** — if `<name>` matches a built-in subcommand (`init`, `clean-up`, `create`, `expand-tools`) → run subcommand logic (see §Subcommand sections and §Expand Tools)
+4. **Plugin workflow** — try reading `${CLAUDE_PLUGIN_ROOT}/workflows/<name>.md`. If it exists → run as workflow (enter §Startup Sequence)
+5. **No match** → tell user, list available workflows and subcommands, stop
+
+If `--no-override` was passed and step 2 found a project workflow → log: "Bypassing project workflow override for `<name>`." Skip step 2, continue to step 3.
+
+This means:
+- Project workflows can shadow subcommand names. A `.claude/workflows/init.md` takes precedence over the built-in `init` subcommand.
+- `--no-override` lets users force the built-in subcommand when a same-name project workflow exists.
+- Plugin workflows cannot shadow subcommands (the old workflow files `init.md`, `clean-up.md`, `create-rules.md`, `create-agents.md`, `create-workflow.md` have been removed from `workflows/`).
+
 ## Startup Sequence
+
+Applies to workflows only (not subcommands). Subcommands have their own flows defined in their respective sections.
 
 1. Read `${CLAUDE_PLUGIN_ROOT}/HARNESS.md` for paths and settings
 2. Resolve workflow file (project always wins):
@@ -519,14 +549,286 @@ If a step description contains `Sub-workflow: /ewh:doit <name>`:
 - Prior steps context carries forward from parent
 - Failures propagate up to parent gate
 
-## Listing Workflows
+## Listing
 
 When user types `/ewh:doit list` or `/ewh:doit` with no name:
+
 1. Scan `${CLAUDE_PLUGIN_ROOT}/workflows/` for all .md files
 2. Scan `.claude/workflows/` for project overrides
-3. List each workflow: name, description, step count
-4. Mark project overrides with `(project override)`
-5. Show available rules count and agent count
+3. Present two sections:
+
+**Workflows** (multi-step, agent-driven):
+
+| Workflow | Description | Steps |
+|---|---|---|
+| `add-feature` | Plan, implement, review, and test a new feature | 4 |
+| ... | ... | ... |
+
+Mark project overrides with `(project override)`. If a project workflow shadows a subcommand name, note: `(overrides built-in subcommand — use --no-override to bypass)`.
+
+**Subcommands** (lightweight, interactive):
+
+| Subcommand | Description |
+|---|---|
+| `init` | Bootstrap project and show onboarding guide |
+| `clean-up` | Run user-configured cleanup tasks |
+| `create [type]` | Scaffold a rule, agent, or workflow |
+| `expand-tools` | Discover and persist agent tool expansions |
+
+4. Show available rules count and agent count
+
+## Subcommand: init
+
+When user types `/ewh:doit init`:
+
+### Flow
+
+1. **Read `${CLAUDE_PLUGIN_ROOT}/HARNESS.md`** for paths and settings.
+
+2. **Scan project** — detect:
+   - Language(s) (from file extensions, `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, etc.)
+   - Test command (from `package.json` scripts, `Makefile` targets, framework conventions)
+   - Check/lint command (from config files like `.eslintrc`, `ruff.toml`, `Makefile`)
+   - Source pattern (from project structure)
+   - Test pattern (from test directory conventions)
+   - Doc build command (from `mkdocs.yml`, `Makefile`, `package.json`)
+   - Conventions (from existing config files, linter settings)
+
+3. **Check existing Harness Config** — read project CLAUDE.md, look for `## Harness Config` section.
+   - If present → ask: "Harness Config already exists. Overwrite / update (merge new detections) / skip?"
+   - If skip → proceed to step 6 (onboarding summary)
+
+4. **Propose config** — show preview of the `## Harness Config` section to user:
+   ```
+   Proposed Harness Config:
+   
+   - Language: Python
+   - Test command: pytest
+   - Check command: ruff check .
+   - Source pattern: src/**/*.py
+   - Test pattern: tests/test_*.py
+   - Doc build: mkdocs build
+   - Conventions: PEP 8, type hints
+   
+   Write to CLAUDE.md? (confirm / edit / skip)
+   ```
+   Wait for confirmation. If edit → user provides changes, re-present. If skip → proceed to step 6.
+
+5. **Write** — append or update `## Harness Config` in project CLAUDE.md. Update `.gitignore`:
+   - Add `.ewh-artifacts/` if missing
+   - Add `.claude/ewh-state.json` if missing
+   - Remind about `.dockerignore`, `.npmignore` if those files exist
+
+6. **Onboarding summary** — print:
+
+   ```
+   Easy Workflow Harness is ready.
+
+   Workflows (multi-step, agent-driven):
+     /ewh:doit add-feature [desc]      — plan, implement, review, and test a new feature
+     /ewh:doit refine-feature [desc]   — scan, suggest, and apply improvements
+     /ewh:doit update-knowledge [desc] — update CLAUDE.md and project docs
+     /ewh:doit check-fact [desc]       — cross-validate docs against source code
+
+   Subcommands (lightweight, interactive):
+     /ewh:doit clean-up                — run project cleanup tasks
+     /ewh:doit create [type]           — scaffold a rule, agent, or workflow
+     /ewh:doit expand-tools [desc]     — discover and assign agent tools
+     /ewh:doit init                    — (you just ran this)
+
+   Flags:
+     --auto-approval / --need-approval — toggle startup confirmation per workflow; use with /ewh:doit <workflow>
+     --manage-scripts                  — manage cached scripts before a workflow run; use with /ewh:doit <workflow>
+     --manage-tasks                    — configure cleanup tasks; use with /ewh:doit clean-up
+     --no-override                     — force built-in subcommand when a same-name project workflow exists; use with /ewh:doit <subcommand>
+
+   Next steps:
+     - Run /ewh:doit clean-up --manage-tasks to configure your cleanup tasks
+     - Run /ewh:doit add-feature "your feature" to build something
+     - Run /ewh:doit expand-tools "your tools" to extend agent capabilities
+   ```
+
+### Edge Cases
+
+| Scenario | Behavior |
+|---|---|
+| CLAUDE.md does not exist | Create it with `## Harness Config` section |
+| `.claude/` directory does not exist | Create it |
+| `.gitignore` does not exist | Create it with the needed entries |
+| Harness Config already present + user says overwrite | Replace the entire section |
+| Harness Config already present + user says update | Merge: keep existing values, add newly detected ones |
+| No language/framework detected | Propose empty/minimal config, ask user to fill in |
+
+## Subcommand: clean-up
+
+When user types `/ewh:doit clean-up`:
+
+### Flow
+
+1. **Read `ewh-state.json`** → look up `cleanup_tasks`.
+
+2. **No tasks configured** — if `cleanup_tasks` is missing, empty, or `ewh-state.json` does not exist:
+   - Log: "No cleanup tasks configured. Run `/ewh:doit clean-up --manage-tasks` to set them up."
+   - Stop.
+
+3. **Print task list and execute** — for each task in order:
+   ```
+   Running cleanup tasks:
+   
+   [1/3] run-tests: npm test
+   ```
+   - Execute `command` via the Bash tool
+   - On success → print pass indicator, move to next
+   - On failure → show error output, ask: **retry** / **skip** / **abort**
+
+4. **Summary** — after all tasks:
+   ```
+   Cleanup complete: 3 passed, 0 failed, 0 skipped
+   ```
+
+### Management Flow (`--manage-tasks`)
+
+When user types `/ewh:doit clean-up --manage-tasks`:
+
+1. **Read `ewh-state.json`** → look up `cleanup_tasks`.
+
+2. **No existing tasks** (first-time setup):
+   - Scan project for potential cleanup commands:
+     - `package.json` scripts (test, lint, format, build)
+     - `Makefile` targets (test, lint, clean, fmt)
+     - Harness Config values (test command, check command, doc build)
+     - Common conventions (prettier, eslint, ruff, pytest, cargo test, go vet)
+   - Propose initial task list to user:
+     ```
+     Detected potential cleanup tasks:
+     
+     1. run-tests: pytest (from Harness Config)
+     2. lint: ruff check . --fix (from ruff.toml)
+     3. format: ruff format . (from ruff.toml)
+     
+     Include all? Or edit the list? (approve / edit / add more / start fresh)
+     ```
+   - Discuss with user — ask one question at a time to refine the list
+   - User can add custom commands, reorder, remove proposed tasks
+
+3. **Existing tasks** — show current list:
+   ```
+   Current cleanup tasks:
+   
+   #  | Name       | Command              | Description
+   ---|------------|----------------------|-------------------
+   1  | run-tests  | pytest               | Run test suite
+   2  | lint       | ruff check . --fix   | Fix lint issues
+   3  | format     | ruff format .        | Format source files
+   ```
+   For each task, offer: **(e)dit** / **(d)elete** / **(s)kip**
+   After walking through existing tasks, offer: **add new task** / **reorder** / **done**
+
+4. **Write** — save to `ewh-state.json` under `cleanup_tasks`:
+   ```json
+   {
+     "cleanup_tasks": [
+       { "name": "run-tests", "command": "pytest", "description": "Run test suite" },
+       { "name": "lint", "command": "ruff check . --fix", "description": "Fix lint issues" },
+       { "name": "format", "command": "ruff format .", "description": "Format source files" }
+     ]
+   }
+   ```
+   Create `.claude/` and `ewh-state.json` if needed.
+
+### Edge Cases
+
+| Scenario | Behavior |
+|---|---|
+| `ewh-state.json` missing | For `--manage-tasks`: create it. For bare `clean-up`: prompt to run `--manage-tasks` |
+| Task command not found on system | Show error at execution time, offer retry/skip/abort |
+| All tasks fail | Report all failures in summary, do not abort early unless user chooses |
+| `--manage-tasks` with `--no-override` | `--manage-tasks` applies, `--no-override` applies to name resolution |
+| Tasks run order matters (e.g., format before lint) | Tasks execute in the order listed in `cleanup_tasks` array |
+
+## Subcommand: create
+
+When user types `/ewh:doit create [rule|agent|workflow]`:
+
+### Flow
+
+1. **Determine type** — if type argument is provided (`rule`, `agent`, or `workflow`), use it. If not provided, ask:
+   > What would you like to create: **rule**, **agent**, or **workflow**?
+
+2. **Read validation template** — read `${CLAUDE_PLUGIN_ROOT}/templates/<type>.md` to get required frontmatter fields, body structure, and validation checklist.
+
+3. **Scan existing examples** — read 1-2 existing files of the target type for reference:
+   - Rule: scan `${CLAUDE_PLUGIN_ROOT}/rules/` and `.claude/rules/`
+   - Agent: scan `${CLAUDE_PLUGIN_ROOT}/agents/` and `.claude/agents/`
+   - Workflow: scan `${CLAUDE_PLUGIN_ROOT}/workflows/` and `.claude/workflows/`
+   
+   Show the user 1-2 examples as reference: "Here's what an existing `<type>` looks like: [condensed example]"
+
+4. **Gather requirements** — ask the user one question at a time, guided by the template's required fields:
+
+   **For rules:**
+   - Name (kebab-case)
+   - Description (one-line)
+   - Scope tags
+   - Severity (`default` or `critical`)
+   - Target agents (`inject_into`)
+   - Verify command (if severity is critical)
+   - Body content: what should the rule enforce?
+
+   **For agents:**
+   - Name (kebab-case)
+   - Description (one-line)
+   - Model (`sonnet`, `haiku`, `opus`)
+   - Access tier: read-only or read-write? (determines tool set)
+   - Max turns
+   - Role: what does this agent do?
+   - Self-gating: what context must be present?
+
+   **For workflows:**
+   - Name (kebab-case)
+   - Description (one-line)
+   - Steps: for each step, gather name, agent, gate, rules, description, and optional fields
+   - Walk through steps one at a time
+
+5. **Draft and preview** — generate the complete file content. Show full preview to user:
+   ```
+   Proposed <type> file: .claude/<type>s/<name>.md
+   
+   ---
+   [frontmatter]
+   ---
+   
+   [body]
+   
+   Write this file? (confirm / edit / abort)
+   ```
+
+6. **Validate** — run the validation checklist from the template against the draft. Report any issues:
+   - All required frontmatter present? 
+   - Body sections present? (e.g., `## Before You Start` for agents, `## Steps` for workflows)
+   - `AGENT_COMPLETE` sentinel for agents?
+   - No name collision with existing files?
+   
+   If issues found → show them, let user fix before writing.
+
+7. **Write** — on confirmation, write to the appropriate project directory:
+   - Rule → `.claude/rules/<name>.md`
+   - Agent → `.claude/agents/<name>.md`
+   - Workflow → `.claude/workflows/<name>.md`
+   
+   Create the directory if it doesn't exist. Log: "Created `.claude/<type>s/<name>.md`. This will take effect on next workflow run."
+
+### Edge Cases
+
+| Scenario | Behavior |
+|---|---|
+| File already exists at target path | Warn: "File exists at `.claude/<type>s/<name>.md`. Overwrite / rename / abort?" |
+| Template file missing | Warn, proceed with LLM knowledge of the format (degrade gracefully) |
+| User provides invalid severity value | Re-ask: "Severity must be `default` or `critical`." |
+| User provides invalid model for agent | Re-ask: "Model must be `sonnet`, `haiku`, or `opus`." |
+| Workflow step references nonexistent agent | Warn during validation, let user fix |
+| Workflow step references nonexistent rule | Warn during validation, let user fix |
+| `.claude/` directory does not exist | Create it |
 
 ## Expand Tools
 
@@ -646,7 +948,7 @@ When `expand-tools` is run and `agent_tools` already exists in `ewh-state.json`:
 
 ## Completion
 
-After all steps complete:
+After all workflow steps complete (subcommands handle their own completion inline):
 
 1. Clean up artifact workspace: delete all files in `.ewh-artifacts/` (keep the directory)
 2. Present summary:
@@ -661,10 +963,11 @@ After all steps complete:
 
 ## Constraints
 
-- You are a coordinator. Never write code, tests, or documentation yourself.
+- You are a coordinator. Never write code, tests, or documentation yourself — except during subcommands (`init`, `clean-up`, `create`), where you write config/scaffold files directly as part of the subcommand flow.
 - Never skip a structural gate — always wait for user confirmation.
 - Never suppress compliance failures — always show them to the user.
 - If a step has no agent and no skill, execute it directly (e.g., run a shell command).
 - Keep your messages concise: status updates, gate prompts, and summaries only.
 - When presenting gate prompts, show enough context for the user to decide, not more.
 - Step summaries passed to subsequent agents are governed by the step's `context:` field. Compress to the declared detail level (`raw`, `full`, or `summary`). Only include steps explicitly listed in `context:` — never all completed steps (see §4 step 4).
+- Subcommands do not use the workflow machinery (agents, rules, compliance, artifacts, context passing). They handle everything inline with user confirmation prompts where needed.

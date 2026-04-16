@@ -1,5 +1,5 @@
 ---
-version: 1.0.2
+version: 1.0.3
 ---
 
 # Easy Workflow Harness
@@ -11,6 +11,7 @@ A reusable workflow orchestration system for Claude Code. Standardizes how Claud
 - Rules: ${CLAUDE_PLUGIN_ROOT}/rules/
 - Workflows: ${CLAUDE_PLUGIN_ROOT}/workflows/
 - Agents: ${CLAUDE_PLUGIN_ROOT}/agents/
+- Templates: ${CLAUDE_PLUGIN_ROOT}/templates/ (validation templates for the `create` subcommand)
 - Dispatcher: ${CLAUDE_PLUGIN_ROOT}/skills/doit/SKILL.md
 - Artifacts: .ewh-artifacts/ (ephemeral, per-workflow-run, cleaned up on completion)
 - Scripts: .claude/ewh-scripts/ (persistent, cached scripts for scriptable workflow steps)
@@ -44,16 +45,27 @@ Projects opt in at three levels:
 ## Usage
 
 ```bash
-/ewh:doit init                                      # bootstrap project CLAUDE.md
-/ewh:doit list                                      # list available workflows
+# Subcommands (lightweight, interactive)
+/ewh:doit init                                      # bootstrap project + onboarding guide
+/ewh:doit clean-up                                  # run configured cleanup tasks
+/ewh:doit clean-up --manage-tasks                   # configure cleanup tasks
+/ewh:doit create [rule|agent|workflow]               # scaffold a project artifact
+/ewh:doit expand-tools [description]                 # discover and persist agent tool expansions
+
+# Workflows (multi-step, agent-driven)
+/ewh:doit list                                      # list available workflows and subcommands
 /ewh:doit <name> [description]                      # run a workflow
 /ewh:doit <name> --auto-approval [description]      # skip the startup "Proceed?" gate for THIS workflow
 /ewh:doit <name> --need-approval [description]      # re-enable the startup "Proceed?" gate for THIS workflow
+/ewh:doit <name> --manage-scripts [description]     # manage cached scripts before running
+
+# Override control
+/ewh:doit <subcommand> --no-override                # force built-in subcommand when a same-name project workflow exists
 ```
 
-The `--auto-approval` / `--need-approval` flags toggle a **per-workflow** persisted switch stored in `.claude/ewh-state.json` under `auto_approve_start.<workflow_name>`. Each workflow has its own switch — setting it on `add-feature` does NOT affect `clean-up`. The plugin's workflow files declare a default of `false` in their frontmatter; `.claude/ewh-state.json` overrides on a per-project basis. The switch only affects the startup confirmation gate; structural per-step gates, compliance, error gates, and the stale-artifact cleanup gate are unaffected.
+The `--auto-approval` / `--need-approval` flags toggle a **per-workflow** persisted switch stored in `.claude/ewh-state.json` under `auto_approve_start.<workflow_name>`. Each workflow has its own switch — setting it on `add-feature` does NOT affect other workflows. The switch only affects the startup confirmation gate; structural per-step gates, compliance, error gates, and the stale-artifact cleanup gate are unaffected.
 
-`.claude/ewh-state.json` is a per-project sidecar storing all dispatcher state: auto-approve switches (`auto_approve_start`) and chunked-dispatch file scopes (`chunked_scopes`). Recommended to gitignore for developer-local preferences, or commit to share team-wide scope settings.
+`.claude/ewh-state.json` is a per-project sidecar storing all dispatcher state: auto-approve switches (`auto_approve_start`), chunked-dispatch file scopes (`chunked_scopes`), agent tool expansions (`agent_tools`), and cleanup tasks (`cleanup_tasks`). Recommended to gitignore for developer-local preferences, or commit to share team-wide settings.
 
 ## Design Spec
 
