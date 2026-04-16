@@ -1,10 +1,14 @@
 # Expanding ewh Agent Tool Lists
 
+> **Recommended: use `/ewh:doit expand-tools` instead.** The `expand-tools` subcommand automates tool discovery, proposes per-agent assignments based on your intent, persists the config in `.claude/ewh-state.json`, and generates `.claude/agents/<name>.md` overrides that survive plugin reinstalls. After a reinstall, rerun `expand-tools` → "Regenerate overrides" to restore your expansions. See [specs/expand-tools.md](../specs/expand-tools.md) for the full design.
+
+The manual prompt below is for advanced use cases where you want direct control over the expansion process.
+
 Use this prompt to extend ewh agents with tools from an external MCP tool set
 (e.g. [Serena](https://github.com/oraios/serena), GitHub MCP, browser automation). Fill in the placeholders, then
 paste the result into a Claude Code conversation.
 
-> **Heads-up: plugin reinstalls overwrite in-place tool patches.** The expansion prompt edits `tools:` in the plugin's own `agents/*.md` files (e.g. under `~/.claude/plugins/cache/ewh/agents/`). Reinstalling or auto-updating the plugin replaces that directory wholesale and reverts your patched tool lists back to the defaults. Keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with `extends: ewh:<name>`), which survives reinstalls.
+> **Heads-up: plugin reinstalls overwrite in-place tool patches.** The manual expansion prompt edits `tools:` in the plugin's own `agents/*.md` files (e.g. under `~/.claude/plugins/cache/ewh/agents/`). Reinstalling or auto-updating the plugin replaces that directory wholesale and reverts your patched tool lists back to the defaults. The `expand-tools` subcommand avoids this problem entirely. If you expand manually, keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with `extends: ewh:<name>`), which survives reinstalls.
 
 ---
 

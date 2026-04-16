@@ -20,6 +20,7 @@ The user types `/ewh:doit <name> [--auto-approval|--need-approval] [--manage-scr
 
 Special commands:
 - `/ewh:doit list` — list all available workflows
+- `/ewh:doit expand-tools [description]` — discover and persist agent tool expansions (see §Expand Tools)
 - `/ewh:doit` with no args — show help and list workflows
 
 ### Auto-Approve Start Switch
@@ -526,6 +527,122 @@ When user types `/ewh:doit list` or `/ewh:doit` with no name:
 3. List each workflow: name, description, step count
 4. Mark project overrides with `(project override)`
 5. Show available rules count and agent count
+
+## Expand Tools
+
+When user types `/ewh:doit expand-tools [description]`, the dispatcher enters tool expansion mode. This is a special command — it does not enter the step execution loop.
+
+### Phase 1: Intent Gathering
+
+- If `[description]` is provided, use it as the user's intent (e.g., "add Serena read/write tools for semantic code navigation", "I want tools that save tokens for code analysis").
+- If no description → ask: "What tools are you looking to add? (e.g., semantic code navigation, GitHub integration, browser automation)"
+- Clarify if ambiguous: which agents should be expanded? All, or specific ones?
+
+### Phase 2: Tool Discovery
+
+- Search the user's environment for available tools: connected MCP servers, plugins, CLI tools accessible via the Bash tool.
+- Use LLM judgment to match discovered tools against the user's stated intent. Not all available tools are relevant — propose only those that serve the intent.
+- Classify each candidate tool as **read-only** (read/search/list/analyze operations) or **read-write** (create/modify/delete operations).
+
+### Phase 3: Proposal
+
+Present a per-agent assignment table:
+
+```
+Proposed tool expansion:
+
+Agent      | Tier       | Tools to add
+-----------|------------|-------------------------------------------
+coder      | read-write | mcp__serena__find_symbol, mcp__serena__replace_symbol_body, ...
+tester     | read-write | mcp__serena__find_symbol, mcp__serena__replace_symbol_body, ...
+reviewer   | read-only  | mcp__serena__find_symbol, mcp__serena__get_symbols_overview, ...
+scanner    | read-only  | mcp__serena__find_symbol, mcp__serena__get_symbols_overview, ...
+compliance | read-only  | mcp__serena__find_symbol, ...
+```
+
+Agent tiers:
+- **Read-only agents**: scanner, reviewer, compliance — should only receive read-only tools
+- **Read-write agents**: coder, tester — may receive both read-only and read-write tools
+
+If any write tools are proposed for a read-only agent → warn inline: "⚠ `<tool>` is a write tool on read-only agent `<name>` — this breaks the separation-of-concerns guarantee. Proceed anyway?"
+
+User can: **approve all** / **edit** (add/remove per agent) / **reject**. Loop until resolved. If rejected → exit, no changes.
+
+### Phase 4: Persist to `ewh-state.json`
+
+Write approved assignments under the `agent_tools` key (create `.claude/ewh-state.json` and `.claude/` if needed):
+
+```json
+{
+  "agent_tools": {
+    "coder": {
+      "add": ["mcp__serena__find_symbol", "mcp__serena__replace_symbol_body"],
+      "source": "Serena MCP",
+      "configured_at": "2026-04-16"
+    },
+    "reviewer": {
+      "add": ["mcp__serena__find_symbol", "mcp__serena__get_symbols_overview"],
+      "source": "Serena MCP",
+      "configured_at": "2026-04-16"
+    }
+  }
+}
+```
+
+Merge with existing `agent_tools` entries: new tools appended, duplicates skipped. Each source tracked separately for clean removal.
+
+### Phase 5: Generate Override Files
+
+For each agent in `agent_tools`:
+
+1. Read the plugin agent file (`${CLAUDE_PLUGIN_ROOT}/agents/<name>.md`) to get the default `tools:` list from frontmatter.
+2. Check if `.claude/agents/<name>.md` already exists:
+   - **Exists** → ask user: "Existing override found for `<name>`. Merge tools into it, or skip this agent?"
+     - **Merge**: read existing file, update only the `tools:` line in frontmatter (union of existing tools + new tools), preserve all other frontmatter fields and body content. If the existing override has `extends:` pointing to a different agent than `ewh:<name>` → warn and skip (don't merge into an unrelated override).
+     - **Skip**: leave as-is, warn that expanded tools won't take effect for this agent.
+   - **Does not exist** → generate new file:
+     ```markdown
+     ---
+     extends: ewh:<name>
+     tools: [<default tools>, <expanded tools>]
+     ---
+     ```
+     No body needed — `extends` inherits the plugin agent's prompt.
+3. Create `.claude/agents/` directory if needed.
+
+### Phase 6: Summary
+
+Report what was done:
+
+```
+Tool expansion complete:
+- coder: +5 tools (Serena MCP) → .claude/agents/coder.md
+- reviewer: +3 tools (Serena MCP) → .claude/agents/reviewer.md
+- scanner: +3 tools (Serena MCP) → .claude/agents/scanner.md
+Persisted in .claude/ewh-state.json under agent_tools.
+Run /ewh:doit expand-tools again to update or add more.
+```
+
+### Rerun Behavior (Update & Reconcile)
+
+When `expand-tools` is run and `agent_tools` already exists in `ewh-state.json`:
+
+1. **Show current state** — display per-agent table of existing expansions (agent, source, tools).
+2. **Ask intent**:
+   - **Add more tools** → enter Phase 1-6 as normal; new tools merge with existing
+   - **Remove tools** → present per-agent tool list, user selects which to remove. Update `ewh-state.json`, regenerate override files.
+   - **Regenerate overrides** → re-read `ewh-state.json` and rebuild all `.claude/agents/<name>.md` files from current config. Use this after a plugin reinstall to restore tool expansions.
+   - **Clear all** → remove all `agent_tools` entries from `ewh-state.json` and delete the generated override files (with user confirmation).
+
+### Edge Cases
+
+| Scenario | Behavior |
+|---|---|
+| No MCP servers connected | Inform user, offer manual tool name entry |
+| Plugin agent file not readable | Warn, skip that agent |
+| Existing override has different `extends:` target | Don't merge, warn and skip |
+| MCP server disconnected after expansion | Tools reference unavailable server; Claude Code ignores them. Note on rerun. |
+| `ewh-state.json` missing | Create it (same as existing behavior) |
 
 ## Completion
 

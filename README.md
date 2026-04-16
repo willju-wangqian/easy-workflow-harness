@@ -92,9 +92,10 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 /ewh:doit <name> --auto-approval [description]         # skip the startup "Proceed?" gate (persisted)
 /ewh:doit <name> --need-approval [description]         # re-enable the startup "Proceed?" gate (persisted)
 /ewh:doit <name> --manage-scripts [description]        # manage cached scripts before running
+/ewh:doit expand-tools [description]                   # discover and persist agent tool expansions
 ```
 
-See [Auto-Approve Start](#auto-approve-start) and [Script Proposal](#script-proposal) for what these flags do.
+See [Auto-Approve Start](#auto-approve-start), [Script Proposal](#script-proposal), and [Extending Agent Tool Pools](#extending-agent-tool-pools) for what these flags and commands do.
 
 ## How It Works
 
@@ -197,9 +198,17 @@ Each agent's `tools` list in its frontmatter is not fixed. You can extend it wit
 
 The one rule that must hold: **read-only agents may only gain read-only tools**. The `scanner`, `reviewer`, and `compliance` agents are read-only by design; adding a mutation tool (e.g. `mcp__serena__replace_symbol_body` to the reviewer) would silently turn a reviewer into a coder and break the separation-of-concerns guarantee. The `coder` and `tester` agents may safely receive both read-only and read-write tools.
 
-See [docs/expand-agent-tools.md](docs/expand-agent-tools.md) for a copy-paste prompt that walks Claude through the expansion safely, with placeholders for the target tool set and a worked example using Serena MCP.
+**Recommended: use the `expand-tools` subcommand.** It discovers available tools, matches them to your intent, proposes per-agent assignments respecting read-only tiers, and persists the config in `.claude/ewh-state.json`. Overrides are generated as `.claude/agents/<name>.md` files that survive plugin reinstalls.
 
-> **Heads-up: plugin reinstalls overwrite in-place tool patches.** The expansion prompt edits `tools:` in the plugin's own `agents/*.md` files (e.g. under `~/.claude/plugins/cache/ewh/agents/`). Reinstalling or auto-updating the plugin — at any scope — replaces that directory wholesale and reverts your patched tool lists back to the defaults. Keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with `extends: ewh:<name>`), which survives reinstalls. If you believe a tool should ship in the default list for all users, we'd rather hear about it — open an issue on GitHub or send a PR.
+```bash
+/ewh:doit expand-tools "add Serena tools for semantic code navigation"
+```
+
+After a plugin reinstall, rerun `expand-tools` and choose "Regenerate overrides" to restore your tool expansions from the persisted config. See [specs/expand-tools.md](specs/expand-tools.md) for the full design spec.
+
+For manual expansion (advanced), see [docs/expand-agent-tools.md](docs/expand-agent-tools.md) for a copy-paste prompt that walks Claude through the expansion with placeholders and a worked example using [Serena](https://github.com/oraios/serena) MCP.
+
+> **Heads-up: plugin reinstalls overwrite in-place tool patches.** If you expanded tools manually (not via `expand-tools`), reinstalling or auto-updating the plugin replaces the `agents/` directory and reverts your patched tool lists to defaults. The `expand-tools` subcommand avoids this problem by persisting config in `ewh-state.json` and generating project-level overrides in `.claude/agents/`. If you expanded manually, keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with `extends: ewh:<name>`), which survives reinstalls.
 
 ## Rules
 

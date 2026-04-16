@@ -9,6 +9,7 @@ All notable changes to Easy Workflow Harness are documented here.
 - **Consecutive step merging** — when multiple adjacent scriptable steps have no structural gates, critical rules, or intra-group data dependencies between them, the dispatcher offers to merge them into a single combined script with section markers.
 - **`--manage-scripts` flag** — pre-run management of cached scripts: view / edit / delete / regenerate for any workflow's cached scripts. See dispatcher §4c.
 - **`script_fallback:` step field** — controls behavior on script failure: `gate` (default) stops and offers retry/edit/agent-fallback/skip/abort; `auto` silently falls back to the step's agent.
+- **`expand-tools` subcommand** (`/ewh:doit expand-tools`) — discovers available MCP/plugin/CLI tools, proposes per-agent assignments based on user intent, persists config in `.claude/ewh-state.json` under `agent_tools`, and generates `.claude/agents/<name>.md` override files that survive plugin reinstalls. Supports full lifecycle: add, remove, regenerate overrides, clear all.
 
 ## [1.0.1] - 2026-04-16
 
