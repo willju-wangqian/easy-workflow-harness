@@ -37,6 +37,7 @@ If no files to audit: report "No files to audit" and emit AGENT_COMPLETE.
 - Do NOT suggest fixes
 - Do NOT interpret ambiguous results as pass — flag them as unclear
 - Keep output minimal — evidence only, no commentary
+- **Write incrementally**: if your step has an artifact, append results to it after each rule you verify. Do NOT batch all output until the end — if you hit a turn limit, prior progress must survive on disk
 
 ## Output Format
 

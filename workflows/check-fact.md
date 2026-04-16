@@ -13,6 +13,7 @@ auto_approve_start: false
   rules: [knowledge]
   context: []
   artifact: .ewh-artifacts/claims-checklist.md
+  chunked: true
   description: >
     Scan all maintained documentation files (CLAUDE.md, specs, memory files,
     README) for factual claims about the codebase: function names, file paths,
@@ -28,6 +29,7 @@ auto_approve_start: false
       detail: full
   reads: [.ewh-artifacts/claims-checklist.md]
   artifact: .ewh-artifacts/validation-results.md
+  chunked: true
   requires:
     - file_exists: .ewh-artifacts/claims-checklist.md
   description: >

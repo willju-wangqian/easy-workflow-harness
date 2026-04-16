@@ -38,6 +38,7 @@ If ANY item is missing: report exactly what is missing, do NOT guess or improvis
 - Do NOT write tests — that is the tester agent's job
 - Do NOT refactor code beyond what the task requires
 - Do NOT add documentation unless the task explicitly asks for it
+- **Write incrementally**: if your step has an artifact, update it after each significant unit of work. Do NOT batch all output until the end — if you hit a turn limit, prior progress must survive on disk
 
 ## Output Format
 

@@ -1,5 +1,5 @@
 ---
-version: 1.0.0
+version: 1.0.1
 ---
 
 # Easy Workflow Harness
@@ -27,6 +27,7 @@ Projects opt in at three levels:
    - `.claude/rules/` — supplement plugin rules (concatenated, not replaced; recursive — files under subfolders like `.claude/rules/ewh/` are discovered automatically)
    - `.claude/workflows/` — replace plugin workflows entirely
    - `.ewh-artifacts/` — ephemeral step output (auto-created by dispatcher, should be gitignored)
+   - `.claude/ewh-scopes.json` — cached chunked-dispatch file scopes per workflow step (auto-created on first chunked run, should be gitignored for developer-local preferences; commit it to share team-wide scope settings)
 
 ## Override Resolution
 
@@ -50,6 +51,8 @@ Projects opt in at three levels:
 The `--auto-approval` / `--need-approval` flags toggle a **per-workflow** persisted switch stored in `.claude/ewh-state.json` under `auto_approve_start.<workflow_name>`. Each workflow has its own switch — setting it on `add-feature` does NOT affect `clean-up`. The plugin's workflow files declare a default of `false` in their frontmatter; `.claude/ewh-state.json` overrides on a per-project basis. The switch only affects the startup confirmation gate; structural per-step gates, compliance, error gates, and the stale-artifact cleanup gate are unaffected.
 
 `.claude/ewh-state.json` is a per-project sidecar; recommended to gitignore for developer-local preferences.
+
+`.claude/ewh-scopes.json` stores per-step file scope configurations for chunked dispatch (include/exclude glob patterns, max chunk size). Created automatically when a user first runs a workflow step with `chunked: true`. Recommended to gitignore for developer-local preferences, or commit to share team-wide scope settings.
 
 ## Design Spec
 

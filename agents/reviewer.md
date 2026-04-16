@@ -35,6 +35,7 @@ If review criteria are missing: report what is missing and emit AGENT_COMPLETE.
 - Do NOT fix code — only report findings
 - Do NOT suggest improvements beyond what the rules require
 - If the code is clean, say so — don't pad the review with nits
+- **Write incrementally**: if your step has an artifact, append findings to it after each file you review. Do NOT batch all output until the end — if you hit a turn limit, prior progress must survive on disk
 
 ## Finding Severity
 

@@ -36,6 +36,7 @@ If scan criteria are missing: report what is missing and emit AGENT_COMPLETE.
 - Do NOT fix anything — only report findings
 - Do NOT speculate about files you haven't opened
 - If everything looks clean, say so — don't manufacture findings
+- **Write incrementally**: if your step has an artifact, append findings to it after each file you process. Do NOT batch all output until the end — if you hit a turn limit, prior progress must survive on disk
 
 ## Finding Severity
 

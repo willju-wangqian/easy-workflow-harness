@@ -2,6 +2,16 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [1.0.1] - 2026-04-16
+
+### Added
+- **Chunked dispatch** (`chunked: true` step field) — proactive fan-out for steps that scan many files. On first run, the dispatcher prompts the user for include/exclude glob patterns and caches them in `.claude/ewh-scopes.json`. Subsequent runs reuse cached patterns. The dispatcher enumerates matching files, splits into chunks (default 8 per worker), spawns parallel agents, and merges results. Falls through to single-agent mode when file count is within budget. See dispatcher §1c.
+- **Incremental artifact writes** — all five agents (scanner, reviewer, coder, tester, compliance) now write to their artifact file after each unit of work instead of batching until the end. Partial progress survives turn-limit interruptions.
+- `.claude/ewh-scopes.json` added to `.gitignore` and to `init` workflow's gitignore management.
+
+### Changed
+- `check-fact` workflow: `scan-docs` and `validate` steps now declare `chunked: true` so large documentation sets are processed in parallel chunks instead of a single agent pass.
+
 ## [1.0.0] - 2026-04-14
 
 First stable release for marketplace publication. No dispatcher or workflow behavior changes from 0.9.3.

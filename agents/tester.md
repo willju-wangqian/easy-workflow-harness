@@ -35,6 +35,7 @@ If test infrastructure is missing or unclear: report what is missing and emit AG
 - Run the full test suite after writing tests
 - If you find a bug while testing, report it — do NOT fix source code
 - Do NOT modify source files — only test files
+- **Write incrementally**: if your step has an artifact, update it after each test file you write. Do NOT batch all output until the end — if you hit a turn limit, prior progress must survive on disk
 
 ## Test Quality
 

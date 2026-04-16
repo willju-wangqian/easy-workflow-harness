@@ -15,6 +15,7 @@ EWH fixes this by breaking the work into discrete, role-scoped steps. Here's wha
 - **Enforced standards** — rules are injected as prose into agent prompts. Coding conventions, review criteria, and testing requirements apply consistently without you re-pasting them every run.
 - **Guardrails that keep you in control** — structural gates pause at decisions that matter; compliance gates trigger automatically when critical rules are at stake. You can abort any workflow at any gate; completed work is preserved.
 - **Disciplined context management** — each agent receives only what it needs: required reading, active rules, filtered summaries of prior steps. No bloated prompts, no irrelevant history. Self-gating lets agents bail cleanly when context is insufficient instead of guessing.
+- **Chunked dispatch** — steps that scan many files can declare `chunked: true`. The dispatcher prompts for file scope on first run, caches the patterns in `.claude/ewh-scopes.json`, then enumerates → splits → fans out parallel workers → merges results. No more agents burning their entire turn budget on file discovery before writing anything useful.
 
 > **A note on scope.** EWH is a simple, experimental tool — not a production orchestration framework. It is deliberately built from plain Markdown files and a small dispatcher skill, so every behavior lives in a file you can open, read, and change. The goal isn't for everyone to use EWH as-is; it's to show that a useful multi-agent harness can be built out of nothing but Markdown and conventions, and to give you a decent starting point for building your own.
 
@@ -196,6 +197,8 @@ The one rule that must hold: **read-only agents may only gain read-only tools**.
 
 See [docs/expand-agent-tools.md](docs/expand-agent-tools.md) for a copy-paste prompt that walks Claude through the expansion safely, with placeholders for the target tool set and a worked example using Serena MCP.
 
+> **Heads-up: plugin reinstalls overwrite in-place tool patches.** The expansion prompt edits `tools:` in the plugin's own `agents/*.md` files (e.g. under `~/.claude/plugins/cache/ewh/agents/`). Reinstalling or auto-updating the plugin — at any scope — replaces that directory wholesale and reverts your patched tool lists back to the defaults. Keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with `extends: ewh:<name>`), which survives reinstalls. If you believe a tool should ship in the default list for all users, we'd rather hear about it — open an issue on GitHub or send a PR.
+
 ## Rules
 
 Rules define standards that agents must follow. They're injected as prose into agent prompts — the agent reads them as instructions, not as code.
@@ -243,7 +246,7 @@ Before any workflow runs, the dispatcher prints the plan (steps, gates, expected
 
 Each workflow's markdown file also declares an `auto_approve_start: false` default in its frontmatter — `.claude/ewh-state.json` overrides it on a per-project basis. Default behavior when neither is set: ask. The plan is still printed when auto-approved — you just don't have to confirm it.
 
-**Recommended:** add `.claude/ewh-state.json` to your project's `.gitignore`. The auto-approve switches express developer-local trust judgments, so they shouldn't be committed. New projects: `/ewh:doit init` adds this line for you automatically (alongside `.ewh-artifacts/`). Existing projects that ran `init` before this line was added: re-run `/ewh:doit init` — the gitignore step is idempotent and will append only the missing line without disturbing anything else.
+**Recommended:** add `.claude/ewh-state.json` and `.claude/ewh-scopes.json` to your project's `.gitignore`. The auto-approve switches and chunked-dispatch scopes express developer-local preferences, so they shouldn't be committed (unless you want shared team-wide scope settings). New projects: `/ewh:doit init` adds these lines for you automatically (alongside `.ewh-artifacts/`). Existing projects that ran `init` before these lines were added: re-run `/ewh:doit init` — the gitignore step is idempotent and will append only the missing lines without disturbing anything else.
 
 **Permission prompt on first write.** The first time the dispatcher writes to `.claude/ewh-state.json`, Claude Code may show a normal file-write permission prompt. That's expected — accept it to allow future toggles.
 

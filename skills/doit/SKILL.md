@@ -111,6 +111,85 @@ If any precondition fails:
 - `gate: auto` → proceed silently
 - Compliance gates are checked AFTER the step, not before
 
+### 1c. Chunked Dispatch (proactive fan-out)
+
+If `step.chunked` is `true`:
+
+1. **Resolve scope** — read `.claude/ewh-scopes.json`. Look up key `chunked_scopes["<workflow_name>/<step.name>"]`.
+
+2. **First-run prompt** (scope not cached) — if the key does not exist in `ewh-scopes.json` (or the file does not exist):
+   - Prompt the user:
+     > Step `<step.name>` supports chunked dispatch for large file sets.
+     > Configure file scope now? (recommended for projects with many documentation or source files)
+     >
+     > Include patterns (glob, comma-separated — e.g. `**/*.md, src/**/*.ts`):
+   - After user provides include patterns, ask:
+     > Exclude patterns? (comma-separated, or Enter for none):
+   - After user provides exclude (or skips):
+     > Max files per chunk? (default: 8, Enter to accept):
+   - Save to `.claude/ewh-scopes.json` (create file and `.claude/` directory if needed):
+     ```json
+     {
+       "chunked_scopes": {
+         "<workflow_name>/<step.name>": {
+           "include": ["<pattern1>", "<pattern2>"],
+           "exclude": ["<pattern1>"],
+           "max_per_chunk": 8,
+           "configured_at": "<ISO date>"
+         }
+       }
+     }
+     ```
+   - If user enters empty include (skips configuration) → fall through to normal §2 (single-agent, no chunking). Log: "Chunked dispatch skipped by user — running single agent."
+   - If write to `ewh-scopes.json` fails → warn, use provided values for this run only.
+
+3. **Enumerate** — for each pattern in `include`, run the Glob tool. Collect all matching file paths. Remove any paths matching `exclude` patterns. Deduplicate. Sort lexicographically.
+   - If zero files match → skip step, log: "No files matched chunked scope for `<step.name>`."
+
+4. **Single-chunk optimization** — if total file count ≤ `max_per_chunk` → do NOT fan out. Set `step.reads` to the file list and fall through to normal §2. Log: "Chunked scope resolved to N files (≤ max_per_chunk) — running single agent."
+
+5. **Split** — partition the file list into chunks of `max_per_chunk` files each. The last chunk may be smaller.
+
+6. **Spawn workers in parallel** — for each chunk:
+   - Resolve executor (§2), load rules (§3), build prompt (§4) as normal, with two modifications:
+     - `## Required Reading` lists only this chunk's files (overrides `step.reads`)
+     - `## Task` appends: "You are processing chunk N of M. Write your output to `.ewh-artifacts/<step.name>-chunk-<N>.md`. Process only the files listed in Required Reading."
+   - Spawn agent (§5) with the modified prompt
+   - Collect result (§6) per chunk — apply §6c continuation if needed, per chunk independently
+   - Per-chunk failure (no AGENT_COMPLETE after continuation, missing chunk file) → gate per §8, scoped to that chunk only: retry chunk / skip chunk / abort workflow
+
+7. **Merge** — after all chunks complete (or are skipped):
+   - Spawn one merge agent with the same `subagent_type` and `model` as the step's agent:
+     ```
+     ## Role
+     You are synthesizing results from N parallel chunks into one unified report.
+     Do not re-verify anything. Combine and deduplicate only.
+
+     ## Chunk Results
+     [chunk 1 file content]
+     ---
+     [chunk 2 file content]
+     ---
+     ...
+
+     ## Task
+     Produce a single unified report. Remove duplicate findings.
+     Preserve all evidence and file references.
+     Write your merged output to `<step.artifact>`.
+
+     ## Output Format
+     [same output format block as the original agent template]
+
+     At the very end of your response, after all other output, emit exactly:
+     AGENT_COMPLETE
+     ```
+   - If merge agent fails → gate: retry merge / skip / abort
+   - If merge succeeds → treat as canonical step result, proceed to §6e artifact verification and §7 compliance
+
+8. **Cleanup** — chunk files (`.ewh-artifacts/<step.name>-chunk-*.md`) are left in place until workflow completion (existing §Completion cleanup handles them).
+
+If `step.chunked` is absent or false → skip §1c entirely, proceed to §2.
+
 ### 2. Resolve Executor
 
 - If `step.skill` exists → invoke that skill (e.g., brainstorming)
