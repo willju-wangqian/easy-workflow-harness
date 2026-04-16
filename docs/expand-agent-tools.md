@@ -1,8 +1,10 @@
 # Expanding ewh Agent Tool Lists
 
 Use this prompt to extend ewh agents with tools from an external MCP tool set
-(e.g. Serena, GitHub MCP, browser automation). Fill in the placeholders, then
+(e.g. [Serena](https://github.com/oraios/serena), GitHub MCP, browser automation). Fill in the placeholders, then
 paste the result into a Claude Code conversation.
+
+> **Heads-up: plugin reinstalls overwrite in-place tool patches.** The expansion prompt edits `tools:` in the plugin's own `agents/*.md` files (e.g. under `~/.claude/plugins/cache/ewh/agents/`). Reinstalling or auto-updating the plugin replaces that directory wholesale and reverts your patched tool lists back to the defaults. Keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with `extends: ewh:<name>`), which survives reinstalls.
 
 ---
 
@@ -76,7 +78,7 @@ Then ask for confirmation before writing any files.
 
 ---
 
-## Example: Serena MCP
+## Example: [Serena](https://github.com/oraios/serena) MCP
 
 ```
 [AGENT_DIR]             → /Users/willju/development/easy-workflow-harness/agents/

@@ -35,6 +35,7 @@ EWH ships with predefined workflows, agents, and rules that work out of the box.
 - [Rules](#rules) — 4 injectable rule sets
 - [Gates](#gates) — control flow types
   - [Auto-Approve Start](#auto-approve-start) — per-workflow switch to skip the startup "Proceed?" gate
+  - [Script Proposal](#script-proposal) — dispatcher proposes scripts for mechanical steps to save tokens
 - [Customizing EWH for Your Project](#customizing-ewh-for-your-project) — three levels of integration (zero config / init'd / custom overrides)
 - [Extending EWH](#extending-ewh) — create your own workflows, agents, rules; example project
 - [Recommended: Brainstorming Skill](#recommended-brainstorming-skill) — better plan-step facilitation
@@ -90,9 +91,10 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 /ewh:doit <name> [description]                         # run a workflow
 /ewh:doit <name> --auto-approval [description]         # skip the startup "Proceed?" gate (persisted)
 /ewh:doit <name> --need-approval [description]         # re-enable the startup "Proceed?" gate (persisted)
+/ewh:doit <name> --manage-scripts [description]        # manage cached scripts before running
 ```
 
-See [Auto-Approve Start](#auto-approve-start) for what these flags do and don't bypass.
+See [Auto-Approve Start](#auto-approve-start) and [Script Proposal](#script-proposal) for what these flags do.
 
 ## How It Works
 
@@ -191,7 +193,7 @@ Every agent has a "Before You Start" checklist. If an agent doesn't have enough 
 
 ### Extending Agent Tool Pools
 
-Each agent's `tools` list in its frontmatter is not fixed. You can extend it with tools from any MCP server you have connected — Serena, GitHub MCP, browser automation, your own custom MCP — to give agents new capabilities without changing their role.
+Each agent's `tools` list in its frontmatter is not fixed. You can extend it with tools from any MCP server you have connected — [Serena](https://github.com/oraios/serena), GitHub MCP, browser automation, your own custom MCP — to give agents new capabilities without changing their role.
 
 The one rule that must hold: **read-only agents may only gain read-only tools**. The `scanner`, `reviewer`, and `compliance` agents are read-only by design; adding a mutation tool (e.g. `mcp__serena__replace_symbol_body` to the reviewer) would silently turn a reviewer into a coder and break the separation-of-concerns guarantee. The `coder` and `tester` agents may safely receive both read-only and read-write tools.
 
@@ -258,6 +260,35 @@ Each workflow's markdown file also declares an `auto_approve_start: false` defau
 - All **error** / **artifact verification** gates
 
 If you want truly hands-off execution, you also need to manually clear `.ewh-artifacts/` before starting (or accept the one extra prompt at the top).
+
+### Script Proposal
+
+Some workflow steps don't need an LLM — they just call CLI tools (linting, formatting, running a test suite). The dispatcher can detect these mechanical steps and propose running a Bash script instead of spawning an agent, saving tokens.
+
+**How it works:**
+
+1. A step can declare an explicit `script:` path in its workflow definition, or the dispatcher can detect scriptability at runtime
+2. If no script exists and the step looks mechanical, the dispatcher proposes generating one — you can approve, reject, edit, or ask for regeneration
+3. Approved scripts are cached in `.claude/ewh-scripts/<workflow>/<step>.sh` and reused on subsequent runs
+4. Cached scripts show their path and a one-line summary when running — no confirmation gate needed (you already approved the content)
+5. If a step's description changes after a script was cached, the dispatcher flags it as potentially stale and asks you to review
+
+**Failure handling** is controlled per-step via `script_fallback:`:
+
+- `gate` (default) — stop and offer: retry / edit script / fall back to agent / skip / abort
+- `auto` — silently fall back to the step's agent (requires an `agent:` to be defined on the step)
+
+**Consecutive scriptable steps** with no structural gates between them can be merged into a single combined script when the dispatcher proposes it.
+
+**Managing cached scripts:**
+
+```bash
+/ewh:doit add-feature --manage-scripts    # view/edit/delete/regenerate cached scripts before running
+```
+
+This opens a pre-run management menu for all cached scripts in the workflow. Use it to review stale scripts, edit cached ones, or delete scripts to force re-evaluation.
+
+**Where scripts live.** Cached scripts are stored in `.claude/ewh-scripts/<workflow>/<step>.sh`. Gitignore them for developer-local preferences, or commit them to share team-wide scripts. See [specs/script-proposal.md](specs/script-proposal.md) for the full design spec.
 
 ## Customizing EWH for Your Project
 

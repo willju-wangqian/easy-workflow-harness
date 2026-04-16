@@ -12,10 +12,11 @@ You coordinate agents and skills that do.
 
 ## Invocation
 
-The user types `/ewh:doit <name> [--auto-approval|--need-approval] [description]`.
+The user types `/ewh:doit <name> [--auto-approval|--need-approval] [--manage-scripts] [description]`.
 - `<name>` matches a workflow file name (without .md extension)
 - `[description]` is the user's free-form task context (optional)
 - `--auto-approval` / `--need-approval` (optional, position-independent, mutually exclusive) — toggle the persisted **per-workflow** "Auto-approve start" switch for `<name>` (stored in `.claude/ewh-state.json`). Strip the flag from args before treating the rest as `<name>` + `[description]`.
+- `--manage-scripts` (optional, position-independent) — before running the workflow, enter script management mode: list all cached scripts for this workflow in `.claude/ewh-scripts/<workflow>/`, and for each offer: (v)iew / (e)dit / (d)elete / (r)egenerate / (s)kip. Strip the flag from args before treating the rest as `<name>` + `[description]`.
 
 Special commands:
 - `/ewh:doit list` — list all available workflows
@@ -79,6 +80,28 @@ This switch ONLY affects the startup "Proceed?" gate. All other gates (structura
       - Set `auto_approve_start.<workflow_name>` to `true` (for `--auto-approval`) or `false` (for `--need-approval`)
       - Write back; log: "Auto-approve start switch for `<workflow_name>` set to `<value>` (persisted in `.claude/ewh-state.json`)."
       - If write fails → log: "Could not persist `--<flag>` to `.claude/ewh-state.json` — applies for this run only." and use the flag value for this run only.
+
+4c. Script Management (only if `--manage-scripts` was passed):
+    1. Scan `.claude/ewh-scripts/<workflow_name>/` for all `.sh` files (including `_merged_*.sh`).
+    2. If no cached scripts found → log: "No cached scripts for workflow `<workflow_name>`." Strip the flag and continue to §5.
+    3. If cached scripts found → present a table:
+       ```
+       Cached scripts for workflow `<workflow_name>`:
+
+       Step       | Script                                              | Last modified
+       -----------|-----------------------------------------------------|-------------
+       <step>     | .claude/ewh-scripts/<workflow>/<step>.sh             | <date>
+       ...
+       ```
+    4. Walk through each script in step order. For each, ask the user:
+       > `<step>`: (v)iew / (e)dit / (d)elete / (r)egenerate / (s)kip?
+       - **view**: read and display the script contents, then re-prompt for this script
+       - **edit**: display contents, user provides modifications, write updated file (recalculate `ewh-hash` header)
+       - **delete**: remove the file. The step will re-evaluate scriptability at runtime (§1d)
+       - **regenerate**: delete the file and mark the step for fresh script proposal during this run (§1d step 3 will trigger)
+       - **skip**: leave as-is, move to next script
+    5. After all scripts processed → strip the flag and continue to §5.
+
 5. Prepare artifact workspace:
    - If `.ewh-artifacts/` exists and is non-empty → warn user: "Artifacts from a prior run exist in `.ewh-artifacts/`. Clear them? (This confirmation is required even with `--auto-approval` — clearing files is destructive and is a separate gate from the startup 'Proceed?' prompt.)" Wait for confirmation before clearing.
    - Create `.ewh-artifacts/` if it does not exist
@@ -188,7 +211,102 @@ If `step.chunked` is `true`:
 
 8. **Cleanup** — chunk files (`.ewh-artifacts/<step.name>-chunk-*.md`) are left in place until workflow completion (existing §Completion cleanup handles them).
 
-If `step.chunked` is absent or false → skip §1c entirely, proceed to §2.
+If `step.chunked` is absent or false → skip §1c entirely, proceed to §1d.
+
+### 1d. Script Resolution
+
+Runs for every step. If this section resolves the step (script executes successfully), skip §2–§6 and proceed directly to §6e (artifact verification) then §7 (compliance). If it does not resolve (no script, user declines, or fallback to agent), fall through to §2.
+
+**Mutual exclusion**: if §1c (chunked dispatch) handled this step, skip §1d entirely. Chunked steps fan out to parallel LLM agents; script resolution avoids LLM entirely. These are orthogonal purposes.
+
+1. **Explicit script** — if `step.script` is set to a file path:
+   - Read the file. If it exists → go to step 5 (Execute).
+   - If the file does not exist → warn: "Script file `<path>` not found for step `<step.name>`." Fall through to step 3 (Evaluate).
+
+2. **Cached script** — if `step.script` is not set, check `.claude/ewh-scripts/<workflow_name>/<step.name>.sh`:
+   - If the file does not exist → go to step 3 (Evaluate).
+   - If it exists, perform **staleness check**: the script's first line after the shebang is `# ewh-hash: <sha256>` where `<sha256>` is the hash of the step's `description:` field at the time the script was generated. Compute the current hash of `step.description` and compare.
+     - If hashes match (not stale) → log: "Running cached script for `<step.name>`: `.claude/ewh-scripts/<workflow>/<step>.sh` — `<ewh-summary from header>`". Go to step 5 (Execute).
+     - If hashes differ (stale) → prompt user: "Cached script for `<step.name>` may be stale — step description has changed. (v)iew / (r)egenerate / (u)se anyway?"
+       - **view**: display script contents, then re-prompt
+       - **regenerate**: delete the cached file, go to step 4 (Generate)
+       - **use anyway**: log staleness warning, go to step 5 (Execute)
+
+3. **Evaluate scriptability** — no script exists (explicit or cached). The dispatcher evaluates whether this step can be accomplished by a Bash script using available CLI tools, without LLM reasoning. Consider:
+   - The step's `description:` field
+   - Whether an agent is assigned (steps with complex agents are less likely scriptable)
+   - The step's `rules:` (complex rules suggest LLM reasoning is needed)
+   - Harness Config values (available commands like test command, check command)
+   - Prior step context and outputs
+   
+   Three outcomes:
+   - **Clearly not scriptable** → skip §1d, fall through to §2.
+   - **Clearly scriptable** → propose to user: "Step `<step.name>` can be handled by a script instead of an agent (`<brief rationale>`). Generate a script?" If user declines → fall through to §2. If user agrees → go to step 4.
+   - **Uncertain** → ask user: "Step `<step.name>` looks potentially scriptable (`<brief rationale>`). Want me to propose a script, or run the normal agent?" If user chooses agent → fall through to §2. If user chooses script → go to step 4.
+
+4. **Generate script** — produce a Bash script based on step description, Harness Config, and available context. Present to user with collaboration loop:
+   - **approve** → write to `.claude/ewh-scripts/<workflow_name>/<step.name>.sh` (create directories if needed) with header format:
+     ```bash
+     #!/usr/bin/env bash
+     # ewh-hash: <sha256 of step description>
+     # ewh-summary: <one-line description of what this script does>
+     set -euo pipefail
+     
+     <script body>
+     ```
+     Go to step 5 (Execute).
+   - **reject** → fall through to §2.
+   - **edit** → display script, user provides modifications, update script, re-present for approval.
+   - **regenerate with guidance** → user provides additional instructions, dispatcher generates a new script, re-present for approval.
+
+5. **Execute script** — run via the Bash tool.
+   - **Exit 0** (success):
+     - Capture stdout/stderr
+     - Compress into step summary in the same format as §6: status (completed), key actions (1-3 bullets parsed from output), files modified/created
+     - Store summary for downstream `context:` consumption
+     - Proceed to §6e (artifact verification if `step.artifact` exists) then §7 (compliance check)
+   - **Non-zero exit** (failure): check `step.script_fallback` (default: `gate`):
+     - `gate` → show error output to user, offer: retry / edit script / fall back to agent / skip / abort
+       - **retry**: re-run the same script
+       - **edit script**: display script, user modifies, write updated file, re-run
+       - **fall back to agent**: if `step.agent` is defined, fall through to §2. If no agent defined, inform user and re-prompt without this option.
+       - **skip**: mark step as skipped, proceed to next step
+       - **abort**: stop workflow
+     - `auto` → if `step.agent` is defined, log: "Script failed for `<step.name>`, falling back to agent." Fall through to §2. If no agent is defined → treat as `gate` (cannot fall back to nothing).
+
+6. **Consecutive step merging** — after §1d resolves a step via script, look ahead at subsequent steps. Collect the maximal consecutive group where ALL of the following are true:
+   - The step has a resolved script (cached, explicit, or just approved in step 4)
+   - No `gate: structural` between any steps in the group
+   - No step in the group has `step.reads` referencing artifacts from other steps *within* the group
+   - No step in the group has `severity: critical` rules
+   
+   If group size > 1, propose to user:
+   > Steps `<list>` can be combined into a single script. Merge them? (y/n)
+   
+   If user approves:
+   - Concatenate scripts in step order with section markers:
+     ```bash
+     #!/usr/bin/env bash
+     # ewh-merged: <step1>, <step2>, ...
+     # ewh-hash: <sha256 of concatenated descriptions>
+     # ewh-summary: Combined <step1> + <step2> + ...
+     set -euo pipefail
+
+     # --- Step: <step1> ---
+     <step1 script body>
+
+     # --- Step: <step2> ---
+     <step2 script body>
+     ```
+   - Save to `.claude/ewh-scripts/<workflow_name>/_merged_<first>_to_<last>.sh`
+   - Execute as a single Bash call
+   - On success → generate step summaries for each constituent step (parse section output by markers)
+   - On failure → identify which section failed (from error context / line numbers relative to markers), apply `script_fallback` of the failing step. Re-run remaining unexecuted steps individually.
+   - Proceed to §6e for each constituent step that has `step.artifact`, then §7 for each that has critical rules.
+   
+   If user declines → run each step's script individually (loop back to step 5 per step).
+   
+   Merged scripts are cached separately from individual scripts. If any constituent step's description changes, the merged script is flagged stale during §1d step 2. `--manage-scripts` (§4c) shows merged scripts as distinct entries.
 
 ### 2. Resolve Executor
 
@@ -271,6 +389,8 @@ Use the Agent tool:
   - Test results if applicable (pass/fail counts)
 - Store summary for injection into subsequent steps under ## Prior Steps
 - If `step.artifact` exists, verify the file was written to disk. If missing → gate: tell user the step completed but did not produce the expected artifact at `<path>`, offer: retry step / skip / abort
+
+Note: Steps resolved by §1d (Script Resolution) produce summaries in the same format (status, key actions, files modified) and are stored identically for downstream `context:` consumption. §6 only applies to agent-executed steps.
 
 ### 6c. Continuation Flow (partial output detected)
 
@@ -384,6 +504,9 @@ For agent steps, this duplicates the check in §6 — that is intentional (belt 
 | Artifact not written after step (§6e) | Gate — tell user artifact missing at `<path>`, offer: retry step / skip / abort |
 | `context:` names a nonexistent step | Warn, skip that context entry |
 | `context:` names a skipped step | Include skip summary at declared detail level |
+| Script execution fails (non-zero exit) | Behavior governed by `script_fallback` field: `gate` → show error, offer retry/edit/agent-fallback/skip/abort; `auto` → fall back to agent silently (§1d step 5) |
+| Cached script stale (description hash mismatch) | Prompt user: view / regenerate / use anyway (§1d step 2) |
+| Script file missing (explicit `script:` path) | Warn, fall through to scriptability evaluation (§1d step 1) |
 | User says "abort" | Stop workflow, report completed steps, leave files as-is |
 
 ## Sub-Workflow Invocation

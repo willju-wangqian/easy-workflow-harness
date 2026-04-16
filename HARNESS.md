@@ -1,5 +1,5 @@
 ---
-version: 1.0.1
+version: 1.0.2
 ---
 
 # Easy Workflow Harness
@@ -13,6 +13,7 @@ A reusable workflow orchestration system for Claude Code. Standardizes how Claud
 - Agents: ${CLAUDE_PLUGIN_ROOT}/agents/
 - Dispatcher: ${CLAUDE_PLUGIN_ROOT}/skills/doit/SKILL.md
 - Artifacts: .ewh-artifacts/ (ephemeral, per-workflow-run, cleaned up on completion)
+- Scripts: .claude/ewh-scripts/ (persistent, cached scripts for scriptable workflow steps)
 
 ## Project Integration
 
@@ -27,6 +28,7 @@ Projects opt in at three levels:
    - `.claude/rules/` — supplement plugin rules (concatenated, not replaced; recursive — files under subfolders like `.claude/rules/ewh/` are discovered automatically)
    - `.claude/workflows/` — replace plugin workflows entirely
    - `.ewh-artifacts/` — ephemeral step output (auto-created by dispatcher, should be gitignored)
+   - `.claude/ewh-scripts/` — cached scripts for scriptable steps (persistent across runs; gitignore for developer-local or commit for team-shared)
 
 
 ## Override Resolution

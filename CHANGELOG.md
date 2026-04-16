@@ -2,6 +2,14 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [1.0.2] - 2026-04-16
+
+### Added
+- **Script proposal** (`script:` and `script_fallback:` step fields) — the dispatcher detects when workflow steps can be executed as Bash scripts instead of LLM agents and proposes scripts to the user. Approved scripts are cached in `.claude/ewh-scripts/<workflow>/<step>.sh` and reused on subsequent runs. Staleness detection via sha256 hash of step description. Full collaboration loop: approve / reject / edit / regenerate with guidance. See dispatcher §1d.
+- **Consecutive step merging** — when multiple adjacent scriptable steps have no structural gates, critical rules, or intra-group data dependencies between them, the dispatcher offers to merge them into a single combined script with section markers.
+- **`--manage-scripts` flag** — pre-run management of cached scripts: view / edit / delete / regenerate for any workflow's cached scripts. See dispatcher §4c.
+- **`script_fallback:` step field** — controls behavior on script failure: `gate` (default) stops and offers retry/edit/agent-fallback/skip/abort; `auto` silently falls back to the step's agent.
+
 ## [1.0.1] - 2026-04-16
 
 ### Added
