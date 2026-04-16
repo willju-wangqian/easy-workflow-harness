@@ -89,8 +89,8 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 ```bash
 # Subcommands (lightweight, interactive)
 /ewh:doit init                                         # bootstrap project + onboarding guide
-/ewh:doit clean-up                                     # run configured cleanup tasks
-/ewh:doit clean-up --manage-tasks                      # configure cleanup tasks
+/ewh:doit cleanup                                     # run configured cleanup tasks
+/ewh:doit cleanup --manage-tasks                      # configure cleanup tasks
 /ewh:doit create [rule|agent|workflow]                  # scaffold a project artifact
 /ewh:doit expand-tools [description]                   # discover and persist agent tool expansions
 
@@ -177,7 +177,7 @@ Subcommands are lightweight, interactive operations handled directly by the disp
 | Subcommand | What it does | Details |
 |---|---|---|
 | `init` | Bootstrap a project — detect language/framework, write Harness Config, show onboarding guide | [docs](docs/subcommand-init.md) |
-| `clean-up` | Run user-configured cleanup tasks (tests, linting, formatting) | [docs](docs/subcommand-clean-up.md) |
+| `cleanup` | Run user-configured cleanup tasks (tests, linting, formatting) | [docs](docs/subcommand-cleanup.md) |
 | `create [type]` | Scaffold a project-specific rule, agent, or workflow interactively | [docs](docs/subcommand-create.md) |
 | `expand-tools` | Discover MCP/plugin tools and persist per-agent expansions | [docs](docs/expand-agent-tools.md) |
 

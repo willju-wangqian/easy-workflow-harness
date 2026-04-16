@@ -1,6 +1,6 @@
-# Subcommand: clean-up
+# Subcommand: cleanup
 
-**Invoke:** `/ewh:doit clean-up`
+**Invoke:** `/ewh:doit cleanup`
 
 Run a user-configured list of cleanup tasks — tests, linting, formatting, doc builds, or any custom commands. Tasks are stored in `.claude/ewh-state.json` and managed interactively.
 
@@ -17,7 +17,7 @@ Run a user-configured list of cleanup tasks — tests, linting, formatting, doc 
 | Flag | Effect |
 |---|---|
 | `--manage-tasks` | Enter task configuration mode instead of running tasks |
-| `--no-override` | Force the built-in `clean-up` subcommand when a project workflow `.claude/workflows/clean-up.md` exists |
+| `--no-override` | Force the built-in `cleanup` subcommand when a project workflow `.claude/workflows/cleanup.md` exists |
 
 ## Task Configuration (`--manage-tasks`)
 
@@ -45,10 +45,10 @@ Each task in `cleanup_tasks` has three fields:
 
 ```bash
 # Configure tasks (first time)
-/ewh:doit clean-up --manage-tasks
+/ewh:doit cleanup --manage-tasks
 
 # Run configured tasks
-/ewh:doit clean-up
+/ewh:doit cleanup
 ```
 
 ```
@@ -63,7 +63,7 @@ Cleanup complete: 3 passed, 0 failed, 0 skipped
 
 ## Notes
 
-- `clean-up` is a **subcommand**, not a workflow. It does not spawn agents, load rules, or run compliance checks.
+- `cleanup` is a **subcommand**, not a workflow. It does not spawn agents, load rules, or run compliance checks.
 - Tasks execute sequentially in the order listed — reorder via `--manage-tasks` if order matters (e.g., format before lint).
-- If a project workflow `.claude/workflows/clean-up.md` exists, it takes precedence. Use `--no-override` to force the built-in subcommand.
-- Unlike the previous `clean-up` workflow, this subcommand does **not** invoke `update-knowledge`. Run `/ewh:doit update-knowledge` separately for LLM reference file updates.
+- If a project workflow `.claude/workflows/cleanup.md` exists, it takes precedence. Use `--no-override` to force the built-in subcommand.
+- Unlike the previous `cleanup` workflow, this subcommand does **not** invoke `update-knowledge`. Run `/ewh:doit update-knowledge` separately for LLM reference file updates.

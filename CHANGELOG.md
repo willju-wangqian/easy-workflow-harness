@@ -5,21 +5,21 @@ All notable changes to Easy Workflow Harness are documented here.
 ## [1.0.3] - 2026-04-16
 
 ### Changed
-- **Subcommands replace five workflows** — `init`, `clean-up`, `create-rules`, `create-agents`, and `create-workflow` are now built-in subcommands handled directly by the dispatcher instead of full workflows. Subcommands skip the workflow machinery (agents, rules, compliance, artifacts) for faster execution and lower token usage.
+- **Subcommands replace five workflows** — `init`, `cleanup`, `create-rules`, `create-agents`, and `create-workflow` are now built-in subcommands handled directly by the dispatcher instead of full workflows. Subcommands skip the workflow machinery (agents, rules, compliance, artifacts) for faster execution and lower token usage.
 - **`init` subcommand** — same project bootstrap behavior plus a new onboarding summary that lists all available workflows, subcommands, and flags with usage context.
-- **`clean-up` subcommand** — runs user-configured cleanup tasks stored in `ewh-state.json` under `cleanup_tasks`. Replaces the old workflow; no longer invokes `update-knowledge` (run that separately). Configure tasks via `--manage-tasks`.
+- **`cleanup` subcommand** — runs user-configured cleanup tasks stored in `ewh-state.json` under `cleanup_tasks`. Replaces the old workflow; no longer invokes `update-knowledge` (run that separately). Configure tasks via `--manage-tasks`.
 - **Unified `create` subcommand** (`/ewh:doit create [rule|agent|workflow]`) — replaces the three scaffold workflows. The dispatcher gathers requirements interactively, validates against templates in `templates/`, and writes the file directly.
 - **Name resolution order** — project workflow override → built-in subcommand → plugin workflow. Project workflows can shadow subcommand names; `--no-override` forces the built-in subcommand.
 
 ### Added
 - **`--no-override` flag** — forces the built-in subcommand when a same-name project workflow exists in `.claude/workflows/`. No-op when no override exists.
-- **`--manage-tasks` flag** — enters cleanup task configuration mode with LLM-assisted project scanning. Use with `/ewh:doit clean-up --manage-tasks`.
+- **`--manage-tasks` flag** — enters cleanup task configuration mode with LLM-assisted project scanning. Use with `/ewh:doit cleanup --manage-tasks`.
 - **Validation templates** (`templates/rule.md`, `templates/agent.md`, `templates/workflow.md`) — structured templates with required fields, body structure, and validation checklists used by the `create` subcommand.
-- **Subcommand reference docs** (`docs/subcommand-init.md`, `docs/subcommand-clean-up.md`, `docs/subcommand-create.md`).
+- **Subcommand reference docs** (`docs/subcommand-init.md`, `docs/subcommand-cleanup.md`, `docs/subcommand-create.md`).
 
 ### Removed
-- **Five workflow files**: `workflows/init.md`, `workflows/clean-up.md`, `workflows/create-rules.md`, `workflows/create-agents.md`, `workflows/create-workflow.md` — replaced by subcommands.
-- **Five workflow docs**: `docs/workflow-init.md`, `docs/workflow-clean-up.md`, `docs/workflow-create-rules.md`, `docs/workflow-create-agents.md`, `docs/workflow-create-workflow.md` — replaced by subcommand docs.
+- **Five workflow files**: `workflows/init.md`, `workflows/cleanup.md`, `workflows/create-rules.md`, `workflows/create-agents.md`, `workflows/create-workflow.md` — replaced by subcommands.
+- **Five workflow docs**: `docs/workflow-init.md`, `docs/workflow-cleanup.md`, `docs/workflow-create-rules.md`, `docs/workflow-create-agents.md`, `docs/workflow-create-workflow.md` — replaced by subcommand docs.
 
 ## [1.0.2] - 2026-04-16
 

@@ -47,8 +47,8 @@ Projects opt in at three levels:
 ```bash
 # Subcommands (lightweight, interactive)
 /ewh:doit init                                      # bootstrap project + onboarding guide
-/ewh:doit clean-up                                  # run configured cleanup tasks
-/ewh:doit clean-up --manage-tasks                   # configure cleanup tasks
+/ewh:doit cleanup                                  # run configured cleanup tasks
+/ewh:doit cleanup --manage-tasks                   # configure cleanup tasks
 /ewh:doit create [rule|agent|workflow]               # scaffold a project artifact
 /ewh:doit expand-tools [description]                 # discover and persist agent tool expansions
 

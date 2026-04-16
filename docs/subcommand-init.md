@@ -33,7 +33,7 @@ After writing config (or skipping), `init` prints:
 - All available **workflows** with descriptions
 - All available **subcommands** with descriptions
 - All **flags** with usage context
-- **Next steps** suggesting `clean-up --manage-tasks`, `add-feature`, and `expand-tools`
+- **Next steps** suggesting `cleanup --manage-tasks`, `add-feature`, and `expand-tools`
 
 ## Example
 
@@ -59,7 +59,7 @@ Workflows (multi-step, agent-driven):
   ...
 
 Next steps:
-  - Run /ewh:doit clean-up --manage-tasks to configure your cleanup tasks
+  - Run /ewh:doit cleanup --manage-tasks to configure your cleanup tasks
   ...
 ```
 

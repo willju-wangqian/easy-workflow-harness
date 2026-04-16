@@ -19,7 +19,7 @@ The user types `/ewh:doit <name> [flags] [description]`.
 **Flags** (optional, position-independent — strip from args before parsing `<name>` + `[description]`):
 - `--auto-approval` / `--need-approval` (mutually exclusive) — toggle the persisted **per-workflow** "Auto-approve start" switch for `<name>` (stored in `.claude/ewh-state.json`). Applies to workflows only.
 - `--manage-scripts` — before running a workflow, enter script management mode: list all cached scripts for this workflow in `.claude/ewh-scripts/<workflow>/`, and for each offer: (v)iew / (e)dit / (d)elete / (r)egenerate / (s)kip. Applies to workflows only.
-- `--manage-tasks` — enter cleanup task configuration mode. Applies to the `clean-up` subcommand only.
+- `--manage-tasks` — enter cleanup task configuration mode. Applies to the `cleanup` subcommand only.
 - `--no-override` — force the built-in subcommand when a same-name project workflow exists in `.claude/workflows/`. No-op when no project override exists. Applies to subcommands only.
 
 **Special commands:**
@@ -28,13 +28,13 @@ The user types `/ewh:doit <name> [flags] [description]`.
 
 **Built-in subcommands** (handled inline by the dispatcher, no workflow file):
 - `/ewh:doit init` — bootstrap project and show onboarding guide (see §Subcommand: init)
-- `/ewh:doit clean-up` — run user-configured cleanup tasks (see §Subcommand: clean-up)
+- `/ewh:doit cleanup` — run user-configured cleanup tasks (see §Subcommand: cleanup)
 - `/ewh:doit create [rule|agent|workflow]` — scaffold a project artifact (see §Subcommand: create)
 - `/ewh:doit expand-tools [description]` — discover and persist agent tool expansions (see §Expand Tools)
 
 ### Auto-Approve Start Switch
 
-A **per-workflow, per-project** switch controlling only the startup "Proceed?" gate (§6 of Startup Sequence). Each workflow has its own switch — auto-approving `add-feature` does NOT affect `clean-up`. Default: off (ask).
+A **per-workflow, per-project** switch controlling only the startup "Proceed?" gate (§6 of Startup Sequence). Each workflow has its own switch — auto-approving `add-feature` does NOT affect `cleanup`. Default: off (ask).
 
 **Resolution order** (highest precedence first):
 
@@ -78,7 +78,7 @@ When the user types `/ewh:doit <name>`, resolve in this order:
 
 1. **Special commands** — if `<name>` is `list` or empty → handle directly (see §Listing)
 2. **Project workflow override** — try reading `.claude/workflows/<name>.md`. If it exists AND `--no-override` was NOT passed → run as workflow (enter §Startup Sequence)
-3. **Built-in subcommand** — if `<name>` matches a built-in subcommand (`init`, `clean-up`, `create`, `expand-tools`) → run subcommand logic (see §Subcommand sections and §Expand Tools)
+3. **Built-in subcommand** — if `<name>` matches a built-in subcommand (`init`, `cleanup`, `create`, `expand-tools`) → run subcommand logic (see §Subcommand sections and §Expand Tools)
 4. **Plugin workflow** — try reading `${CLAUDE_PLUGIN_ROOT}/workflows/<name>.md`. If it exists → run as workflow (enter §Startup Sequence)
 5. **No match** → tell user, list available workflows and subcommands, stop
 
@@ -87,7 +87,7 @@ If `--no-override` was passed and step 2 found a project workflow → log: "Bypa
 This means:
 - Project workflows can shadow subcommand names. A `.claude/workflows/init.md` takes precedence over the built-in `init` subcommand.
 - `--no-override` lets users force the built-in subcommand when a same-name project workflow exists.
-- Plugin workflows cannot shadow subcommands (the old workflow files `init.md`, `clean-up.md`, `create-rules.md`, `create-agents.md`, `create-workflow.md` have been removed from `workflows/`).
+- Plugin workflows cannot shadow subcommands (the old workflow files `init.md`, `cleanup.md`, `create-rules.md`, `create-agents.md`, `create-workflow.md` have been removed from `workflows/`).
 
 ## Startup Sequence
 
@@ -571,7 +571,7 @@ Mark project overrides with `(project override)`. If a project workflow shadows 
 | Subcommand | Description |
 |---|---|
 | `init` | Bootstrap project and show onboarding guide |
-| `clean-up` | Run user-configured cleanup tasks |
+| `cleanup` | Run user-configured cleanup tasks |
 | `create [type]` | Scaffold a rule, agent, or workflow |
 | `expand-tools` | Discover and persist agent tool expansions |
 
@@ -631,7 +631,7 @@ When user types `/ewh:doit init`:
      /ewh:doit check-fact [desc]       — cross-validate docs against source code
 
    Subcommands (lightweight, interactive):
-     /ewh:doit clean-up                — run project cleanup tasks
+     /ewh:doit cleanup                — run project cleanup tasks
      /ewh:doit create [type]           — scaffold a rule, agent, or workflow
      /ewh:doit expand-tools [desc]     — discover and assign agent tools
      /ewh:doit init                    — (you just ran this)
@@ -639,11 +639,11 @@ When user types `/ewh:doit init`:
    Flags:
      --auto-approval / --need-approval — toggle startup confirmation per workflow; use with /ewh:doit <workflow>
      --manage-scripts                  — manage cached scripts before a workflow run; use with /ewh:doit <workflow>
-     --manage-tasks                    — configure cleanup tasks; use with /ewh:doit clean-up
+     --manage-tasks                    — configure cleanup tasks; use with /ewh:doit cleanup
      --no-override                     — force built-in subcommand when a same-name project workflow exists; use with /ewh:doit <subcommand>
 
    Next steps:
-     - Run /ewh:doit clean-up --manage-tasks to configure your cleanup tasks
+     - Run /ewh:doit cleanup --manage-tasks to configure your cleanup tasks
      - Run /ewh:doit add-feature "your feature" to build something
      - Run /ewh:doit expand-tools "your tools" to extend agent capabilities
    ```
@@ -659,16 +659,16 @@ When user types `/ewh:doit init`:
 | Harness Config already present + user says update | Merge: keep existing values, add newly detected ones |
 | No language/framework detected | Propose empty/minimal config, ask user to fill in |
 
-## Subcommand: clean-up
+## Subcommand: cleanup
 
-When user types `/ewh:doit clean-up`:
+When user types `/ewh:doit cleanup`:
 
 ### Flow
 
 1. **Read `ewh-state.json`** → look up `cleanup_tasks`.
 
 2. **No tasks configured** — if `cleanup_tasks` is missing, empty, or `ewh-state.json` does not exist:
-   - Log: "No cleanup tasks configured. Run `/ewh:doit clean-up --manage-tasks` to set them up."
+   - Log: "No cleanup tasks configured. Run `/ewh:doit cleanup --manage-tasks` to set them up."
    - Stop.
 
 3. **Print task list and execute** — for each task in order:
@@ -688,7 +688,7 @@ When user types `/ewh:doit clean-up`:
 
 ### Management Flow (`--manage-tasks`)
 
-When user types `/ewh:doit clean-up --manage-tasks`:
+When user types `/ewh:doit cleanup --manage-tasks`:
 
 1. **Read `ewh-state.json`** → look up `cleanup_tasks`.
 
@@ -740,7 +740,7 @@ When user types `/ewh:doit clean-up --manage-tasks`:
 
 | Scenario | Behavior |
 |---|---|
-| `ewh-state.json` missing | For `--manage-tasks`: create it. For bare `clean-up`: prompt to run `--manage-tasks` |
+| `ewh-state.json` missing | For `--manage-tasks`: create it. For bare `cleanup`: prompt to run `--manage-tasks` |
 | Task command not found on system | Show error at execution time, offer retry/skip/abort |
 | All tasks fail | Report all failures in summary, do not abort early unless user chooses |
 | `--manage-tasks` with `--no-override` | `--manage-tasks` applies, `--no-override` applies to name resolution |
@@ -963,7 +963,7 @@ After all workflow steps complete (subcommands handle their own completion inlin
 
 ## Constraints
 
-- You are a coordinator. Never write code, tests, or documentation yourself — except during subcommands (`init`, `clean-up`, `create`), where you write config/scaffold files directly as part of the subcommand flow.
+- You are a coordinator. Never write code, tests, or documentation yourself — except during subcommands (`init`, `cleanup`, `create`), where you write config/scaffold files directly as part of the subcommand flow.
 - Never skip a structural gate — always wait for user confirmation.
 - Never suppress compliance failures — always show them to the user.
 - If a step has no agent and no skill, execute it directly (e.g., run a shell command).

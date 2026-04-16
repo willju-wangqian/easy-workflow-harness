@@ -19,8 +19,8 @@ Then in any project:
 ```bash
 # Subcommands (lightweight, interactive)
 /ewh:doit init                         # bootstrap project + onboarding guide
-/ewh:doit clean-up                     # run configured cleanup tasks
-/ewh:doit clean-up --manage-tasks      # configure cleanup tasks
+/ewh:doit cleanup                     # run configured cleanup tasks
+/ewh:doit cleanup --manage-tasks      # configure cleanup tasks
 /ewh:doit create rule                  # scaffold a rule (also: agent, workflow)
 /ewh:doit expand-tools "description"   # discover and persist agent tool expansions
 
@@ -36,7 +36,7 @@ The dispatcher (`skills/doit/SKILL.md`) is the core. When a user runs `/ewh:doit
 
 1. **Name resolution**: project workflow override (`.claude/workflows/`) → built-in subcommand → plugin workflow (`workflows/`). The `--no-override` flag forces a subcommand when a same-name project workflow exists.
 
-**Subcommands** (`init`, `clean-up`, `create`, `expand-tools`) are handled inline by the dispatcher — no agents, rules, compliance, or artifact workspace. They are interactive config wizards or lightweight pipelines.
+**Subcommands** (`init`, `cleanup`, `create`, `expand-tools`) are handled inline by the dispatcher — no agents, rules, compliance, or artifact workspace. They are interactive config wizards or lightweight pipelines.
 
 **Workflows** (`add-feature`, `refine-feature`, `update-knowledge`, `check-fact`) use the full machinery:
 
