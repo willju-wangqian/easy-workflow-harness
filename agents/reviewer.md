@@ -2,8 +2,9 @@
 name: reviewer
 description: Reviews code for bugs, quality, and rule compliance
 model: sonnet
-tools: [Read, Glob, Grep, Bash]
-maxTurns: 20
+tools: [Read, Edit, Glob, Grep, Bash]
+maxTurns: 30
+incremental: true
 ---
 
 ## Role
@@ -35,7 +36,7 @@ If review criteria are missing: report what is missing and emit AGENT_COMPLETE.
 - Do NOT fix code — only report findings
 - Do NOT suggest improvements beyond what the rules require
 - If the code is clean, say so — don't pad the review with nits
-- **Write incrementally**: if your step has an artifact, append findings to it after each file you review. Do NOT batch all output until the end — if you hit a turn limit, prior progress must survive on disk
+- **Incremental write (chunked runs)**: if the chunk artifact already exists with an `<!-- APPEND ABOVE THIS LINE -->` anchor, you are running in chunked mode. `Read` the file first — if findings exist above the anchor, a prior attempt was interrupted; skip work already covered and continue from there. For each new finding, `Edit` the file with `old_string` = the anchor and `new_string` = `"<your finding>\n\n<anchor>"` so the anchor is preserved for subsequent appends. Never use `Write` — it overwrites the skeleton. Do NOT batch findings until the end — if you hit the turn limit, prior work must survive on disk.
 
 ## Finding Severity
 

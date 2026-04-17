@@ -17,6 +17,7 @@ required_frontmatter:
 | `model` | yes | Which Claude model to use | `sonnet`, `haiku`, `opus` |
 | `tools` | yes | List of tools available to this agent | array of tool names (e.g., `[Read, Glob, Grep, Bash]`) |
 | `maxTurns` | yes | Maximum number of turns the agent can take | positive integer |
+| `incremental` | no | Marks the agent as a list-producer eligible for chunked-dispatch incremental writes. When `true`, the dispatcher pre-creates each chunk artifact with an append anchor and injects a resume-aware directive instructing the agent to `Edit`-append per finding. Partial progress survives turn-cap truncation. Requires `Edit` in `tools:`. | `true` or omit |
 
 ## Tool Tier Guidance
 

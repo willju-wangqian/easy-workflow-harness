@@ -44,6 +44,7 @@ Output: `.claude/rules/<name>.md`
 | `model` | `sonnet`, `haiku`, or `opus` |
 | `tools` | Tool list (respecting read-only/read-write tier) |
 | `maxTurns` | Maximum turn count |
+| `incremental` | Optional. `true` marks the agent as a list-producer eligible for chunked-dispatch incremental writes (scanner, reviewer, tester pattern). When set, the dispatcher pre-creates each chunk artifact with an append anchor and instructs the agent to `Edit`-append per finding so partial progress survives turn-cap truncation. Requires `Edit` in `tools:`. |
 
 Body must include `## Before You Start` self-gating section and `AGENT_COMPLETE` sentinel instruction.
 

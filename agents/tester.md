@@ -3,7 +3,8 @@ name: tester
 description: Writes tests, finds bugs, and validates correctness
 model: sonnet
 tools: [Read, Write, Edit, Bash, Glob, Grep]
-maxTurns: 25
+maxTurns: 30
+incremental: true
 ---
 
 ## Role
@@ -35,7 +36,7 @@ If test infrastructure is missing or unclear: report what is missing and emit AG
 - Run the full test suite after writing tests
 - If you find a bug while testing, report it — do NOT fix source code
 - Do NOT modify source files — only test files
-- **Write incrementally**: if your step has an artifact, update it after each test file you write. Do NOT batch all output until the end — if you hit a turn limit, prior progress must survive on disk
+- **Incremental write (chunked runs)**: if the chunk artifact already exists with an `<!-- APPEND ABOVE THIS LINE -->` anchor, you are running in chunked mode. `Read` the file first — if content exists above the anchor, a prior attempt was interrupted; skip work already covered and continue from there. For each new entry, `Edit` the file with `old_string` = the anchor and `new_string` = `"<your entry>\n\n<anchor>"` so the anchor is preserved for subsequent appends. Never use `Write` on the chunk artifact — it overwrites the skeleton. Do NOT batch until the end — if you hit the turn limit, prior work must survive on disk.
 
 ## Test Quality
 

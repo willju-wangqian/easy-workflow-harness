@@ -202,12 +202,31 @@ If `step.chunked` is `true`:
 5. **Split** — partition the file list into chunks of `max_per_chunk` files each. The last chunk may be smaller.
 
 6. **Spawn workers in parallel** — for each chunk:
-   - Resolve executor (§2), load rules (§3), build prompt (§4) as normal, with two modifications:
+   - **Pre-create chunk skeleton (if agent has `incremental: true` in frontmatter)** — before building the prompt, write `.ewh-artifacts/<step.name>-chunk-<N>.md` with minimal content:
+     ```
+     # <step.name> — chunk <N> of <M>
+
+     <!-- APPEND ABOVE THIS LINE -->
+     ```
+     Also verify the agent's effective `tools:` (plugin definition, merged with any project override) contains `Edit`. If not, log warning: "agent `<name>` has `incremental: true` but no `Edit` tool in the effective tool list; resume-aware directive may fail" and proceed anyway.
+   - Resolve executor (§2), load rules (§3), build prompt (§4) as normal, with these modifications:
      - `## Required Reading` lists only this chunk's files (overrides `step.reads`)
      - `## Task` appends: "You are processing chunk N of M. Write your output to `.ewh-artifacts/<step.name>-chunk-<N>.md`. Process only the files listed in Required Reading."
+     - **If agent has `incremental: true`**: `## Task` also appends the resume-aware directive below.
    - Spawn agent (§5) with the modified prompt
-   - Collect result (§6) per chunk — apply §6c continuation if needed, per chunk independently
-   - Per-chunk failure (no AGENT_COMPLETE after continuation, missing chunk file) → gate per §8, scoped to that chunk only: retry chunk / skip chunk / abort workflow
+   - Collect result (§6) per chunk. Branch on the agent's `incremental` flag:
+     - **Non-incremental agents**: apply §6c continuation if needed, per chunk independently. Per-chunk failure (no AGENT_COMPLETE after continuation, missing chunk file) → gate per §8, scoped to that chunk only: retry chunk / skip chunk / abort workflow.
+     - **Incremental agents**: skip §6c continuation and §6a split entirely (continuation-with-same-prompt tends to repeat the same turn-cap failure; resume-via-disk is the recovery path instead). On failure (no AGENT_COMPLETE or missing chunk file), gate user directly: retry chunk / skip chunk / abort workflow. Retry re-spawns the identical prompt — the agent's resume-aware directive reads the partial chunk file and continues from where it left off. When surfacing the gate, log whether the chunk file has content above the anchor (bytes > skeleton size) so the user can make an informed retry decision.
+
+**Resume-aware directive** (appended to `## Task` when agent has `incremental: true`):
+
+```
+**Incremental write with resume support.** Your chunk artifact `<path>` already exists with a header and an anchor `<!-- APPEND ABOVE THIS LINE -->`. Before any `Edit`, `Read` the file. If findings already exist above the anchor, a previous attempt was interrupted — identify which files/claims are already covered and skip those. Continue only with the remainder.
+
+For each new finding, `Edit` the file with `old_string = "<!-- APPEND ABOVE THIS LINE -->"` and `new_string = "<your finding>\n\n<!-- APPEND ABOVE THIS LINE -->"`. The anchor MUST be preserved in every Edit so subsequent appends work.
+
+Do NOT use `Write` — it overwrites the skeleton. Do NOT batch findings until the end — if you hit the turn limit, prior work must be on disk.
+```
 
 7. **Merge** — after all chunks complete (or are skipped):
    - Spawn one merge agent with the same `subagent_type` and `model` as the step's agent:

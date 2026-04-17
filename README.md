@@ -189,13 +189,13 @@ Subcommands are lightweight, interactive operations handled directly by the disp
 
 ## Agents
 
-Agents are specialized roles with distinct capabilities. Each agent has its own model, tool set, and behavioral instructions. Importantly, agents are scoped — a reviewer can read code but can't edit it, so it can't silently "fix" issues instead of reporting them.
+Agents are specialized roles with distinct capabilities. Each agent has its own model, tool set, and behavioral instructions. Importantly, agents are scoped — a reviewer's role is to report findings, not to "fix" issues. (Scanner and reviewer now carry `Edit` to support the chunked artifact append pattern, but their instructions forbid editing anything other than their chunk artifact — see `incremental: true` below.)
 
 | Agent | Model | Tools | Role |
 |---|---|---|---|
 | `coder` | sonnet | Read, Write, Edit, Bash, Glob, Grep | Implements changes, runs tests, follows coding rules |
-| `reviewer` | sonnet | Read, Glob, Grep, Bash | Reviews code changes for bugs, quality, and rule compliance (read-only) |
-| `scanner` | sonnet | Read, Glob, Grep, Bash | Scans existing code and docs for issues, stale claims, or improvements (read-only) |
+| `reviewer` | sonnet | Read, Edit, Glob, Grep, Bash | Reviews code changes for bugs, quality, and rule compliance (Edit is scoped to the chunked artifact append pattern — reviewer does not modify source) |
+| `scanner` | sonnet | Read, Edit, Glob, Grep, Bash | Scans existing code and docs for issues, stale claims, or improvements (Edit is scoped to the chunked artifact append pattern — scanner does not modify source) |
 | `tester` | sonnet | Read, Write, Edit, Bash, Glob, Grep | Writes tests, runs the full suite, reports bugs (does not fix source code) |
 | `compliance` | haiku | Read, Glob, Grep, Bash | Lightweight auditor that verifies critical rules were followed after a step |
 
@@ -220,7 +220,7 @@ Every agent has a "Before You Start" checklist. If an agent doesn't have enough 
 
 Each agent's `tools` list in its frontmatter is not fixed. You can extend it with tools from any MCP server you have connected — [Serena](https://github.com/oraios/serena), GitHub MCP, browser automation, your own custom MCP — to give agents new capabilities without changing their role.
 
-The one rule that must hold: **read-only agents may only gain read-only tools**. The `scanner`, `reviewer`, and `compliance` agents are read-only by design; adding a mutation tool (e.g. `mcp__serena__replace_symbol_body` to the reviewer) would silently turn a reviewer into a coder and break the separation-of-concerns guarantee. The `coder` and `tester` agents may safely receive both read-only and read-write tools.
+The one rule that must hold: **read-only agents may only gain read-only tools**. The `scanner`, `reviewer`, and `compliance` agents are read-only with respect to source code — they must not gain mutation tools that reach source (e.g. `mcp__serena__replace_symbol_body` to the reviewer would silently turn a reviewer into a coder and break the separation-of-concerns guarantee). Scanner and reviewer do carry `Edit` in their default tool list, but only to support the chunked-dispatch incremental-append pattern (see §1c of the dispatcher and `incremental: true` in agent frontmatter); their behavioral instructions forbid editing anything other than the chunk artifact. The `coder` and `tester` agents may safely receive both read-only and read-write tools.
 
 **Recommended: use the `expand-tools` subcommand.** It discovers available tools, matches them to your intent, proposes per-agent assignments respecting read-only tiers, and persists the config in `.claude/ewh-state.json`. Overrides are generated as `.claude/agents/<name>.md` files that survive plugin reinstalls.
 

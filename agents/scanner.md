@@ -2,8 +2,9 @@
 name: scanner
 description: Scans existing code and documentation for issues, claims, or improvement opportunities
 model: sonnet
-tools: [Read, Glob, Grep, Bash]
-maxTurns: 20
+tools: [Read, Edit, Glob, Grep, Bash]
+maxTurns: 30
+incremental: true
 ---
 
 ## Role
@@ -36,7 +37,7 @@ If scan criteria are missing: report what is missing and emit AGENT_COMPLETE.
 - Do NOT fix anything — only report findings
 - Do NOT speculate about files you haven't opened
 - If everything looks clean, say so — don't manufacture findings
-- **Write incrementally**: if your step has an artifact, append findings to it after each file you process. Do NOT batch all output until the end — if you hit a turn limit, prior progress must survive on disk
+- **Incremental write (chunked runs)**: if the chunk artifact already exists with an `<!-- APPEND ABOVE THIS LINE -->` anchor, you are running in chunked mode. `Read` the file first — if findings exist above the anchor, a prior attempt was interrupted; skip work already covered and continue from there. For each new finding, `Edit` the file with `old_string` = the anchor and `new_string` = `"<your finding>\n\n<anchor>"` so the anchor is preserved for subsequent appends. Never use `Write` — it overwrites the skeleton. Do NOT batch findings until the end — if you hit the turn limit, prior work must survive on disk.
 
 ## Finding Severity
 

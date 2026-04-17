@@ -2,6 +2,17 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [1.0.5] - 2026-04-16
+
+### Changed
+- **Incremental artifact writes are now structural, not advisory** — scanner, reviewer, and tester agents now declare `incremental: true` in frontmatter. For chunked dispatch, the dispatcher pre-creates each chunk artifact with a header and an `<!-- APPEND ABOVE THIS LINE -->` anchor, then injects a resume-aware directive instructing the agent to `Edit`-append per finding. Previously the 1.0.1 "write incrementally" bullet was advisory; agents routinely batched output in-head and hit the turn cap before flushing anything to disk (observed: validate-chunk files containing only 163 bytes of skeleton after 27-28 tool uses). The new scheme guarantees partial progress survives turn-cap truncation.
+- **Retry contract for incremental agents** — on per-chunk failure, the dispatcher skips §6c continuation and §6a split (continuation-with-same-prompt tends to repeat the same turn-cap failure) and gates the user directly: retry / skip / abort. Retry re-spawns the identical prompt; the agent's resume-aware directive reads the partial chunk file from disk and continues from where it left off. The dispatcher logs whether the chunk file has content above the anchor so the user can make an informed retry decision. Non-incremental agents keep the existing §6c/§6a flow unchanged.
+- **`maxTurns` bumped** — scanner 20→30, reviewer 20→30, tester 25→30. Co-fix: the prior caps were too tight for verification workloads where Read/Grep/serena calls consume the budget quickly. Ergonomic headroom, not a correctness fix.
+- **`Edit` tool added to scanner and reviewer tool lists** — required for the `Edit`-append anchor pattern. Does not enlarge effective capability: these agents already have `Bash` (unrestricted), so `Edit` is a clearer, more auditable way to do what Bash already permits.
+
+### Added
+- **`incremental: true` agent frontmatter field** — marks an agent as a list-producer (findings, review issues, test entries) eligible for the chunked-dispatch skeleton + resume machinery. Documented in root `CLAUDE.md` and `docs/subcommand-create.md`.
+
 ## [1.0.4] - 2026-04-16
 
 ### Changed
