@@ -63,10 +63,12 @@ Merge with existing entries (additive, duplicates skipped). Each source tracked 
 3. If no existing override → generate:
    ```markdown
    ---
+   name: <name>
    extends: ewh:<name>
    tools: [<default tools>, <expanded tools>]
    ---
    ```
+   `name:` is required so the override registers as a subagent type; without it, `subagent_type: "<name>"` fails and the runtime falls back to `ewh:<name>` with the plugin's (unexpanded) tool list.
 4. Create `.claude/agents/` directory if needed
 
 **Phase 6 — Summary**: Report per-agent changes, file paths, and "Run `/ewh:doit expand-tools` again to update or add more."

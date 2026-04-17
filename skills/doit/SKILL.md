@@ -22,11 +22,8 @@ The user types `/ewh:doit <name> [flags] [description]`.
 - `--manage-tasks` — enter cleanup task configuration mode. Applies to the `cleanup` subcommand only.
 - `--no-override` — force the built-in subcommand when a same-name project workflow exists in `.claude/workflows/`. No-op when no project override exists. Applies to subcommands only.
 
-**Special commands:**
-- `/ewh:doit list` — list all available workflows and subcommands
-- `/ewh:doit` with no args — show help and list workflows and subcommands
-
 **Built-in subcommands** (handled inline by the dispatcher, no workflow file):
+- `/ewh:doit list` — list all available workflows and subcommands (see §Subcommand: list). Also triggered by `/ewh:doit` with no args.
 - `/ewh:doit init` — bootstrap project and show onboarding guide (see §Subcommand: init)
 - `/ewh:doit cleanup` — run user-configured cleanup tasks (see §Subcommand: cleanup)
 - `/ewh:doit create [rule|agent|workflow]` — scaffold a project artifact (see §Subcommand: create)
@@ -76,9 +73,9 @@ This switch ONLY affects the startup "Proceed?" gate. All other gates (structura
 
 When the user types `/ewh:doit <name>`, resolve in this order:
 
-1. **Special commands** — if `<name>` is `list` or empty → handle directly (see §Listing)
+1. **Empty name** — if `<name>` is empty → run the `list` subcommand (see §Subcommand: list)
 2. **Project workflow override** — try reading `.claude/workflows/<name>.md`. If it exists AND `--no-override` was NOT passed → run as workflow (enter §Startup Sequence)
-3. **Built-in subcommand** — if `<name>` matches a built-in subcommand (`init`, `cleanup`, `create`, `expand-tools`) → run subcommand logic (see §Subcommand sections and §Expand Tools)
+3. **Built-in subcommand** — if `<name>` matches a built-in subcommand (`list`, `init`, `cleanup`, `create`, `expand-tools`) → run subcommand logic (see §Subcommand sections)
 4. **Plugin workflow** — try reading `${CLAUDE_PLUGIN_ROOT}/workflows/<name>.md`. If it exists → run as workflow (enter §Startup Sequence)
 5. **No match** → tell user, list available workflows and subcommands, stop
 
@@ -549,33 +546,35 @@ If a step description contains `Sub-workflow: /ewh:doit <name>`:
 - Prior steps context carries forward from parent
 - Failures propagate up to parent gate
 
-## Listing
+## Subcommand: list
 
-When user types `/ewh:doit list` or `/ewh:doit` with no name:
+When user types `/ewh:doit list` or `/ewh:doit` with no args:
 
-1. Scan `${CLAUDE_PLUGIN_ROOT}/workflows/` for all .md files
-2. Scan `.claude/workflows/` for project overrides
-3. Present two sections:
+1. Read `${CLAUDE_PLUGIN_ROOT}/skills/doit/list.md` and print its contents verbatim.
+2. Detect project overrides:
+   - Glob `.claude/workflows/*.md` — collect basenames (strip `.md`)
+   - Glob `.claude/rules/**/*.md` — collect basenames (strip `.md`)
+   - Glob `.claude/agents/*.md` — collect basenames (strip `.md`)
+3. If any of the three lists is non-empty, append a footer:
 
-**Workflows** (multi-step, agent-driven):
+   ```
+   Project overrides:
+     workflows: <comma-separated names, or "—" if none>
+     rules:     <comma-separated names, or "—" if none>
+     agents:    <comma-separated names, or "—" if none>
+   ```
 
-| Workflow | Description | Steps |
-|---|---|---|
-| `add-feature` | Plan, implement, review, and test a new feature | 4 |
-| ... | ... | ... |
+   If all three lists are empty, append nothing.
 
-Mark project overrides with `(project override)`. If a project workflow shadows a subcommand name, note: `(overrides built-in subcommand — use --no-override to bypass)`.
+4. Stop. Do not read workflow files, parse frontmatter, or count plugin rules/agents — the static file is the source of truth for built-ins.
 
-**Subcommands** (lightweight, interactive):
+### Edge Cases
 
-| Subcommand | Description |
+| Scenario | Behavior |
 |---|---|
-| `init` | Bootstrap project and show onboarding guide |
-| `cleanup` | Run user-configured cleanup tasks |
-| `create [type]` | Scaffold a rule, agent, or workflow |
-| `expand-tools` | Discover and persist agent tool expansions |
-
-4. Show available rules count and agent count
+| `skills/doit/list.md` missing | Warn: "Catalog file missing — plugin may be malformed." Fall back to listing the built-in subcommands from §Invocation inline. |
+| `.claude/` does not exist | No overrides to detect — skip the footer silently. |
+| Project override shares a name with a plugin workflow or subcommand | Still list it under `workflows:`; shadowing behavior is documented in §Name Resolution. |
 
 ## Subcommand: init
 
@@ -905,11 +904,12 @@ For each agent in `agent_tools`:
    - **Does not exist** → generate new file:
      ```markdown
      ---
+     name: <name>
      extends: ewh:<name>
      tools: [<default tools>, <expanded tools>]
      ---
      ```
-     No body needed — `extends` inherits the plugin agent's prompt.
+     No body needed — `extends` inherits the plugin agent's prompt. `name:` is required so the override registers as a subagent type; without it, `subagent_type: "<name>"` fails and the runtime falls back to `ewh:<name>` with the plugin's (unexpanded) tool list.
 3. Create `.claude/agents/` directory if needed.
 
 ### Phase 6: Summary

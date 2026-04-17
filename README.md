@@ -232,7 +232,7 @@ After a plugin reinstall, rerun `expand-tools` and choose "Regenerate overrides"
 
 For manual expansion (advanced), see [docs/expand-agent-tools.md](docs/expand-agent-tools.md) for a copy-paste prompt that walks Claude through the expansion with placeholders and a worked example using [Serena](https://github.com/oraios/serena) MCP.
 
-> **Heads-up: plugin reinstalls overwrite in-place tool patches.** If you expanded tools manually (not via `expand-tools`), reinstalling or auto-updating the plugin replaces the `agents/` directory and reverts your patched tool lists to defaults. The `expand-tools` subcommand avoids this problem by persisting config in `ewh-state.json` and generating project-level overrides in `.claude/agents/`. If you expanded manually, keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with `extends: ewh:<name>`), which survives reinstalls.
+> **Heads-up: plugin reinstalls overwrite in-place tool patches.** If you expanded tools manually (not via `expand-tools`), reinstalling or auto-updating the plugin replaces the `agents/` directory and reverts your patched tool lists to defaults. The `expand-tools` subcommand avoids this problem by persisting config in `ewh-state.json` and generating project-level overrides in `.claude/agents/`. If you expanded manually, keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with both `name: <name>` and `extends: ewh:<name>` — `name:` is required so the override registers as a subagent type), which survives reinstalls.
 
 ## Rules
 
