@@ -403,7 +403,7 @@ EOF
 /ewh:doit add-feature "test"
 ```
 
-**Pass:** Workflow plan shows description `PROJECT-WORKFLOW-OVERRIDE` and step `project-only-step` only. Plugin steps (`explore`, `implement`, `review`, etc.) are absent.
+**Pass:** Workflow plan shows description `PROJECT-WORKFLOW-OVERRIDE` and step `project-only-step` only. Plugin steps (`plan`, `code`, `review`, `test`) are absent.
 
 **Fail:** Plugin step names appear — dispatcher resolved plugin workflow instead of project override.
 

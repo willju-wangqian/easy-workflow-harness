@@ -13,6 +13,13 @@ All notable changes to Easy Workflow Harness are documented here.
 ### Added
 - **`incremental: true` agent frontmatter field** — marks an agent as a list-producer (findings, review issues, test entries) eligible for the chunked-dispatch skeleton + resume machinery. Documented in root `CLAUDE.md` and `docs/subcommand-create.md`.
 
+### Docs
+- **README** — corrects dispatcher file count (SKILL.md + list.md, not one file); moves `/ewh:doit list` into the subcommands section; notes that tester also carries `Edit` alongside scanner and reviewer.
+- **docs/customization.md** — adds `chunked`, `script`, and `script_fallback` to the step fields reference table (were missing despite being implemented since 1.0.3).
+- **docs/testing-overrides.md** — fixes stale step names in Check 5 (`explore`/`implement` → `plan`/`code`).
+- **docs/workflow-check-fact.md** — adds `Chunked: true` to scan-docs and validate step descriptions.
+- **docs/expand-agent-tools.md** — reinstall warning now includes `name: <name>` alongside `extends: ewh:<name>`; without `name:` the override silently falls back to the unexpanded plugin agent (the 1.0.4 fix).
+
 ## [1.0.4] - 2026-04-16
 
 ### Changed

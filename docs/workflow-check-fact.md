@@ -19,6 +19,7 @@ When you suspect documentation has drifted from reality. Checks that file paths 
 - **Agent**: `scanner` (sonnet)
 - **Rules**: `knowledge`
 - **Artifact**: `.ewh-artifacts/claims-checklist.md`
+- **Chunked**: `true`
 
 Scans all maintained documentation (CLAUDE.md, specs, memory files, README) for factual claims about the codebase: function names, file paths, line numbers, dependency lists, return value descriptions. Produces a checklist of every verifiable claim found.
 
@@ -29,6 +30,7 @@ Scans all maintained documentation (CLAUDE.md, specs, memory files, README) for 
 - **Reads**: `.ewh-artifacts/claims-checklist.md`
 - **Context**: scan-docs (full)
 - **Artifact**: `.ewh-artifacts/validation-results.md`
+- **Chunked**: `true`
 - **Requires**: claims checklist artifact exists
 
 For each claim, verifies against current source code using Read, Grep, and Glob. Checks that function names exist, file paths are on disk, line references are approximately correct, dependency lists match manifests. Reports each claim as CONFIRMED or STALE/WRONG with evidence.

@@ -8,7 +8,7 @@ When you ask Claude Code to do something complex, it often tries to do everythin
 
 EWH fixes this by breaking the work into discrete, role-scoped steps. Here's what you get:
 
-- **Lightweight** — the entire plugin is Markdown. No runtime, no build step, no dependencies to install. The dispatcher itself is a single `SKILL.md` file, a few hundred lines you can read in one sitting.
+- **Lightweight** — the entire plugin is Markdown. No runtime, no build step, no dependencies to install. The dispatcher spans two files — `SKILL.md` and `list.md` — a few hundred lines you can read in one sitting.
 - **Beginner-friendly** — `/ewh:doit init` auto-detects your language, test command, and conventions, writes them into your CLAUDE.md, and shows an onboarding guide with all available commands. Zero-config mode works in any project without setup. Commands are discoverable via `/ewh:doit list`.
 - **A good starting point for your own harness** — three customization levels (zero-config, init'd, custom overrides), the `create` subcommand (`/ewh:doit create rule|agent|workflow`) that walks you through authoring your own pieces interactively, and a complete worked example under `examples/project_greedy_snake/`. Fork the project rules, replace the workflows, swap the agents — nothing is locked in.
 - **Separation of concerns** — different agents handle coding, reviewing, and testing. A reviewer literally *cannot* edit code (read-only tool scope), so it can't silently "fix" issues instead of reporting them.
@@ -93,9 +93,9 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 /ewh:doit cleanup --manage-tasks                      # configure cleanup tasks
 /ewh:doit create [rule|agent|workflow]                  # scaffold a project artifact
 /ewh:doit expand-tools [description]                   # discover and persist agent tool expansions
+/ewh:doit list                                         # list all workflows and subcommands
 
 # Workflows (multi-step, agent-driven)
-/ewh:doit list                                         # list all workflows and subcommands
 /ewh:doit <name> [description]                         # run a workflow
 /ewh:doit <name> --auto-approval [description]         # skip the startup "Proceed?" gate (persisted)
 /ewh:doit <name> --need-approval [description]         # re-enable the startup "Proceed?" gate (persisted)
@@ -189,7 +189,7 @@ Subcommands are lightweight, interactive operations handled directly by the disp
 
 ## Agents
 
-Agents are specialized roles with distinct capabilities. Each agent has its own model, tool set, and behavioral instructions. Importantly, agents are scoped — a reviewer's role is to report findings, not to "fix" issues. (Scanner and reviewer now carry `Edit` to support the chunked artifact append pattern, but their instructions forbid editing anything other than their chunk artifact — see `incremental: true` below.)
+Agents are specialized roles with distinct capabilities. Each agent has its own model, tool set, and behavioral instructions. Importantly, agents are scoped — a reviewer's role is to report findings, not to "fix" issues. (Scanner, reviewer, and tester now carry `Edit` to support the chunked artifact append pattern, but their instructions forbid editing anything other than their chunk artifact — see `incremental: true` below.)
 
 | Agent | Model | Tools | Role |
 |---|---|---|---|

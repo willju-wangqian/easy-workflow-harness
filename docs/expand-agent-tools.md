@@ -8,7 +8,7 @@ Use this prompt to extend ewh agents with tools from an external MCP tool set
 (e.g. [Serena](https://github.com/oraios/serena), GitHub MCP, browser automation). Fill in the placeholders, then
 paste the result into a Claude Code conversation.
 
-> **Heads-up: plugin reinstalls overwrite in-place tool patches.** The manual expansion prompt edits `tools:` in the plugin's own `agents/*.md` files (e.g. under `~/.claude/plugins/cache/ewh/agents/`). Reinstalling or auto-updating the plugin replaces that directory wholesale and reverts your patched tool lists back to the defaults. The `expand-tools` subcommand avoids this problem entirely. If you expand manually, keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with `extends: ewh:<name>`), which survives reinstalls.
+> **Heads-up: plugin reinstalls overwrite in-place tool patches.** The manual expansion prompt edits `tools:` in the plugin's own `agents/*.md` files (e.g. under `~/.claude/plugins/cache/ewh/agents/`). Reinstalling or auto-updating the plugin replaces that directory wholesale and reverts your patched tool lists back to the defaults. The `expand-tools` subcommand avoids this problem entirely. If you expand manually, keep a note of your additions so you can reapply them, or move the customization into a project override (`.claude/agents/<name>.md` with both `name: <name>` and `extends: ewh:<name>` — `name:` is required so the override registers as a subagent type), which survives reinstalls.
 
 ---
 
@@ -85,7 +85,7 @@ Then ask for confirmation before writing any files.
 ## Example: [Serena](https://github.com/oraios/serena) MCP
 
 ```
-[AGENT_DIR]             → /Users/willju/development/easy-workflow-harness/agents/
+[AGENT_DIR]             → /path/to/ewh-plugin/agents/
 [LIST_READONLY_AGENTS]  → scanner.md, reviewer.md, compliance.md
 [LIST_READWRITE_AGENTS] → coder.md, tester.md
 [TOOL_SET_NAME]         → Serena (mcp__serena__*)

@@ -52,6 +52,9 @@ trigger: "/ewh:doit my-workflow"
 | `artifact` | No | File path (under `.ewh-artifacts/`) for the step's primary output |
 | `reads` | No | List of files the agent must read before starting (typically artifacts from prior steps) |
 | `requires` | No | Preconditions that must be met or the step is skipped |
+| `chunked` | No | `true` to enable proactive fan-out across many files — dispatcher prompts for glob patterns, caches them, enumerates matching files, splits into chunks, fans out parallel workers, and merges results |
+| `script` | No | Path to a pre-defined Bash script; if set, runs the script instead of spawning an agent (mutually exclusive with `chunked: true`) |
+| `script_fallback` | No | `gate` (default) or `auto` — controls behavior when a script fails: `gate` pauses for user action, `auto` silently falls back to the step's agent |
 
 ### Context Detail Levels
 
