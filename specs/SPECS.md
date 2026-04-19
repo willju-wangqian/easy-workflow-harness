@@ -44,6 +44,7 @@ Captured from a post-v2.0.1 audit (2026-04-19). Order is rough priority.
 ### Small cleanups
 
 - **`.gitattributes`**: mark `bin/ewh.mjs` as `linguist-generated=true` so GitHub collapses it in PRs and excludes it from language stats.
+- **Automatic `.ewh-artifacts/` pruning.** Run folders accumulate indefinitely — every `/ewh:doit <workflow>` invocation creates a `run-<id>/` that's never reclaimed (observed: 22 folders in one project, most containing only `state.json` from aborted starts). Proposed: on `ewh start`, prune non-`ACTIVE` runs beyond a cap (default `max_runs: 10`, configurable in `.claude/ewh-state.json` under `artifact_retention`; `"keep"` opts out). Touches `src/state/store.ts`. Worth a brainstorming pass before implementing.
 
 ## Superseded
 
