@@ -323,7 +323,6 @@ async function startSubcommandRun(
 }
 
 /** Entrypoint wired from `src/index.ts`. */
-/** Entrypoint wired from `src/index.ts`. */
 export async function main(argv: string[]): Promise<void> {
   const { values, positionals } = parseArgs({
     args: argv,
