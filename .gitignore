@@ -20,3 +20,4 @@
 # Docs build output
 node_modules/
 out/
+coverage/
