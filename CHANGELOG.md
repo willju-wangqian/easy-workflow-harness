@@ -2,6 +2,19 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [2.0.1] - 2026-04-19
+
+Documentation and schema cleanup. No behavior change.
+
+### Removed
+- `--auto-approval` / `--need-approval` CLI flags and the `auto_approve_start` field in `WorkflowSettings`. The v1 "startup Proceed? gate" was never ported to the v2 state machine, so these flags controlled nothing. Use `--trust` (optionally `--trust --save` to persist) for gate automation.
+- `auto_approve_start` frontmatter field from `templates/workflow.md` and the four built-in workflow files (it was a no-op in v2).
+
+### Changed
+- `README.md`, `HARNESS.md`, `CLAUDE.md`: gate docs now describe the three real classes (structural, compliance, error). The "Auto-Approve Start" subsection has been deleted.
+- `skills/doit/list.md` + `src/commands/list.ts` catalog: flag list now matches the binary's actual parser (`--trust`, `--yolo`, `--max-retries`, `--save`, `--strict`, `--manage-scripts`, `--manage-tasks`, `--no-override`).
+- `bin/ewh` wrapper: resolve symlinks and export `CLAUDE_PLUGIN_ROOT` so `ewh` works when installed on `$PATH` via symlink.
+
 ## [2.0.0] - 2026-04-19
 
 Complete rewrite of the dispatcher layer as a Node/TypeScript binary. User-facing workflow/agent/rule file formats are unchanged; only the orchestration engine changed.
