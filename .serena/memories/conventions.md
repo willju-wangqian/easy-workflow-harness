@@ -15,11 +15,11 @@ Every agent definition must include:
 
 ## Prompt Assembly Order
 agent template → `## Required Reading` → `## Active Rules` → `## Prior Steps` → `## Task` → `## Project Context`
-Maintain this order when editing the dispatcher.
+Maintain this order when editing `src/workflow/prompt-builder.ts`.
 
 ## Rule Severity
 - `severity: critical` + `verify:` shell command → triggers automatic compliance check after step
-- `severity: warning` → advisory only
+- `severity: default` → advisory only (all built-in rules currently use this)
 
 ## Naming
 - Workflow files: kebab-case (`add-feature.md`)

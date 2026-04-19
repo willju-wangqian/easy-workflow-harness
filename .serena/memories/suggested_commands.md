@@ -1,23 +1,37 @@
 # Suggested Commands
 
-## Local Testing
+## Build & Test
 ```bash
-# Load the plugin and test in any project
-claude --plugin-dir /path/to/easy-workflow-harness
-
-# Then inside Claude Code:
-/ewh:doit list                          # list workflows
-/ewh:doit init                          # bootstrap project CLAUDE.md
-/ewh:doit add-feature "description"    # run a workflow
-/ewh:doit add-feature --auto-approval  # skip startup gate for this workflow
+npm run build         # compile src/ → bin/ewh.mjs (esbuild)
+npm run typecheck     # tsc --noEmit
+npm test              # vitest run (unit + integration)
+npm run test:coverage # vitest with v8 coverage
 ```
 
-## No Build / No Lint / No Tests
-This repo has no build step, no lint command, and no automated test suite.
-Changes are .md files only. "Testing" means loading the plugin in Claude Code and exercising it manually.
+`bin/ewh.mjs` is the compiled artifact — rebuild after any source change before manual testing.
+
+## Local Plugin Testing
+```bash
+# From any project, load the plugin in-place:
+claude --plugin-dir /Users/willju/development/easy-workflow-harness
+
+# Or via marketplace (pulls into ~/.claude/plugins/cache/):
+# /plugin marketplace add /Users/willju/development/easy-workflow-harness
+# /plugin install ewh@willju-plugins
+```
+
+## Inside Claude Code
+```
+/ewh:doit list                          # list workflows + subcommands
+/ewh:doit init                          # bootstrap Harness Config into project CLAUDE.md
+/ewh:doit add-feature "desc"            # run a workflow
+/ewh:doit add-feature --trust           # auto-approve structural gates this run
+/ewh:doit cleanup --manage-tasks        # configure cleanup tasks
+/ewh:doit expand-tools "desc"           # discover and persist agent tool expansions
+```
 
 ## Git
-Standard git — main branch. Commit .md changes directly.
+Standard git — main branch. Commit source changes and rebuilt `bin/ewh.mjs` together so cloned checkouts work without an install step.
 
 ## Docs Build (optional)
-node_modules present for remark/rehype docs rendering — not part of core development.
+`npm run docs:build` renders `docs/` to HTML via remark/rehype (output is gitignored).
