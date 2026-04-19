@@ -2,7 +2,6 @@
 name: refine-feature
 description: Scan, suggest, implement, review, and test improvements to existing code
 trigger: "/ewh:doit refine-feature"
-auto_approve_start: false
 ---
 
 ## Steps

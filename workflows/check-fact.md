@@ -2,7 +2,6 @@
 name: check-fact
 description: Cross-validate documentation against source code
 trigger: "/ewh:doit check-fact"
-auto_approve_start: false
 ---
 
 ## Steps

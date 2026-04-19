@@ -8031,7 +8031,6 @@ import { promises as fs8 } from "node:fs";
 import { join as join8, dirname as dirname3 } from "node:path";
 import { randomBytes as randomBytes2 } from "node:crypto";
 var DEFAULTS = {
-  auto_approve_start: false,
   auto_structural: false,
   max_error_retries: 2
 };
@@ -16138,7 +16137,11 @@ Subcommands (lightweight, interactive):
   /ewh:doit list                    \u2014 show this catalog
 
 Flags:
-  --auto-approval / --need-approval \u2014 toggle startup confirmation per workflow; use with /ewh:doit <workflow>
+  --trust                           \u2014 auto-approve structural gates this run (use with --save to persist)
+  --yolo                            \u2014 --trust + auto-skip compliance (never persisted)
+  --max-retries N                   \u2014 override max_error_retries for this run (use with --save to persist)
+  --save                            \u2014 persist applied flag values to workflow_settings
+  --strict                          \u2014 enable strict drift detection for this run
   --manage-scripts                  \u2014 manage cached scripts before a workflow run; use with /ewh:doit <workflow>
   --manage-tasks                    \u2014 configure cleanup tasks; use with /ewh:doit cleanup
   --no-override                     \u2014 force built-in subcommand when a same-name project workflow exists; use with /ewh:doit <subcommand>

@@ -13,7 +13,6 @@ required_frontmatter:
 | `name` | yes | Workflow identifier (matches filename without .md) | kebab-case string |
 | `description` | yes | One-line summary of what this workflow does | free text |
 | `trigger` | yes | The command to invoke this workflow | `/ewh:doit <name>` |
-| `auto_approve_start` | no | Default for the startup "Proceed?" gate | `true` or `false` (default: `false`) |
 
 ## Body Structure
 

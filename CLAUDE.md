@@ -77,7 +77,7 @@ Then in any project:
 
 **CLAUDE.md**: The Claude Code runtime automatically injects the project's CLAUDE.md into every subagent. The dispatcher's `## Project Context` section contains only Harness Config values — it does not duplicate CLAUDE.md.
 
-**Gate types**: Four independent classes — `startup` (before first step; skippable via `--auto-approval` or `--trust`), `structural` (per-step `gate: structural`; skippable via `--trust` or `--yolo`), `compliance` (after `severity: critical` rule fails; never auto-persisted, only `--yolo` skips it for a single run), `error` (agent crash / missing artifact / script non-zero; gates after `max_error_retries` exhausted; configurable via `--max-retries N` or persisted via `--save`). `--yolo --save` is rejected.
+**Gate types**: Three independent classes — `structural` (per-step `gate: structural`; skippable via `--trust` or `--yolo`), `compliance` (after `severity: critical` rule fails; never auto-persisted, only `--yolo` skips it for a single run), `error` (agent crash / missing artifact / script non-zero; gates after `max_error_retries` exhausted; configurable via `--max-retries N` or persisted via `--save`). `--yolo --save` is rejected.
 
 ## Extending the Harness
 

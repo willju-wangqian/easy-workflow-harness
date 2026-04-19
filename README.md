@@ -35,7 +35,6 @@ EWH ships with predefined workflows, agents, and rules that work out of the box.
   - [Extending Agent Tool Pools](#extending-agent-tool-pools)
 - [Rules](#rules) — 4 injectable rule sets
 - [Gates](#gates) — control flow types
-  - [Auto-Approve Start](#auto-approve-start) — per-workflow switch to skip the startup "Proceed?" gate
   - [Gate Automation Flags](#gate-automation-flags) — --trust, --yolo, --max-retries, --save, --strict
   - [Script Proposal](#script-proposal) — binary proposes scripts for mechanical steps to save tokens
 - [Customizing EWH for Your Project](#customizing-ewh-for-your-project) — three levels of integration (zero config / init'd / custom overrides)
@@ -98,8 +97,6 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 
 # Workflows (multi-step, agent-driven)
 /ewh:doit <name> [description]                         # run a workflow
-/ewh:doit <name> --auto-approval [description]         # skip the startup "Proceed?" gate (persisted)
-/ewh:doit <name> --need-approval [description]         # re-enable the startup "Proceed?" gate (persisted)
 /ewh:doit <name> --manage-scripts [description]        # manage cached scripts before running
 
 # Gate automation (apply to workflow runs; use --save to persist)
@@ -258,10 +255,9 @@ Rules have a `severity` field. Rules marked `severity: critical` with a `verify`
 
 ## Gates
 
-Four gate classes control where the workflow pauses for your input:
+Three gate classes control where the workflow pauses for your input:
 
-- **startup** — before the first step, the workflow shows the plan and asks "Proceed?". Skippable per-workflow via `--auto-approval` (persisted) or per-run via `--trust`.
-- **structural** — the workflow stops before the step and shows what's about to happen. You must confirm before it proceeds. Used for decisions that matter (approving a plan, reviewing proposed changes). Skippable per-run via `--trust`.
+- **structural** — the workflow stops before the step and shows what's about to happen. You must confirm before it proceeds. Used for decisions that matter (approving a plan, reviewing proposed changes). Skippable per-run via `--trust`; persist per-workflow with `--trust --save`.
 - **compliance** — triggered automatically after a step with `severity: critical` rules. If the `verify` command fails, the workflow always stops regardless of the step's gate type. You can choose to fix, override, or abort. Never auto-persisted — only `--yolo` skips it for a single run.
 - **error** — triggered when an agent crashes, hits max turns, a script exits non-zero, or an expected artifact is missing. The binary retries up to `max_error_retries` times (default: 2) before gating. Override with `--max-retries N` for a run, or persist via `--save`.
 
@@ -269,55 +265,13 @@ You're never locked in — at any gate, you can abort the workflow. Completed wo
 
 **Crash-resume.** If Claude Code exits mid-workflow, the `ACTIVE` marker in `.ewh-artifacts/<run-id>/` signals an in-flight run. The next `/ewh:doit <name>` invocation detects this and offers: resume from last checkpoint / abort / clear and start fresh.
 
-### Auto-Approve Start
-
-Before any workflow runs, the dispatcher prints the plan (steps, gates, expected artifacts) and asks "Proceed?". If a particular workflow feels safe enough that you don't need this prompt, you can suppress it with a **per-workflow** persisted switch:
-
-```bash
-/ewh:doit add-feature --auto-approval "your task"   # persist: skip "Proceed?" for add-feature
-/ewh:doit add-feature --need-approval "your task"   # persist: re-enable "Proceed?" for add-feature
-```
-
-**The switch is per-workflow, not project-wide.** Auto-approving `add-feature` does NOT auto-approve `refine-feature`, `check-fact`, or anything else — each workflow has its own switch, so your sense of safety for one workflow doesn't leak to others.
-
-**Where it's stored.** The flag writes to `.claude/ewh-state.json` in your project, under `workflow_settings.<workflow_name>.auto_approve_start`:
-
-```json
-{
-  "workflow_settings": {
-    "add-feature": {
-      "auto_approve_start": true,
-      "auto_structural": false,
-      "max_error_retries": 2
-    }
-  }
-}
-```
-
-Each workflow's markdown file also declares an `auto_approve_start: false` default in its frontmatter — `.claude/ewh-state.json` overrides it on a per-project basis. Default behavior when neither is set: ask. The plan is still printed when auto-approved — you just don't have to confirm it.
-
-**Recommended:** add `.claude/ewh-state.json` to your project's `.gitignore`. Auto-approve switches, chunked-dispatch scopes, agent tool expansions, and cleanup tasks are stored together in this file and express developer-local preferences, so they shouldn't be committed (unless you want shared team-wide settings). New projects: `/ewh:doit init` adds these lines for you automatically (alongside `.ewh-artifacts/`). Existing projects that ran `init` before these lines were added: re-run `/ewh:doit init` — the gitignore step is idempotent and will append only the missing lines without disturbing anything else.
-
-**Permission prompt on first write.** The first time the dispatcher writes to `.claude/ewh-state.json`, Claude Code may show a normal file-write permission prompt. That's expected — accept it to allow future toggles.
-
-**This switch only bypasses the startup "Proceed?" gate.** Every other gate is unaffected:
-
-- **Stale artifact cleanup gate** — if `.ewh-artifacts/` from a prior run exists, the dispatcher always asks "Clear them?" before wiping the workspace. This gate exists to protect in-progress work and is *not* covered by `--auto-approval` — clearing files is a destructive action that always requires explicit confirmation.
-- All per-step **structural** gates
-- All **compliance** failure gates
-- All **error** / **artifact verification** gates
-
-If you want truly hands-off execution, you also need to manually clear `.ewh-artifacts/` before starting (or accept the one extra prompt at the top).
-
 ### Gate Automation Flags
 
 Per-run flags that adjust gate behavior. Use `--save` to write your choices into `workflow_settings` in `.claude/ewh-state.json` for future runs.
 
 | Flag | Effect | Saveable? |
 |---|---|---|
-| `--auto-approval` | Skip the startup "Proceed?" gate | Yes (per workflow) |
-| `--need-approval` | Re-enable the startup "Proceed?" gate | Yes (per workflow) |
-| `--trust` | Auto-approve startup and structural gates this run | Yes (with `--save`) |
+| `--trust` | Auto-approve structural gates this run | Yes (with `--save`) |
 | `--yolo` | `--trust` + auto-skip compliance gates | **No** — never persisted |
 | `--max-retries N` | Override `max_error_retries` for this run | Yes (with `--save`) |
 | `--strict` | Drift Level 3: halt on any tool-call mismatch | No |

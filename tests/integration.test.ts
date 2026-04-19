@@ -134,8 +134,8 @@ describe('happy path — single agent step completes on first run', () => {
   });
 });
 
-describe('startup gate — --need-approval flips auto-approval', () => {
-  it('auto-approval triggers agent immediately; need-approval path still works', async () => {
+describe('no startup gate — first auto-gate step emits tool-call directly', () => {
+  it('workflow with only gate: auto steps goes straight to tool-call', async () => {
     await writeFile(
       join(pluginRoot, 'workflows', 'q.md'),
       `---\nname: q\n---\n\n## Steps\n\n- name: run\n  gate: auto\n  agent: coder\n  reads: [r.md]\n`,

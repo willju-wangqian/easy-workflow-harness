@@ -57,17 +57,17 @@ Projects opt in at three levels:
 # Workflows (multi-step, agent-driven)
 /ewh:doit list                                      # list available workflows and subcommands
 /ewh:doit <name> [description]                      # run a workflow
-/ewh:doit <name> --auto-approval [description]      # skip the startup "Proceed?" gate for THIS workflow
-/ewh:doit <name> --need-approval [description]      # re-enable the startup "Proceed?" gate for THIS workflow
+/ewh:doit <name> --trust [description]              # auto-approve structural gates this run
+/ewh:doit <name> --trust --save [description]       # persist auto-approve structural gates for this workflow
 /ewh:doit <name> --manage-scripts [description]     # manage cached scripts before running
 
 # Override control
 /ewh:doit <subcommand> --no-override                # force built-in subcommand when a same-name project workflow exists
 ```
 
-The `--auto-approval` / `--need-approval` flags toggle a **per-workflow** persisted switch stored in `.claude/ewh-state.json` under `auto_approve_start.<workflow_name>`. Each workflow has its own switch — setting it on `add-feature` does NOT affect other workflows. The switch only affects the startup confirmation gate; structural per-step gates, compliance, error gates, and the stale-artifact cleanup gate are unaffected.
+The `--trust` flag auto-approves structural gates for a single run; pair it with `--save` to persist per-workflow settings to `.claude/ewh-state.json` under `workflow_settings.<workflow_name>`. Each workflow has its own settings — persisting on `add-feature` does NOT affect other workflows. Compliance, error, and stale-artifact cleanup gates are never skipped by `--trust`; `--yolo` auto-skips compliance for a single run but is never persisted.
 
-`.claude/ewh-state.json` is a per-project sidecar storing all dispatcher state: auto-approve switches (`auto_approve_start`), chunked-dispatch file scopes (`chunked_scopes`), agent tool expansions (`agent_tools`), and cleanup tasks (`cleanup_tasks`). Recommended to gitignore for developer-local preferences, or commit to share team-wide settings.
+`.claude/ewh-state.json` is a per-project sidecar storing all dispatcher state: per-workflow gate settings (`workflow_settings`), chunked-dispatch file patterns (`chunked_patterns`), agent tool expansions (`agent_tools`), and cleanup tasks (`cleanup_tasks`). Recommended to gitignore for developer-local preferences, or commit to share team-wide settings.
 
 ## Design Spec
 

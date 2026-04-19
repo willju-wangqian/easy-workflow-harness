@@ -2,7 +2,6 @@
 name: update-knowledge
 description: Update CLAUDE.md, memory files, and project documentation to match current state
 trigger: "/ewh:doit update-knowledge"
-auto_approve_start: false
 ---
 
 ## Steps

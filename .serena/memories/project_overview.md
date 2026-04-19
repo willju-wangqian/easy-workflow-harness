@@ -44,5 +44,5 @@ v2.0.0 — see `package.json` and `.claude-plugin/plugin.json`.
 - **Atomic state persistence.** Every transition writes `state.json` (tmp → fsync → rename). Crash-resume is free.
 - **Project overrides:** `.claude/agents/`, `.claude/rules/`, `.claude/workflows/`. Rules concatenate (plugin + project, recursive); agents and workflows: project replaces.
 - **AGENT_COMPLETE sentinel:** every agent must emit this as last line.
-- **Four gate classes:** `startup`, `structural`, `compliance`, `error`.
-- **Flags:** `--trust`, `--yolo`, `--max-retries`, `--save`, `--strict`, `--auto-approval`, `--need-approval`, `--manage-scripts`, `--manage-tasks`, `--no-override`.
+- **Three gate classes:** `structural`, `compliance`, `error`.
+- **Flags:** `--trust`, `--yolo`, `--max-retries`, `--save`, `--strict`, `--manage-scripts`, `--manage-tasks`, `--no-override`.

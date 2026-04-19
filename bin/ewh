@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 # Thin shim that invokes the bundled Node entry point with the same argv.
 # The bundle at bin/ewh.mjs is produced by `npm run build` (esbuild).
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolves symlinks so CLAUDE_PLUGIN_ROOT works even when `ewh` is on $PATH
+# via a symlink (e.g. /usr/local/bin/ewh -> <plugin>/bin/ewh).
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+while [ -L "$SCRIPT_PATH" ]; do
+  LINK_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+  SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+  [[ $SCRIPT_PATH != /* ]] && SCRIPT_PATH="$LINK_DIR/$SCRIPT_PATH"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+export CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(dirname "$SCRIPT_DIR")}"
 exec node "${SCRIPT_DIR}/ewh.mjs" "$@"

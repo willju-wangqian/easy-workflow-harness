@@ -5,7 +5,7 @@ All agent, rule, and workflow files require YAML frontmatter. Required fields:
 
 - **Agent**: `name`, `description`, `model`, `tools`, `maxTurns`
 - **Rule**: `name`, `description`, `scope`, `severity`, `inject_into`, `verify`
-- **Workflow**: `name`, `description`, `trigger`, optional `auto_approve_start`
+- **Workflow**: `name`, `description`, `trigger`
 
 ## Agent Structure
 Every agent definition must include:

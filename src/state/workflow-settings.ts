@@ -11,13 +11,11 @@ import { randomBytes } from 'node:crypto';
 import type { CleanupTask, AgentToolEntry } from './types.js';
 
 export type WorkflowSettings = {
-  auto_approve_start: boolean;
   auto_structural: boolean;
   max_error_retries: number;
 };
 
 const DEFAULTS: WorkflowSettings = {
-  auto_approve_start: false,
   auto_structural: false,
   max_error_retries: 2,
 };

@@ -29,7 +29,11 @@ Subcommands (lightweight, interactive):
   /ewh:doit list                    — show this catalog
 
 Flags:
-  --auto-approval / --need-approval — toggle startup confirmation per workflow; use with /ewh:doit <workflow>
+  --trust                           — auto-approve structural gates this run (use with --save to persist)
+  --yolo                            — --trust + auto-skip compliance (never persisted)
+  --max-retries N                   — override max_error_retries for this run (use with --save to persist)
+  --save                            — persist applied flag values to workflow_settings
+  --strict                          — enable strict drift detection for this run
   --manage-scripts                  — manage cached scripts before a workflow run; use with /ewh:doit <workflow>
   --manage-tasks                    — configure cleanup tasks; use with /ewh:doit cleanup
   --no-override                     — force built-in subcommand when a same-name project workflow exists; use with /ewh:doit <subcommand>

@@ -2,7 +2,6 @@
 name: add-feature
 description: Plan, implement, review, and test a new feature
 trigger: "/ewh:doit add-feature"
-auto_approve_start: false
 ---
 
 ## Steps
