@@ -8,7 +8,7 @@ When you ask Claude Code to do something complex, it often tries to do everythin
 
 EWH fixes this by breaking the work into discrete, role-scoped steps. Here's what you get:
 
-- **Lightweight** — the entire plugin is Markdown. No runtime, no build step, no dependencies to install. The dispatcher spans two files — `SKILL.md` and `list.md` — a few hundred lines you can read in one sitting.
+- **Lightweight** — workflows, agents, and rules are plain Markdown files you can open, read, and change. The orchestration binary (`bin/ewh`) is a small local Node/TypeScript bundle — no external services, no durable queue, atomic state writes so crashes are resumable.
 - **Beginner-friendly** — `/ewh:doit init` auto-detects your language, test command, and conventions, writes them into your CLAUDE.md, and shows an onboarding guide with all available commands. Zero-config mode works in any project without setup. Commands are discoverable via `/ewh:doit list`.
 - **A good starting point for your own harness** — three customization levels (zero-config, init'd, custom overrides), the `create` subcommand (`/ewh:doit create rule|agent|workflow`) that walks you through authoring your own pieces interactively, and a complete worked example under `examples/project_greedy_snake/`. Fork the project rules, replace the workflows, swap the agents — nothing is locked in.
 - **Separation of concerns** — different agents handle coding, reviewing, and testing. A reviewer literally *cannot* edit code (read-only tool scope), so it can't silently "fix" issues instead of reporting them.
@@ -36,7 +36,8 @@ EWH ships with predefined workflows, agents, and rules that work out of the box.
 - [Rules](#rules) — 4 injectable rule sets
 - [Gates](#gates) — control flow types
   - [Auto-Approve Start](#auto-approve-start) — per-workflow switch to skip the startup "Proceed?" gate
-  - [Script Proposal](#script-proposal) — dispatcher proposes scripts for mechanical steps to save tokens
+  - [Gate Automation Flags](#gate-automation-flags) — --trust, --yolo, --max-retries, --save, --strict
+  - [Script Proposal](#script-proposal) — binary proposes scripts for mechanical steps to save tokens
 - [Customizing EWH for Your Project](#customizing-ewh-for-your-project) — three levels of integration (zero config / init'd / custom overrides)
 - [Extending EWH](#extending-ewh) — create your own workflows, agents, rules; example project
 - [Recommended: Brainstorming Skill](#recommended-brainstorming-skill) — better plan-step facilitation
@@ -101,6 +102,12 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 /ewh:doit <name> --need-approval [description]         # re-enable the startup "Proceed?" gate (persisted)
 /ewh:doit <name> --manage-scripts [description]        # manage cached scripts before running
 
+# Gate automation (apply to workflow runs; use --save to persist)
+/ewh:doit <name> --trust [description]                 # auto-approve structural gates this run
+/ewh:doit <name> --yolo [description]                  # --trust + auto-skip compliance (never persisted)
+/ewh:doit <name> --max-retries N [description]         # override max error retries for this run
+/ewh:doit <name> --strict [description]                # strict drift detection: halt on tool-call mismatch
+
 # Override control
 /ewh:doit <subcommand> --no-override                   # force built-in subcommand when a same-name project workflow exists
 ```
@@ -108,6 +115,8 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 See [Subcommands](#subcommands), [Auto-Approve Start](#auto-approve-start), [Script Proposal](#script-proposal), and [Extending Agent Tool Pools](#extending-agent-tool-pools) for details.
 
 ## How It Works
+
+**Binary drives; you execute.** At each turn the `ewh` binary emits one action — spawn an agent, show a gate prompt, run a script — and the SKILL.md shim executes it. All orchestration state lives in the binary; the LLM only runs the named tool call and reports the result back. Full agent prompts are written to disk; the outer session carries only the path (~30 tokens vs. ~5k per step in older versions).
 
 Here's what happens when you run `/ewh:doit add-feature "add CSV export"`:
 
@@ -228,7 +237,7 @@ The one rule that must hold: **read-only agents may only gain read-only tools**.
 /ewh:doit expand-tools "add Serena tools for semantic code navigation"
 ```
 
-After a plugin reinstall, rerun `expand-tools` and choose "Regenerate overrides" to restore your tool expansions from the persisted config. See [specs/expand-tools.md](specs/expand-tools.md) for the full design spec.
+After a plugin reinstall, rerun `expand-tools` and choose "Regenerate overrides" to restore your tool expansions from the persisted config.
 
 For manual expansion (advanced), see [docs/expand-agent-tools.md](docs/expand-agent-tools.md) for a copy-paste prompt that walks Claude through the expansion with placeholders and a worked example using [Serena](https://github.com/oraios/serena) MCP.
 
@@ -249,13 +258,16 @@ Rules have a `severity` field. Rules marked `severity: critical` with a `verify`
 
 ## Gates
 
-Gates control where the workflow pauses for your input:
+Four gate classes control where the workflow pauses for your input:
 
-- **structural** — the workflow stops and shows you what's about to happen. You must confirm before it proceeds. Used for decisions that matter (approving a plan, reviewing proposed changes).
-- **auto** — the workflow proceeds silently. Used for mechanical steps where human review isn't needed (running tests, automated scanning).
-- **compliance** — triggered automatically when a step has critical rules with `verify` commands. If verification fails, the workflow always stops, regardless of the step's gate type. You can choose to fix, override, or abort.
+- **startup** — before the first step, the workflow shows the plan and asks "Proceed?". Skippable per-workflow via `--auto-approval` (persisted) or per-run via `--trust`.
+- **structural** — the workflow stops before the step and shows what's about to happen. You must confirm before it proceeds. Used for decisions that matter (approving a plan, reviewing proposed changes). Skippable per-run via `--trust`.
+- **compliance** — triggered automatically after a step with `severity: critical` rules. If the `verify` command fails, the workflow always stops regardless of the step's gate type. You can choose to fix, override, or abort. Never auto-persisted — only `--yolo` skips it for a single run.
+- **error** — triggered when an agent crashes, hits max turns, a script exits non-zero, or an expected artifact is missing. The binary retries up to `max_error_retries` times (default: 2) before gating. Override with `--max-retries N` for a run, or persist via `--save`.
 
 You're never locked in — at any gate, you can abort the workflow. Completed work is preserved as-is.
+
+**Crash-resume.** If Claude Code exits mid-workflow, the `ACTIVE` marker in `.ewh-artifacts/<run-id>/` signals an in-flight run. The next `/ewh:doit <name>` invocation detects this and offers: resume from last checkpoint / abort / clear and start fresh.
 
 ### Auto-Approve Start
 
@@ -268,13 +280,16 @@ Before any workflow runs, the dispatcher prints the plan (steps, gates, expected
 
 **The switch is per-workflow, not project-wide.** Auto-approving `add-feature` does NOT auto-approve `refine-feature`, `check-fact`, or anything else — each workflow has its own switch, so your sense of safety for one workflow doesn't leak to others.
 
-**Where it's stored.** The flag writes to `.claude/ewh-state.json` in your project, under `auto_approve_start.<workflow_name>`:
+**Where it's stored.** The flag writes to `.claude/ewh-state.json` in your project, under `workflow_settings.<workflow_name>.auto_approve_start`:
 
 ```json
 {
-  "auto_approve_start": {
-    "add-feature": true,
-    "refine-feature": false
+  "workflow_settings": {
+    "add-feature": {
+      "auto_approve_start": true,
+      "auto_structural": false,
+      "max_error_retries": 2
+    }
   }
 }
 ```
@@ -294,14 +309,31 @@ Each workflow's markdown file also declares an `auto_approve_start: false` defau
 
 If you want truly hands-off execution, you also need to manually clear `.ewh-artifacts/` before starting (or accept the one extra prompt at the top).
 
+### Gate Automation Flags
+
+Per-run flags that adjust gate behavior. Use `--save` to write your choices into `workflow_settings` in `.claude/ewh-state.json` for future runs.
+
+| Flag | Effect | Saveable? |
+|---|---|---|
+| `--auto-approval` | Skip the startup "Proceed?" gate | Yes (per workflow) |
+| `--need-approval` | Re-enable the startup "Proceed?" gate | Yes (per workflow) |
+| `--trust` | Auto-approve startup and structural gates this run | Yes (with `--save`) |
+| `--yolo` | `--trust` + auto-skip compliance gates | **No** — never persisted |
+| `--max-retries N` | Override `max_error_retries` for this run | Yes (with `--save`) |
+| `--strict` | Drift Level 3: halt on any tool-call mismatch | No |
+
+`--yolo --save` is rejected — compliance auto-skip cannot be persisted. `--yolo` always produces a loud log entry so you know it was applied.
+
+**Drift detection.** The plugin-bundled hooks (`hooks/hooks.json`) record every tool call the LLM makes during a run. After each step, the binary checks whether the LLM ran the instructed tool call. A mismatch is a drift event. Level 2 (default): logs a warning and continues. Level 3 (`--strict`): halts and gates — retry / override / abort. Extra Read/Grep calls do not count as drift; only the primary instructed call is checked.
+
 ### Script Proposal
 
-Some workflow steps don't need an LLM — they just call CLI tools (linting, formatting, running a test suite). The dispatcher can detect these mechanical steps and propose running a Bash script instead of spawning an agent, saving tokens.
+Some workflow steps don't need an LLM — they just call CLI tools (linting, formatting, running a test suite). The binary can detect these mechanical steps and propose running a Bash script instead of spawning an agent, saving tokens.
 
 **How it works:**
 
-1. A step can declare an explicit `script:` path in its workflow definition, or the dispatcher can detect scriptability at runtime
-2. If no script exists and the step looks mechanical, the dispatcher proposes generating one — you can approve, reject, edit, or ask for regeneration
+1. A step can declare an explicit `script:` path in its workflow definition, or the binary can detect scriptability at runtime
+2. If no script exists and the step looks mechanical, the binary proposes generating one — you can approve, reject, edit, or ask for regeneration
 3. Approved scripts are cached in `.claude/ewh-scripts/<workflow>/<step>.sh` and reused on subsequent runs
 4. Cached scripts show their path and a one-line summary when running — no confirmation gate needed (you already approved the content)
 5. If a step's description changes after a script was cached, the dispatcher flags it as potentially stale and asks you to review
@@ -321,7 +353,7 @@ Some workflow steps don't need an LLM — they just call CLI tools (linting, for
 
 This opens a pre-run management menu for all cached scripts in the workflow. Use it to review stale scripts, edit cached ones, or delete scripts to force re-evaluation.
 
-**Where scripts live.** Cached scripts are stored in `.claude/ewh-scripts/<workflow>/<step>.sh`. Gitignore them for developer-local preferences, or commit them to share team-wide scripts. See [specs/script-proposal.md](specs/script-proposal.md) for the full design spec.
+**Where scripts live.** Cached scripts are stored in `.claude/ewh-scripts/<workflow>/<step>.sh`. Gitignore them for developer-local preferences, or commit them to share team-wide scripts.
 
 ## Customizing EWH for Your Project
 
@@ -409,7 +441,7 @@ The `add-feature` workflow's plan step works best with a dedicated brainstorming
 
 ## Testing Checklist
 
-Before merging changes to the dispatcher or override resolution logic, run the manual checks in [docs/testing-overrides.md](docs/testing-overrides.md). The checklist covers the three resolution paths — agent override, rule concatenation, and workflow override — with concrete fixture files and pass/fail signals for each.
+Before merging changes to the `ewh` binary or override resolution logic, run the manual checks in [docs/testing-overrides.md](docs/testing-overrides.md). The checklist covers the three resolution paths — agent override, rule concatenation, and workflow override — with concrete fixture files and pass/fail signals for each.
 
 Project owners can also use it to confirm that their `.claude/` overrides are picked up correctly.
 

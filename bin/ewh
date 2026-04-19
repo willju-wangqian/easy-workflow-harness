@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Thin shim that invokes the bundled Node entry point with the same argv.
+# The bundle at bin/ewh.mjs is produced by `npm run build` (esbuild).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "${SCRIPT_DIR}/ewh.mjs" "$@"

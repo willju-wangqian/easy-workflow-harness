@@ -2,6 +2,33 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [2.0.0] - 2026-04-19
+
+Complete rewrite of the dispatcher layer as a Node/TypeScript binary. User-facing workflow/agent/rule file formats are unchanged; only the orchestration engine changed.
+
+### Changed (architecture)
+- **Binary-drives-control-flow** — The ~990-line `skills/doit/SKILL.md` markdown dispatcher is replaced by a Node/TypeScript binary at `bin/ewh` (compiled via esbuild to `bin/ewh.mjs`). `SKILL.md` is now a thin shim (~60 lines) that invokes `ewh start` and loops on `ewh report`. Binary holds all orchestration state; LLM executes one named tool call per turn and reports the result. Outer-session token cost reduced ~5× (file-indirection: agent prompts written to `.ewh-artifacts/<run-id>/step-N-prompt.md`; outer session carries only the path, ~30 tokens vs. ~5k in v1).
+- **Typed state machine** — Step state is a discriminated union of 17 phases (`src/state/machine.ts`). Every transition is a pure function; TypeScript enforces exhaustive handling. No more LLM re-interpreting prose control logic on each run.
+- **`ewh-state.json` schema** — `auto_approve_start` (top-level object) replaced by `workflow_settings.<name>.auto_approve_start`; `chunked_scopes` replaced by `chunked_patterns.<workflow>/<step>`. Old v1.x files load without error (backward-compatible read path; new keys added on first write).
+- **Four gate classes with independent toggles** — Startup, Structural, Compliance (never auto-persisted), Error (retry-limited). New per-run flags: `--trust` (auto structural), `--yolo` (trust + compliance skip; not saveable), `--max-retries N`, `--save` (persist applied flags to `workflow_settings`), `--strict` (drift Level 3). `--yolo --save` is rejected.
+
+### Added
+- **`bin/ewh` binary** — `ewh start "<name> [args]"` begins a run; `ewh report --run <id> --step <i> [flags]` advances it. Each command emits one `ACTION:` block for the shim to execute. Builtin subcommands (`list`, `init`, `cleanup`, `create`, `expand-tools`) alias to `ewh start <name>`.
+- **File-indirection for prompts and results** — full agent prompts written to disk before dispatch; outer session passes only the path. Result files likewise written by agents to disk; binary reads them on `ewh report`.
+- **Plugin-bundled hooks** (`hooks/hooks.json`) — `SubagentStart`/`SubagentStop` and `PostToolUse` hooks append to `.ewh-artifacts/<run-id>/turn-log.jsonl` for drift detection. Scoped by `ACTIVE` marker; fires only when the plugin is enabled, no install step required.
+- **Drift detection** — Level 2 (default): tool-call mismatch logs a warning and continues. Level 3 (`--strict`): mismatch halts with a gate. Extra Read/Grep calls do not count as drift — only the primary expected call is checked.
+- **Crash-resume** — every state transition writes atomically (tmp → fsync → rename) before emitting the next instruction. If the binary crashes mid-transition, the next `ewh report` re-reads state and re-emits the same instruction. Abandoned runs leave an `ACTIVE` marker; next `/ewh:doit` invocation offers resume / abort / clear.
+- **Subcommand migration** — `init`, `cleanup`, `create`, `expand-tools`, `list` migrated from inline SKILL.md prose into `src/commands/*.ts`. User experience and behavior are identical to v1.
+- **Vitest test suite** — unit tests on state machine transitions, workflow parser, rule loader, prompt builder, preconditions, sentinel detection, split algorithm, hash staleness, drift comparator, and instruction emitter. Integration tests cover all gate classes, chunked dispatch, script resolution, continuation, split-merge, crash-resume, abort, and drift levels.
+
+### Superseded specs
+The following five decision specs are superseded by `dispatcher-binary-v2` and marked accordingly in `specs/SPECS.md`:
+- `partial-output-handling` → implemented in `src/continuation/` as `continuation`, `split`, `split_merge` phases.
+- `context-assembly-improvements` → implemented in `src/workflow/prompt-builder.ts`.
+- `script-proposal` → implemented in `src/scripts/` as `script_eval`, `script_propose`, `script_run` phases.
+- `expand-tools` → implemented as the `ewh expand-tools` binary subcommand.
+- `ewh-plugin-design` → packaging decisions covered by plugin manifest and `dispatcher-binary-v2` spec.
+
 ## [1.0.5] - 2026-04-16
 
 ### Changed

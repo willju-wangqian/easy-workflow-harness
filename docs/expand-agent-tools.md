@@ -1,7 +1,6 @@
 # Expanding ewh Agent Tool Lists
 
-> **Recommended: use `/ewh:doit expand-tools` instead.** The `expand-tools` subcommand automates tool discovery, proposes per-agent assignments based on your intent, persists the config in `.claude/ewh-state.json`, and generates `.claude/agents/<name>.md` overrides that survive plugin reinstalls. After a reinstall, rerun `expand-tools` → "Regenerate overrides" to restore your expansions. See [specs/expand-tools.md](../specs/expand-tools.md) for the full design.
-
+> **Recommended: use `/ewh:doit expand-tools` instead.** The `expand-tools` subcommand automates tool discovery, proposes per-agent assignments based on your intent, persists the config in `.claude/ewh-state.json`, and generates `.claude/agents/<name>.md` overrides that survive plugin reinstalls. After a reinstall, rerun `expand-tools` → "Regenerate overrides" to restore your expansions.
 The manual prompt below is for advanced use cases where you want direct control over the expansion process.
 
 Use this prompt to extend ewh agents with tools from an external MCP tool set

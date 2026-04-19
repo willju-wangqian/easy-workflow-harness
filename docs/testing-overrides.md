@@ -4,7 +4,7 @@ Manual verification checklist for EWH's three resolution paths:
 agent override, rule concatenation, and workflow override.
 
 **Audience:**
-- *EWH contributors* — run before merging changes to the dispatcher (`skills/doit/SKILL.md`)
+- *EWH contributors* — run before merging changes to the `ewh` binary (`src/`) or the dispatcher shim (`skills/doit/SKILL.md`)
 - *Project owners* — run to confirm your `.claude/` overrides are picked up correctly
 
 **Verification signals:**
