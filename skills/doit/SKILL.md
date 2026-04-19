@@ -35,7 +35,11 @@ Repeat until you see `ACTION: done`:
    - **user-prompt** — show the body to the user and wait for their
      answer (yes/no for gates, free-form otherwise).
    - **bash** — run the named command via `Bash`.
-   - **done** — the run is complete. Exit the loop.
+   - **done** — the run is complete. Show the body verbatim to the user
+     (it contains the run summary or, for `list`-style subcommands, the
+     catalog the user asked for), then exit the loop. Do not paraphrase,
+     truncate, or add a "catalog above" / "already shown" hand-wave —
+     the body is not visible to the user until you display it.
 
 3. Run the exact `REPORT_WITH:` invocation using `Bash`. Add flags as
    the binary hints in the body:

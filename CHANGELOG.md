@@ -2,6 +2,11 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [2.0.2] - 2026-04-19
+
+### Fixed
+- `skills/doit/SKILL.md`: tell the LLM to show the `done` action body verbatim. When the binary emits `ACTION: done` with a summary body (e.g., `/ewh:doit list`'s catalog, or a workflow completion summary), the shim's previous instructions said only "exit the loop" — so the LLM would acknowledge completion but never display the body. Users saw `ACTION: done` + a vague "catalog above" stub with no actual catalog. The body is now shown verbatim before the loop exits.
+
 ## [2.0.1] - 2026-04-19
 
 Documentation and schema cleanup. No behavior change.
