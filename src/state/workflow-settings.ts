@@ -37,6 +37,7 @@ export type EwhStateFile = {
   chunked_patterns?: Record<string, ChunkedPatterns>;
   cleanup_tasks?: CleanupTask[];
   agent_tools?: Record<string, AgentToolEntry>;
+  artifact_retention?: { max_runs: number | 'keep' };
   [key: string]: unknown;
 };
 
@@ -61,14 +62,7 @@ export async function readWorkflowSettings(
   projectRoot: string,
   workflowName: string,
 ): Promise<WorkflowSettings> {
-  const path = join(projectRoot, STATE_FILE);
-  let raw: EwhStateFile = {};
-  try {
-    const content = await fs.readFile(path, 'utf8');
-    raw = JSON.parse(content) as EwhStateFile;
-  } catch {
-    // missing file or parse error → use defaults
-  }
+  const raw = await readEwhStateFile(projectRoot);
   return { ...DEFAULTS, ...(raw.workflow_settings?.[workflowName] ?? {}) };
 }
 
@@ -77,20 +71,13 @@ export async function writeWorkflowSettings(
   workflowName: string,
   settings: Partial<WorkflowSettings>,
 ): Promise<void> {
-  const path = join(projectRoot, STATE_FILE);
-  let raw: EwhStateFile = {};
-  try {
-    const content = await fs.readFile(path, 'utf8');
-    raw = JSON.parse(content) as EwhStateFile;
-  } catch {
-    // start fresh
-  }
+  const raw = await readEwhStateFile(projectRoot);
   raw.workflow_settings ??= {};
   raw.workflow_settings[workflowName] = {
     ...(raw.workflow_settings[workflowName] ?? {}),
     ...settings,
   };
-  await atomicWriteStateFile(path, raw);
+  await atomicWriteStateFile(ewhStatePath(projectRoot), raw);
 }
 
 export async function readChunkedPatterns(
@@ -98,14 +85,7 @@ export async function readChunkedPatterns(
   workflowName: string,
   stepName: string,
 ): Promise<ChunkedPatterns | null> {
-  const path = join(projectRoot, STATE_FILE);
-  let raw: EwhStateFile = {};
-  try {
-    const content = await fs.readFile(path, 'utf8');
-    raw = JSON.parse(content) as EwhStateFile;
-  } catch {
-    return null;
-  }
+  const raw = await readEwhStateFile(projectRoot);
   const key = `${workflowName}/${stepName}`;
   return raw.chunked_patterns?.[key] ?? null;
 }
@@ -116,22 +96,29 @@ export async function writeChunkedPatterns(
   stepName: string,
   patterns: ChunkedPatterns,
 ): Promise<void> {
-  const path = join(projectRoot, STATE_FILE);
-  let raw: EwhStateFile = {};
-  try {
-    const content = await fs.readFile(path, 'utf8');
-    raw = JSON.parse(content) as EwhStateFile;
-  } catch {
-    // start fresh
-  }
+  const raw = await readEwhStateFile(projectRoot);
   raw.chunked_patterns ??= {};
   raw.chunked_patterns[`${workflowName}/${stepName}`] = patterns;
-  await atomicWriteStateFile(path, raw);
+  await atomicWriteStateFile(ewhStatePath(projectRoot), raw);
+}
+
+export async function readArtifactRetention(
+  projectRoot: string,
+): Promise<{ maxRuns: number | 'keep' }> {
+  const raw = await readEwhStateFile(projectRoot);
+  const maxRuns = raw.artifact_retention?.max_runs ?? 10;
+  return { maxRuns };
 }
 
 async function atomicWriteStateFile(path: string, raw: EwhStateFile): Promise<void> {
   await fs.mkdir(dirname(path), { recursive: true });
   const tmp = `${path}.tmp-${randomBytes(4).toString('hex')}`;
-  await fs.writeFile(tmp, JSON.stringify(raw, null, 2), 'utf8');
+  const fh = await fs.open(tmp, 'w');
+  try {
+    await fh.writeFile(JSON.stringify(raw, null, 2), 'utf8');
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
   await fs.rename(tmp, path);
 }

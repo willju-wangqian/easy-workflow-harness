@@ -53,8 +53,8 @@ export async function writeRunState(
   state: RunState,
 ): Promise<void> {
   const path = statePath(projectRoot, state.run_id);
-  state.updated_at = new Date().toISOString();
-  await atomicWrite(path, JSON.stringify(state, null, 2));
+  const stamped = { ...state, updated_at: new Date().toISOString() };
+  await atomicWrite(path, JSON.stringify(stamped, null, 2));
 }
 
 export async function readRunState(
@@ -78,4 +78,57 @@ export async function clearActive(
   runId: string,
 ): Promise<void> {
   await fs.rm(activeMarker(projectRoot, runId), { force: true });
+}
+
+export async function pruneOldRuns(
+  projectRoot: string,
+  maxRuns: number | 'keep',
+): Promise<void> {
+  if (maxRuns === 'keep') return;
+
+  const artifactsDir = resolve(projectRoot, ARTIFACTS_DIR);
+  let entries: string[];
+  try {
+    entries = await fs.readdir(artifactsDir);
+  } catch {
+    return;
+  }
+
+  const runDirs = entries.filter((e) => e.startsWith('run-'));
+
+  // Filter out ACTIVE runs
+  const candidates: { name: string; updatedAt: string }[] = [];
+  for (const name of runDirs) {
+    const activeFile = join(artifactsDir, name, 'ACTIVE');
+    try {
+      await fs.access(activeFile);
+      // ACTIVE marker exists — skip
+      continue;
+    } catch {
+      // no ACTIVE marker — candidate for pruning
+    }
+    let updatedAt = '1970-01-01T00:00:00.000Z';
+    try {
+      const stateFile = join(artifactsDir, name, 'state.json');
+      const body = await fs.readFile(stateFile, 'utf8');
+      const parsed = JSON.parse(body) as { updated_at?: string };
+      if (parsed.updated_at) updatedAt = parsed.updated_at;
+    } catch {
+      try {
+        const stat = await fs.stat(join(artifactsDir, name));
+        updatedAt = stat.mtime.toISOString();
+      } catch {
+        // stat failed → epoch (pruned first)
+      }
+    }
+    candidates.push({ name, updatedAt });
+  }
+
+  // Sort newest first (ISO 8601 strings sort lexicographically)
+  candidates.sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : a.updatedAt < b.updatedAt ? 1 : 0));
+
+  const toDelete = candidates.slice(maxRuns);
+  for (const { name } of toDelete) {
+    await fs.rm(join(artifactsDir, name), { recursive: true, force: true });
+  }
 }

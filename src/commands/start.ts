@@ -17,14 +17,14 @@
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { writeRunState, markActive, newRunId, clearActive } from '../state/store.js';
+import { writeRunState, markActive, newRunId, clearActive, pruneOldRuns } from '../state/store.js';
 import { listCachedScripts } from '../scripts/cache.js';
 import {
   loadWorkflow,
   resolveWorkflowPath,
 } from '../workflow/parse.js';
 import { transitionStep, advanceRun, type TransitionOpts } from '../state/machine.js';
-import { readWorkflowSettings, writeWorkflowSettings } from '../state/workflow-settings.js';
+import { readWorkflowSettings, writeWorkflowSettings, readArtifactRetention } from '../state/workflow-settings.js';
 import { formatInstruction } from '../instruction/emit.js';
 import type { Instruction, RunState, SubcommandState } from '../state/types.js';
 import { buildListInstruction } from './list.js';
@@ -62,6 +62,11 @@ export async function runStart(opts: StartOptions): Promise<string> {
   if (opts.yolo && opts.save) {
     throw new Error('--yolo --save is rejected: compliance auto-skip cannot be persisted');
   }
+
+  const { maxRuns } = await readArtifactRetention(opts.projectRoot);
+  await pruneOldRuns(opts.projectRoot, maxRuns).catch((e: unknown) =>
+    process.stderr.write(`ewh prune warning: ${e instanceof Error ? e.message : String(e)}\n`),
+  );
 
   const parsed = parseStartArgv(opts.rawArgv);
   const inlineFlags = collectInlineFlags(parsed.rest);
