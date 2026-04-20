@@ -2,9 +2,10 @@
 
 ## Active Decisions
 
-- [design-subcommand](design-subcommand.md) — New `/ewh:doit design` subcommand replacing `create`: conversational interview via a tool-stripped facilitator subagent, two-tier approval (shape gate → per-file gates), supports both create and update for workflows/agents/rules.
-
 ## Reference
+
+- [design-subcommand](design-subcommand.md) — `/ewh:doit design` subcommand: conversational interview via a tool-stripped facilitator subagent, two-tier approval (shape gate → per-file gates), supports create and update for workflows/agents/rules. Replaces `create`.
+- [design-subcommand-plan](design-subcommand-plan.md) — 5-session implementation plan for `/ewh:doit design`. All sessions complete.
 
 - [status-resume-abort-doctor](status-resume-abort-doctor.md) — Four v2 subcommands: `status`, `resume`, `abort`, `doctor` (single-turn pattern + gate-disambiguation for `resume`).
 

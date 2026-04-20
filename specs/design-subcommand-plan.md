@@ -1,7 +1,7 @@
 ---
 name: design-subcommand-plan
 type: plan
-status: active
+status: completed
 scope: [subcommands, agents, ux]
 created: 2026-04-20
 tracks: design-subcommand

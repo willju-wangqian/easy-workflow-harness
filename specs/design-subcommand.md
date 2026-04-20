@@ -1,7 +1,6 @@
 ---
 name: design-subcommand
-type: decision
-status: accepted
+type: reference
 scope: [subcommands, agents, ux]
 created: 2026-04-20
 ---
