@@ -8,6 +8,7 @@ import {
   continueDesign,
   validateShape,
   designPaths,
+  stagedPathForArtifact,
   type ShapeProposal,
 } from '../src/commands/design.js';
 import type { CatalogEntry } from '../src/commands/design-catalog.js';
@@ -329,7 +330,7 @@ describe('continueDesign — shape_gate phase', () => {
     return { run, shapePath };
   }
 
-  it('approve (decision yes) transitions to author phase', async () => {
+  it('approve (decision yes) transitions to author phase and emits first author tool-call', async () => {
     const { run, shapePath } = await setupShapeGate();
     const instr = await continueDesign(
       run,
@@ -342,8 +343,9 @@ describe('continueDesign — shape_gate phase', () => {
       proposal_path: shapePath,
       author_index: 0,
     });
-    // Session 2 stub: approve emits a placeholder done for now
-    expect(instr.kind).toBe('done');
+    expect(instr.kind).toBe('tool-call');
+    expect(instr.body).toMatch(/subagent_type: ewh:artifact-author/);
+    expect(instr.body).toMatch(/no-magic-numbers/);
   });
 
   it('reject (decision no) clears state and emits done', async () => {
@@ -374,5 +376,192 @@ describe('continueDesign — shape_gate phase', () => {
     const descContent = await fs.readFile(paths.description, 'utf8');
     expect(descContent).toMatch(/user edit instruction/);
     expect(descContent).toMatch(/agent for validation/);
+  });
+});
+
+// ── Helpers for session 3 tests ───────────────────────────────────────────
+
+function makeArtifact(i: number): ShapeProposal['artifacts'][number] {
+  return {
+    type: 'rule',
+    op: 'create',
+    name: `rule-${i}`,
+    scope: 'project',
+    path: `rules/rule-${i}.md`,
+    description: `rule ${i}`,
+    frontmatter: { name: `rule-${i}` },
+  };
+}
+
+async function writeAllStagedFiles(
+  paths: ReturnType<typeof designPaths>,
+  artifacts: ShapeProposal['artifacts'],
+): Promise<void> {
+  await fs.mkdir(paths.proposedDir, { recursive: true });
+  for (const a of artifacts) {
+    const sp = stagedPathForArtifact(paths.proposedDir, a);
+    await fs.writeFile(sp, `---\nname: ${a.name}\n---\n\n## Body\n`, 'utf8');
+  }
+}
+
+// ── author phase ──────────────────────────────────────────────────────────
+
+describe('continueDesign — author phase', () => {
+  it('drives through 3 author reports, state ends at file_gate with file_index 0', async () => {
+    const artifacts = [makeArtifact(0), makeArtifact(1), makeArtifact(2)];
+    const proposal = makeProposal(artifacts);
+    const paths = designPaths(projectRoot, RUN_ID);
+    const shapePath = await writeShape(paths, proposal);
+    await writeAllStagedFiles(paths, artifacts);
+
+    const run = makeRun({
+      kind: 'design',
+      phase: 'author',
+      proposal_path: shapePath,
+      author_index: 0,
+    });
+
+    // Report 1st author done
+    let instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0, result_path: stagedPathForArtifact(paths.proposedDir, artifacts[0]!) },
+      { projectRoot, pluginRoot },
+    );
+    expect(run.subcommand_state).toMatchObject({ phase: 'author', author_index: 1 });
+    expect(instr.kind).toBe('tool-call');
+    expect(instr.body).toMatch(/artifact-author/);
+
+    // Report 2nd author done
+    instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0, result_path: stagedPathForArtifact(paths.proposedDir, artifacts[1]!) },
+      { projectRoot, pluginRoot },
+    );
+    expect(run.subcommand_state).toMatchObject({ phase: 'author', author_index: 2 });
+    expect(instr.kind).toBe('tool-call');
+
+    // Report 3rd author done → transitions to file_gate
+    instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0, result_path: stagedPathForArtifact(paths.proposedDir, artifacts[2]!) },
+      { projectRoot, pluginRoot },
+    );
+    expect(run.subcommand_state).toMatchObject({ phase: 'file_gate', file_index: 0 });
+    expect(instr.kind).toBe('user-prompt');
+    expect(instr.body).toMatch(/file gate/i);
+    expect(instr.body).toMatch(/rule-0/);
+  });
+});
+
+// ── file_gate phase ───────────────────────────────────────────────────────
+
+describe('continueDesign — file_gate phase', () => {
+  it('approve-advance: 2 files, approve first → file_index 1, approve second → write', async () => {
+    const artifacts = [makeArtifact(0), makeArtifact(1)];
+    const proposal = makeProposal(artifacts);
+    const paths = designPaths(projectRoot, RUN_ID);
+    const shapePath = await writeShape(paths, proposal);
+    await writeAllStagedFiles(paths, artifacts);
+
+    const run = makeRun({
+      kind: 'design',
+      phase: 'file_gate',
+      proposal_path: shapePath,
+      file_index: 0,
+    });
+
+    // Approve first file → advances to file_index 1
+    let instr = await continueDesign(
+      run,
+      { kind: 'decision', step_index: 0, decision: 'yes' },
+      { projectRoot, pluginRoot },
+    );
+    expect(run.subcommand_state).toMatchObject({ phase: 'file_gate', file_index: 1 });
+    expect(instr.kind).toBe('user-prompt');
+    expect(instr.body).toMatch(/rule-1/);
+
+    // Approve second file → transitions to write (session 3 stub)
+    instr = await continueDesign(
+      run,
+      { kind: 'decision', step_index: 0, decision: 'yes' },
+      { projectRoot, pluginRoot },
+    );
+    expect(run.subcommand_state).toMatchObject({ phase: 'write' });
+    expect(instr.kind).toBe('done');
+  });
+
+  it('reject: file 2 of 3 → done with rejection message, state cleared', async () => {
+    const artifacts = [makeArtifact(0), makeArtifact(1), makeArtifact(2)];
+    const proposal = makeProposal(artifacts);
+    const paths = designPaths(projectRoot, RUN_ID);
+    const shapePath = await writeShape(paths, proposal);
+
+    const run = makeRun({
+      kind: 'design',
+      phase: 'file_gate',
+      proposal_path: shapePath,
+      file_index: 1,
+    });
+
+    const instr = await continueDesign(
+      run,
+      { kind: 'decision', step_index: 0, decision: 'no' },
+      { projectRoot, pluginRoot },
+    );
+    expect(instr.kind).toBe('done');
+    expect(instr.body).toMatch(/Rejected file 2\/3/);
+    expect(run.subcommand_state).toBeUndefined();
+  });
+});
+
+// ── refine phase ──────────────────────────────────────────────────────────
+
+describe('continueDesign — refine phase', () => {
+  it('round trip: file_gate edit → refine state + refiner tool-call → back at file_gate with refined content', async () => {
+    const artifact = makeArtifact(0);
+    const proposal = makeProposal([artifact]);
+    const paths = designPaths(projectRoot, RUN_ID);
+    const shapePath = await writeShape(paths, proposal);
+    await writeAllStagedFiles(paths, [artifact]);
+
+    const run = makeRun({
+      kind: 'design',
+      phase: 'file_gate',
+      proposal_path: shapePath,
+      file_index: 0,
+    });
+
+    // Write the edit instruction and report --result
+    const editPath = join(paths.runRoot, 'file-gate-0-edit.txt');
+    await fs.writeFile(editPath, 'Add more details to the body', 'utf8');
+
+    let instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0, result_path: editPath },
+      { projectRoot, pluginRoot },
+    );
+    expect(run.subcommand_state).toMatchObject({
+      phase: 'refine',
+      file_index: 0,
+      instruction: 'Add more details to the body',
+    });
+    expect(instr.kind).toBe('tool-call');
+    expect(instr.body).toMatch(/artifact-refiner/);
+    expect(instr.body).toMatch(/Add more details/);
+
+    // Simulate refiner writing a revised file
+    const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
+    await fs.writeFile(stagedPath, '---\nname: rule-0\n---\n\n## Body\n\nMore details here.\n', 'utf8');
+
+    // Report refiner done → back at file_gate with same file_index
+    instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0, result_path: stagedPath },
+      { projectRoot, pluginRoot },
+    );
+    expect(run.subcommand_state).toMatchObject({ phase: 'file_gate', file_index: 0 });
+    expect(instr.kind).toBe('user-prompt');
+    expect(instr.body).toMatch(/file gate/i);
+    expect(instr.body).toMatch(/More details here/);
   });
 });

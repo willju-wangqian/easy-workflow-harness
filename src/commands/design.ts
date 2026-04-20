@@ -113,13 +113,16 @@ export async function continueDesign(
     case 'shape_gate':
       return continueShapeGate(run, sub, report, opts);
     case 'author':
+      return continueAuthor(run, sub, report, opts);
     case 'file_gate':
+      return continueFileGate(run, sub, report, opts);
     case 'refine':
+      return continueRefine(run, sub, report, opts);
     case 'write':
       run.subcommand_state = undefined;
       return {
         kind: 'done',
-        body: `ewh design: phase '${sub.phase}' not yet implemented (session 2 MVP).`,
+        body: 'ewh design: write phase not yet implemented (session 3 stub).',
       };
   }
 }
@@ -191,19 +194,30 @@ async function continueShapeGate(
   // approve = decision yes, reject = decision no, edit = result (instruction file)
   if (report.kind === 'decision') {
     if (report.decision === 'yes') {
+      const parsed = await readShape(sub.proposal_path);
+      if (!parsed.ok) {
+        run.subcommand_state = undefined;
+        return { kind: 'done', body: `ewh design: could not read proposal: ${parsed.error}` };
+      }
+      const proposal = parsed.proposal;
+      if (proposal.artifacts.length === 0) {
+        run.subcommand_state = undefined;
+        return { kind: 'done', body: 'ewh design: proposal has no artifacts to author.' };
+      }
+      const paths = designPaths(opts.projectRoot, run.run_id);
       run.subcommand_state = {
         kind: 'design',
         phase: 'author',
         proposal_path: sub.proposal_path,
         author_index: 0,
       };
-      return {
-        kind: 'done',
-        body: [
-          "ewh design: proposal approved — author phase not yet implemented (session 2 MVP).",
-          `Staged proposal: ${sub.proposal_path}`,
-        ].join('\n'),
-      };
+      return buildAuthorInstruction({
+        runId: run.run_id,
+        artifact: proposal.artifacts[0]!,
+        catalogPath: paths.catalog,
+        stagedPath: stagedPathForArtifact(paths.proposedDir, proposal.artifacts[0]!),
+        opts,
+      });
     }
     // decision no → reject
     run.subcommand_state = undefined;
@@ -478,4 +492,292 @@ export function designPaths(projectRoot: string, runId: string): DesignPaths {
     shape: join(proposedDir, 'shape.json'),
     edit: join(runRoot, 'shape-edit.txt'),
   };
+}
+
+// ── Artifact path helpers ─────────────────────────────────────────────────
+
+function safeFilename(artifactPath: string): string {
+  return artifactPath.replace(/[/\\]/g, '_');
+}
+
+export function stagedPathForArtifact(proposedDir: string, artifact: ShapeArtifact): string {
+  return join(proposedDir, safeFilename(artifact.path));
+}
+
+function existingPathForArtifact(artifact: ShapeArtifact, opts: DesignContinueOptions): string {
+  if (artifact.scope === 'plugin') {
+    return join(opts.pluginRoot, artifact.path);
+  }
+  return join(opts.projectRoot, '.claude', artifact.path);
+}
+
+// ── Instruction builders ──────────────────────────────────────────────────
+
+function buildAuthorInstruction(args: {
+  runId: string;
+  artifact: ShapeArtifact;
+  catalogPath: string;
+  stagedPath: string;
+  opts: DesignContinueOptions;
+}): Instruction {
+  const { runId, artifact, catalogPath, stagedPath, opts } = args;
+  const existingLine =
+    artifact.op === 'update'
+      ? [`    existing_path: ${existingPathForArtifact(artifact, opts)}`]
+      : [];
+  const body = [
+    'Tool: Agent',
+    'Args:',
+    '  subagent_type: ewh:artifact-author',
+    '  prompt: |',
+    `    shape_entry: ${JSON.stringify(artifact)}`,
+    '',
+    `    catalog_path:  ${catalogPath}`,
+    `    staged_path:   ${stagedPath}`,
+    ...existingLine,
+    '',
+    '    Write the complete artifact body to staged_path.',
+    '    For op:update, also write a unified diff to <staged_path>.diff.',
+    '    After writing, emit AGENT_COMPLETE.',
+    `  description: "design: author ${artifact.type} '${artifact.name}'"`,
+    '',
+    `After the Agent tool returns, report: ewh report --run ${runId} --step 0 --result ${stagedPath}`,
+  ].join('\n');
+  return {
+    kind: 'tool-call',
+    body,
+    report_with: `ewh report --run ${runId} --step 0 --result ${stagedPath}`,
+  };
+}
+
+function buildRefinerInstruction(args: {
+  runId: string;
+  stagedPath: string;
+  instruction: string;
+  existingPath: string | undefined;
+}): Instruction {
+  const { runId, stagedPath, instruction, existingPath } = args;
+  const existingLine = existingPath ? [`    existing_path: ${existingPath}`] : [];
+  const body = [
+    'Tool: Agent',
+    'Args:',
+    '  subagent_type: ewh:artifact-refiner',
+    '  prompt: |',
+    `    staged_path:  ${stagedPath}`,
+    `    instruction:  ${instruction}`,
+    ...existingLine,
+    '',
+    '    Read staged_path, apply the instruction, overwrite in place.',
+    '    If a .diff file exists at <staged_path>.diff, refresh it.',
+    '    After writing, emit AGENT_COMPLETE.',
+    `  description: "design: refine artifact"`,
+    '',
+    `After the Agent tool returns, report: ewh report --run ${runId} --step 0 --result ${stagedPath}`,
+  ].join('\n');
+  return {
+    kind: 'tool-call',
+    body,
+    report_with: `ewh report --run ${runId} --step 0 --result ${stagedPath}`,
+  };
+}
+
+// ── File-gate renderer ────────────────────────────────────────────────────
+
+async function renderFileGate(
+  run: RunState,
+  proposal: ShapeProposal,
+  fileIndex: number,
+  paths: DesignPaths,
+): Promise<Instruction> {
+  const artifact = proposal.artifacts[fileIndex]!;
+  const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
+  const total = proposal.artifacts.length;
+  const editInstructionPath = join(paths.runRoot, `file-gate-${fileIndex}-edit.txt`);
+
+  const lines: string[] = [];
+  lines.push(`EWH design — file gate (${fileIndex + 1}/${total})`);
+  lines.push('');
+  lines.push(`[${artifact.op}] ${artifact.type} '${artifact.name}' → ${artifact.path}`);
+  lines.push('');
+
+  if (artifact.op === 'create') {
+    const body = await fs.readFile(stagedPath, 'utf8');
+    lines.push('--- staged file body ---');
+    lines.push(body.trimEnd());
+  } else {
+    const diffPath = stagedPath + '.diff';
+    try {
+      const diff = await fs.readFile(diffPath, 'utf8');
+      lines.push('--- unified diff ---');
+      lines.push(diff.trimEnd());
+    } catch {
+      lines.push('[diff not available]');
+    }
+  }
+
+  lines.push('');
+  lines.push('Choose:');
+  lines.push(`  approve: ewh report --run ${run.run_id} --step 0 --decision yes`);
+  lines.push(`  reject:  ewh report --run ${run.run_id} --step 0 --decision no`);
+  lines.push(`  edit:    write your edit instruction to ${editInstructionPath},`);
+  lines.push(`           then ewh report --run ${run.run_id} --step 0 --result ${editInstructionPath}`);
+
+  return {
+    kind: 'user-prompt',
+    body: lines.join('\n'),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`,
+  };
+}
+
+// ── Phase handlers ────────────────────────────────────────────────────────
+
+async function continueAuthor(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'author' }>,
+  report: Report,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  if (report.kind === 'error') {
+    throw new Error(`design author: agent error: ${report.message}`);
+  }
+  if (report.kind !== 'result' || !report.result_path) {
+    throw new Error('design author: expected --result <staged-path>');
+  }
+
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  const parsed = await readShape(sub.proposal_path);
+  if (!parsed.ok) {
+    run.subcommand_state = undefined;
+    return { kind: 'done', body: `ewh design: could not read proposal: ${parsed.error}` };
+  }
+  const proposal = parsed.proposal;
+  const nextIndex = sub.author_index + 1;
+
+  if (nextIndex < proposal.artifacts.length) {
+    run.subcommand_state = {
+      kind: 'design',
+      phase: 'author',
+      proposal_path: sub.proposal_path,
+      author_index: nextIndex,
+    };
+    return buildAuthorInstruction({
+      runId: run.run_id,
+      artifact: proposal.artifacts[nextIndex]!,
+      catalogPath: paths.catalog,
+      stagedPath: stagedPathForArtifact(paths.proposedDir, proposal.artifacts[nextIndex]!),
+      opts,
+    });
+  }
+
+  // All artifacts authored → transition to file_gate
+  run.subcommand_state = {
+    kind: 'design',
+    phase: 'file_gate',
+    proposal_path: sub.proposal_path,
+    file_index: 0,
+  };
+  return renderFileGate(run, proposal, 0, paths);
+}
+
+async function continueFileGate(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'file_gate' }>,
+  report: Report,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  const parsed = await readShape(sub.proposal_path);
+  if (!parsed.ok) {
+    run.subcommand_state = undefined;
+    return { kind: 'done', body: `ewh design: could not read proposal: ${parsed.error}` };
+  }
+  const proposal = parsed.proposal;
+  const artifact = proposal.artifacts[sub.file_index]!;
+  const paths = designPaths(opts.projectRoot, run.run_id);
+
+  if (report.kind === 'decision') {
+    if (report.decision === 'yes') {
+      const nextIndex = sub.file_index + 1;
+      if (nextIndex >= proposal.artifacts.length) {
+        // All files approved → write phase (stub for session 4)
+        run.subcommand_state = {
+          kind: 'design',
+          phase: 'write',
+          proposal_path: sub.proposal_path,
+        };
+        return {
+          kind: 'done',
+          body: 'ewh design: all files approved — write phase not yet implemented (session 3 stub).',
+        };
+      }
+      run.subcommand_state = {
+        kind: 'design',
+        phase: 'file_gate',
+        proposal_path: sub.proposal_path,
+        file_index: nextIndex,
+      };
+      return renderFileGate(run, proposal, nextIndex, paths);
+    }
+    // decision no → reject immediately, no partial writes
+    const current = sub.file_index + 1;
+    const total = proposal.artifacts.length;
+    run.subcommand_state = undefined;
+    return {
+      kind: 'done',
+      body: `Rejected file ${current}/${total} (${artifact.path}). No files written.`,
+    };
+  }
+
+  if (report.kind === 'result') {
+    if (!report.result_path) {
+      throw new Error('design file_gate edit: expected --result <instruction path>');
+    }
+    const instruction = (await fs.readFile(report.result_path, 'utf8')).trim();
+    const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
+    run.subcommand_state = {
+      kind: 'design',
+      phase: 'refine',
+      proposal_path: sub.proposal_path,
+      file_index: sub.file_index,
+      instruction,
+    };
+    return buildRefinerInstruction({
+      runId: run.run_id,
+      stagedPath,
+      instruction,
+      existingPath: artifact.op === 'update' ? existingPathForArtifact(artifact, opts) : undefined,
+    });
+  }
+
+  throw new Error(`design file_gate: unexpected report kind '${report.kind}'`);
+}
+
+async function continueRefine(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'refine' }>,
+  report: Report,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  if (report.kind === 'error') {
+    throw new Error(`design refine: agent error: ${report.message}`);
+  }
+  if (report.kind !== 'result' || !report.result_path) {
+    throw new Error('design refine: expected --result <staged-path>');
+  }
+
+  const parsed = await readShape(sub.proposal_path);
+  if (!parsed.ok) {
+    run.subcommand_state = undefined;
+    return { kind: 'done', body: `ewh design: could not read proposal: ${parsed.error}` };
+  }
+  const proposal = parsed.proposal;
+
+  // Refiner done → return to file_gate at same file_index (reads the now-refined file)
+  run.subcommand_state = {
+    kind: 'design',
+    phase: 'file_gate',
+    proposal_path: sub.proposal_path,
+    file_index: sub.file_index,
+  };
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  return renderFileGate(run, proposal, sub.file_index, paths);
 }
