@@ -83,6 +83,8 @@ export type StartOptions = {
   noOverride?: boolean;
   /** --manage-tasks: for `cleanup`, drop into task-management flow */
   manageTasks?: boolean;
+  /** --smoke: for `doctor`, run check #11 (end-to-end list dry-run) */
+  smoke?: boolean;
 };
 
 export async function runStart(opts: StartOptions): Promise<string> {
@@ -113,7 +115,9 @@ export async function runStart(opts: StartOptions): Promise<string> {
     const hasProjectOverride = await fileExists(projectOverridePath);
     if (noOverride || !hasProjectOverride) {
       if (STATELESS_SUBCOMMANDS.has(name)) {
-        return runStatelessSubcommand(name, stripFlags(parsed.rest), opts);
+        return runStatelessSubcommand(name, stripFlags(parsed.rest), opts, {
+          smoke: opts.smoke ?? inlineFlags.has('smoke'),
+        });
       }
       return startSubcommandRun(name, stripFlags(parsed.rest), opts, manageTasks);
     }
@@ -274,6 +278,7 @@ async function runStatelessSubcommand(
   name: BuiltinSubcommand,
   positionalRest: string[],
   opts: StartOptions,
+  extras: { smoke?: boolean } = {},
 ): Promise<string> {
   switch (name) {
     case 'status': {
@@ -299,6 +304,7 @@ async function runStatelessSubcommand(
       const { output, exitCode } = await runDoctor({
         projectRoot: opts.projectRoot,
         pluginRoot: opts.pluginRoot,
+        smoke: extras.smoke,
       });
       if (exitCode !== 0) process.exitCode = exitCode;
       return formatInstruction({ kind: 'done', body: output.trimEnd() });
@@ -416,6 +422,7 @@ export async function main(argv: string[]): Promise<void> {
       'strict': { type: 'boolean' },
       'no-override': { type: 'boolean' },
       'manage-tasks': { type: 'boolean' },
+      'smoke': { type: 'boolean' },
     },
     strict: false,
   });
@@ -443,6 +450,7 @@ export async function main(argv: string[]): Promise<void> {
     strict: values['strict'] as boolean | undefined,
     noOverride: values['no-override'] as boolean | undefined,
     manageTasks: values['manage-tasks'] as boolean | undefined,
+    smoke: values['smoke'] as boolean | undefined,
   });
   process.stdout.write(out);
 }

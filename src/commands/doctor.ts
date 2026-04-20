@@ -6,12 +6,15 @@
  * line (`✓` / `!` / `✗`), indented issue details on failure/warning, and
  * a `SUMMARY` line. Exit codes: 0 all pass, 1 warn-only, 2 any fail.
  *
- * `--smoke` (check 11) is a separate step and not implemented here.
+ * `--smoke` adds an 11th check: spawn `node bin/ewh.mjs start list` in a
+ * throwaway project dir and assert the dispatcher emits `ACTION: done`.
  */
 
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import YAML from 'yaml';
 import { SENTINEL, checkSentinel } from '../state/sentinel.js';
 import { loadWorkflow } from '../workflow/parse.js';
@@ -31,6 +34,8 @@ export type CheckResult = {
 export type DoctorOptions = {
   projectRoot: string;
   pluginRoot: string;
+  /** Run check #11: end-to-end `ewh start list` dry-run. */
+  smoke?: boolean;
 };
 
 export type DoctorOutput = {
@@ -51,6 +56,9 @@ export async function runDoctor(opts: DoctorOptions): Promise<DoctorOutput> {
   results.push(await checkAgents(opts.pluginRoot));
   results.push(await checkRules(opts.pluginRoot));
   results.push(await checkWorkflows(opts.pluginRoot, opts.projectRoot));
+  if (opts.smoke) {
+    results.push(await checkSmoke(opts.pluginRoot));
+  }
   return formatDoctor(results);
 }
 
@@ -329,6 +337,86 @@ async function checkWorkflows(
   }
   if (issues.length > 0) return { id: 10, label, status: 'fail', issues };
   return { id: 10, label, status: 'pass', detail: `${entries.length} ok` };
+}
+
+async function checkSmoke(pluginRoot: string): Promise<CheckResult> {
+  const label = 'smoke: ewh start list';
+  const bin = join(pluginRoot, 'bin', 'ewh.mjs');
+  try {
+    await fs.access(bin, fs.constants.R_OK);
+  } catch {
+    return {
+      id: 11,
+      label,
+      status: 'fail',
+      issues: [`${bin}: not readable (see check #2)`],
+    };
+  }
+  const projectDir = await fs.mkdtemp(join(tmpdir(), 'ewh-smoke-'));
+  try {
+    const { stdout, stderr, exitCode } = await spawnCollect(
+      process.execPath,
+      [bin, 'start', 'list', '--plugin-root', pluginRoot],
+      projectDir,
+      30_000,
+    );
+    if (exitCode !== 0) {
+      return {
+        id: 11,
+        label,
+        status: 'fail',
+        issues: [`node ${bin} exited ${exitCode}: ${(stderr || stdout).trim().slice(0, 200)}`],
+      };
+    }
+    if (!stdout.startsWith('ACTION: done')) {
+      return {
+        id: 11,
+        label,
+        status: 'fail',
+        issues: [
+          `expected output to start with 'ACTION: done'; got: ${stdout.slice(0, 80).replace(/\n/g, ' ')}`,
+        ],
+      };
+    }
+    return { id: 11, label, status: 'pass' };
+  } catch (err) {
+    return { id: 11, label, status: 'fail', issues: [errMsg(err)] };
+  } finally {
+    await fs.rm(projectDir, { recursive: true, force: true });
+  }
+}
+
+function spawnCollect(
+  cmd: string,
+  args: string[],
+  cwd: string,
+  timeoutMs: number,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { cwd, env: process.env });
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    child.stdout?.on('data', (b: Buffer) => {
+      stdout += b.toString('utf8');
+    });
+    child.stderr?.on('data', (b: Buffer) => {
+      stderr += b.toString('utf8');
+    });
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, timeoutMs);
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (timedOut) return reject(new Error(`smoke: timed out after ${timeoutMs}ms`));
+      resolve({ stdout, stderr, exitCode: code ?? -1 });
+    });
+  });
 }
 
 function validateFrontmatter(raw: string, required: string[]): string | null {

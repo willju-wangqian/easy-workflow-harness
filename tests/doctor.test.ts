@@ -260,6 +260,61 @@ describe('runDoctor', () => {
     expect(r.output).toMatch(/SUMMARY: 0 fail, 1 warn, 9 pass/);
   });
 
+  it('smoke: skipped by default (10 checks, no check #11)', async () => {
+    const r = await runDoctor({ projectRoot: root, pluginRoot: root });
+    expect(r.results.length).toBe(10);
+    expect(r.results.find((c) => c.id === 11)).toBeUndefined();
+    expect(r.output).not.toContain('smoke');
+  });
+
+  it('smoke: stub bin emitting ACTION: done → pass, 11 checks', async () => {
+    await fs.writeFile(
+      join(root, 'bin', 'ewh.mjs'),
+      "#!/usr/bin/env node\nprocess.stdout.write('ACTION: done\\nCatalog body\\n');\n",
+      { mode: 0o755 },
+    );
+    const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
+    expect(r.results.length).toBe(11);
+    const c = r.results.find((x) => x.id === 11)!;
+    expect(c.status).toBe('pass');
+    expect(r.exitCode).toBe(0);
+    expect(r.output).toContain('✓ smoke: ewh start list');
+  });
+
+  it('smoke: stub bin emitting wrong output → fail', async () => {
+    await fs.writeFile(
+      join(root, 'bin', 'ewh.mjs'),
+      "#!/usr/bin/env node\nprocess.stdout.write('unexpected stuff\\n');\n",
+      { mode: 0o755 },
+    );
+    const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
+    expect(r.exitCode).toBe(2);
+    const c = r.results.find((x) => x.id === 11)!;
+    expect(c.status).toBe('fail');
+    expect(c.issues?.[0]).toMatch(/expected output to start with 'ACTION: done'/);
+  });
+
+  it('smoke: stub bin exits non-zero → fail', async () => {
+    await fs.writeFile(
+      join(root, 'bin', 'ewh.mjs'),
+      "#!/usr/bin/env node\nprocess.stderr.write('boom\\n'); process.exit(3);\n",
+      { mode: 0o755 },
+    );
+    const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
+    expect(r.exitCode).toBe(2);
+    const c = r.results.find((x) => x.id === 11)!;
+    expect(c.status).toBe('fail');
+    expect(c.issues?.[0]).toMatch(/exited 3/);
+  });
+
+  it('smoke: missing bin → fail with check #2 reference', async () => {
+    await fs.rm(join(root, 'bin', 'ewh.mjs'));
+    const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
+    const c = r.results.find((x) => x.id === 11)!;
+    expect(c.status).toBe('fail');
+    expect(c.issues?.[0]).toMatch(/see check #2/);
+  });
+
   it('project override agent resolves for workflow check #10', async () => {
     // Remove plugin agent and add a project override instead.
     await fs.rm(join(root, 'agents', 'tester.md'));
