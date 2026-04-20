@@ -1,7 +1,6 @@
 ---
 name: status-resume-abort-doctor
-type: decision
-status: accepted
+type: reference
 scope: [dispatcher, subcommands, cli]
 created: 2026-04-19
 ---

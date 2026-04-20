@@ -33,9 +33,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// ../../../node_modules/yaml/dist/nodes/identity.js
+// node_modules/yaml/dist/nodes/identity.js
 var require_identity = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/identity.js"(exports) {
+  "node_modules/yaml/dist/nodes/identity.js"(exports) {
     "use strict";
     var ALIAS = Symbol.for("yaml.alias");
     var DOC = Symbol.for("yaml.document");
@@ -90,9 +90,9 @@ var require_identity = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/visit.js
+// node_modules/yaml/dist/visit.js
 var require_visit = __commonJS({
-  "../../../node_modules/yaml/dist/visit.js"(exports) {
+  "node_modules/yaml/dist/visit.js"(exports) {
     "use strict";
     var identity = require_identity();
     var BREAK = Symbol("break visit");
@@ -248,9 +248,9 @@ var require_visit = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/doc/directives.js
+// node_modules/yaml/dist/doc/directives.js
 var require_directives = __commonJS({
-  "../../../node_modules/yaml/dist/doc/directives.js"(exports) {
+  "node_modules/yaml/dist/doc/directives.js"(exports) {
     "use strict";
     var identity = require_identity();
     var visit = require_visit();
@@ -419,9 +419,9 @@ var require_directives = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/doc/anchors.js
+// node_modules/yaml/dist/doc/anchors.js
 var require_anchors = __commonJS({
-  "../../../node_modules/yaml/dist/doc/anchors.js"(exports) {
+  "node_modules/yaml/dist/doc/anchors.js"(exports) {
     "use strict";
     var identity = require_identity();
     var visit = require_visit();
@@ -489,9 +489,9 @@ var require_anchors = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/doc/applyReviver.js
+// node_modules/yaml/dist/doc/applyReviver.js
 var require_applyReviver = __commonJS({
-  "../../../node_modules/yaml/dist/doc/applyReviver.js"(exports) {
+  "node_modules/yaml/dist/doc/applyReviver.js"(exports) {
     "use strict";
     function applyReviver(reviver, obj, key, val) {
       if (val && typeof val === "object") {
@@ -539,9 +539,9 @@ var require_applyReviver = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/toJS.js
+// node_modules/yaml/dist/nodes/toJS.js
 var require_toJS = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/toJS.js"(exports) {
+  "node_modules/yaml/dist/nodes/toJS.js"(exports) {
     "use strict";
     var identity = require_identity();
     function toJS(value, arg, ctx) {
@@ -569,9 +569,9 @@ var require_toJS = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/Node.js
+// node_modules/yaml/dist/nodes/Node.js
 var require_Node = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/Node.js"(exports) {
+  "node_modules/yaml/dist/nodes/Node.js"(exports) {
     "use strict";
     var applyReviver = require_applyReviver();
     var identity = require_identity();
@@ -610,9 +610,9 @@ var require_Node = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/Alias.js
+// node_modules/yaml/dist/nodes/Alias.js
 var require_Alias = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/Alias.js"(exports) {
+  "node_modules/yaml/dist/nodes/Alias.js"(exports) {
     "use strict";
     var anchors = require_anchors();
     var visit = require_visit();
@@ -724,9 +724,9 @@ var require_Alias = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/Scalar.js
+// node_modules/yaml/dist/nodes/Scalar.js
 var require_Scalar = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/Scalar.js"(exports) {
+  "node_modules/yaml/dist/nodes/Scalar.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Node = require_Node();
@@ -754,9 +754,9 @@ var require_Scalar = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/doc/createNode.js
+// node_modules/yaml/dist/doc/createNode.js
 var require_createNode = __commonJS({
-  "../../../node_modules/yaml/dist/doc/createNode.js"(exports) {
+  "node_modules/yaml/dist/doc/createNode.js"(exports) {
     "use strict";
     var Alias = require_Alias();
     var identity = require_identity();
@@ -829,9 +829,9 @@ var require_createNode = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/Collection.js
+// node_modules/yaml/dist/nodes/Collection.js
 var require_Collection = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/Collection.js"(exports) {
+  "node_modules/yaml/dist/nodes/Collection.js"(exports) {
     "use strict";
     var createNode = require_createNode();
     var identity = require_identity();
@@ -972,9 +972,9 @@ var require_Collection = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/stringify/stringifyComment.js
+// node_modules/yaml/dist/stringify/stringifyComment.js
 var require_stringifyComment = __commonJS({
-  "../../../node_modules/yaml/dist/stringify/stringifyComment.js"(exports) {
+  "node_modules/yaml/dist/stringify/stringifyComment.js"(exports) {
     "use strict";
     var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
     function indentComment(comment, indent) {
@@ -989,9 +989,9 @@ var require_stringifyComment = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/stringify/foldFlowLines.js
+// node_modules/yaml/dist/stringify/foldFlowLines.js
 var require_foldFlowLines = __commonJS({
-  "../../../node_modules/yaml/dist/stringify/foldFlowLines.js"(exports) {
+  "node_modules/yaml/dist/stringify/foldFlowLines.js"(exports) {
     "use strict";
     var FOLD_FLOW = "flow";
     var FOLD_BLOCK = "block";
@@ -1125,9 +1125,9 @@ ${indent}${text.slice(fold + 1, end2)}`;
   }
 });
 
-// ../../../node_modules/yaml/dist/stringify/stringifyString.js
+// node_modules/yaml/dist/stringify/stringifyString.js
 var require_stringifyString = __commonJS({
-  "../../../node_modules/yaml/dist/stringify/stringifyString.js"(exports) {
+  "node_modules/yaml/dist/stringify/stringifyString.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var foldFlowLines = require_foldFlowLines();
@@ -1408,9 +1408,9 @@ ${indent}`);
   }
 });
 
-// ../../../node_modules/yaml/dist/stringify/stringify.js
+// node_modules/yaml/dist/stringify/stringify.js
 var require_stringify = __commonJS({
-  "../../../node_modules/yaml/dist/stringify/stringify.js"(exports) {
+  "node_modules/yaml/dist/stringify/stringify.js"(exports) {
     "use strict";
     var anchors = require_anchors();
     var identity = require_identity();
@@ -1532,9 +1532,9 @@ ${ctx.indent}${str}`;
   }
 });
 
-// ../../../node_modules/yaml/dist/stringify/stringifyPair.js
+// node_modules/yaml/dist/stringify/stringifyPair.js
 var require_stringifyPair = __commonJS({
-  "../../../node_modules/yaml/dist/stringify/stringifyPair.js"(exports) {
+  "node_modules/yaml/dist/stringify/stringifyPair.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -1665,9 +1665,9 @@ ${ctx.indent}`;
   }
 });
 
-// ../../../node_modules/yaml/dist/log.js
+// node_modules/yaml/dist/log.js
 var require_log = __commonJS({
-  "../../../node_modules/yaml/dist/log.js"(exports) {
+  "node_modules/yaml/dist/log.js"(exports) {
     "use strict";
     var node_process = __require("process");
     function debug(logLevel, ...messages) {
@@ -1687,9 +1687,9 @@ var require_log = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/merge.js
+// node_modules/yaml/dist/schema/yaml-1.1/merge.js
 var require_merge = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/merge.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/merge.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -1744,9 +1744,9 @@ var require_merge = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/addPairToJSMap.js
+// node_modules/yaml/dist/nodes/addPairToJSMap.js
 var require_addPairToJSMap = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/addPairToJSMap.js"(exports) {
+  "node_modules/yaml/dist/nodes/addPairToJSMap.js"(exports) {
     "use strict";
     var log = require_log();
     var merge = require_merge();
@@ -1808,9 +1808,9 @@ var require_addPairToJSMap = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/Pair.js
+// node_modules/yaml/dist/nodes/Pair.js
 var require_Pair = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/Pair.js"(exports) {
+  "node_modules/yaml/dist/nodes/Pair.js"(exports) {
     "use strict";
     var createNode = require_createNode();
     var stringifyPair = require_stringifyPair();
@@ -1848,9 +1848,9 @@ var require_Pair = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/stringify/stringifyCollection.js
+// node_modules/yaml/dist/stringify/stringifyCollection.js
 var require_stringifyCollection = __commonJS({
-  "../../../node_modules/yaml/dist/stringify/stringifyCollection.js"(exports) {
+  "node_modules/yaml/dist/stringify/stringifyCollection.js"(exports) {
     "use strict";
     var identity = require_identity();
     var stringify = require_stringify();
@@ -1999,9 +1999,9 @@ ${indent}${end}`;
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/YAMLMap.js
+// node_modules/yaml/dist/nodes/YAMLMap.js
 var require_YAMLMap = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/YAMLMap.js"(exports) {
+  "node_modules/yaml/dist/nodes/YAMLMap.js"(exports) {
     "use strict";
     var stringifyCollection = require_stringifyCollection();
     var addPairToJSMap = require_addPairToJSMap();
@@ -2143,9 +2143,9 @@ var require_YAMLMap = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/common/map.js
+// node_modules/yaml/dist/schema/common/map.js
 var require_map = __commonJS({
-  "../../../node_modules/yaml/dist/schema/common/map.js"(exports) {
+  "node_modules/yaml/dist/schema/common/map.js"(exports) {
     "use strict";
     var identity = require_identity();
     var YAMLMap = require_YAMLMap();
@@ -2165,9 +2165,9 @@ var require_map = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/nodes/YAMLSeq.js
+// node_modules/yaml/dist/nodes/YAMLSeq.js
 var require_YAMLSeq = __commonJS({
-  "../../../node_modules/yaml/dist/nodes/YAMLSeq.js"(exports) {
+  "node_modules/yaml/dist/nodes/YAMLSeq.js"(exports) {
     "use strict";
     var createNode = require_createNode();
     var stringifyCollection = require_stringifyCollection();
@@ -2281,9 +2281,9 @@ var require_YAMLSeq = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/common/seq.js
+// node_modules/yaml/dist/schema/common/seq.js
 var require_seq = __commonJS({
-  "../../../node_modules/yaml/dist/schema/common/seq.js"(exports) {
+  "node_modules/yaml/dist/schema/common/seq.js"(exports) {
     "use strict";
     var identity = require_identity();
     var YAMLSeq = require_YAMLSeq();
@@ -2303,9 +2303,9 @@ var require_seq = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/common/string.js
+// node_modules/yaml/dist/schema/common/string.js
 var require_string = __commonJS({
-  "../../../node_modules/yaml/dist/schema/common/string.js"(exports) {
+  "node_modules/yaml/dist/schema/common/string.js"(exports) {
     "use strict";
     var stringifyString = require_stringifyString();
     var string = {
@@ -2322,9 +2322,9 @@ var require_string = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/common/null.js
+// node_modules/yaml/dist/schema/common/null.js
 var require_null = __commonJS({
-  "../../../node_modules/yaml/dist/schema/common/null.js"(exports) {
+  "node_modules/yaml/dist/schema/common/null.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var nullTag = {
@@ -2340,9 +2340,9 @@ var require_null = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/core/bool.js
+// node_modules/yaml/dist/schema/core/bool.js
 var require_bool = __commonJS({
-  "../../../node_modules/yaml/dist/schema/core/bool.js"(exports) {
+  "node_modules/yaml/dist/schema/core/bool.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var boolTag = {
@@ -2364,9 +2364,9 @@ var require_bool = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/stringify/stringifyNumber.js
+// node_modules/yaml/dist/stringify/stringifyNumber.js
 var require_stringifyNumber = __commonJS({
-  "../../../node_modules/yaml/dist/stringify/stringifyNumber.js"(exports) {
+  "node_modules/yaml/dist/stringify/stringifyNumber.js"(exports) {
     "use strict";
     function stringifyNumber({ format, minFractionDigits, tag, value }) {
       if (typeof value === "bigint")
@@ -2391,9 +2391,9 @@ var require_stringifyNumber = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/core/float.js
+// node_modules/yaml/dist/schema/core/float.js
 var require_float = __commonJS({
-  "../../../node_modules/yaml/dist/schema/core/float.js"(exports) {
+  "node_modules/yaml/dist/schema/core/float.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var stringifyNumber = require_stringifyNumber();
@@ -2437,9 +2437,9 @@ var require_float = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/core/int.js
+// node_modules/yaml/dist/schema/core/int.js
 var require_int = __commonJS({
-  "../../../node_modules/yaml/dist/schema/core/int.js"(exports) {
+  "node_modules/yaml/dist/schema/core/int.js"(exports) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -2482,9 +2482,9 @@ var require_int = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/core/schema.js
+// node_modules/yaml/dist/schema/core/schema.js
 var require_schema = __commonJS({
-  "../../../node_modules/yaml/dist/schema/core/schema.js"(exports) {
+  "node_modules/yaml/dist/schema/core/schema.js"(exports) {
     "use strict";
     var map = require_map();
     var _null = require_null();
@@ -2510,9 +2510,9 @@ var require_schema = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/json/schema.js
+// node_modules/yaml/dist/schema/json/schema.js
 var require_schema2 = __commonJS({
-  "../../../node_modules/yaml/dist/schema/json/schema.js"(exports) {
+  "node_modules/yaml/dist/schema/json/schema.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var map = require_map();
@@ -2577,9 +2577,9 @@ var require_schema2 = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/binary.js
+// node_modules/yaml/dist/schema/yaml-1.1/binary.js
 var require_binary = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/binary.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/binary.js"(exports) {
     "use strict";
     var node_buffer = __require("buffer");
     var Scalar = require_Scalar();
@@ -2643,9 +2643,9 @@ var require_binary = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/pairs.js
+// node_modules/yaml/dist/schema/yaml-1.1/pairs.js
 var require_pairs = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/pairs.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/pairs.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -2721,9 +2721,9 @@ ${cn.comment}` : item.comment;
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/omap.js
+// node_modules/yaml/dist/schema/yaml-1.1/omap.js
 var require_omap = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/omap.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/omap.js"(exports) {
     "use strict";
     var identity = require_identity();
     var toJS = require_toJS();
@@ -2799,9 +2799,9 @@ var require_omap = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/bool.js
+// node_modules/yaml/dist/schema/yaml-1.1/bool.js
 var require_bool2 = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/bool.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/bool.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     function boolStringify({ value, source }, ctx) {
@@ -2831,9 +2831,9 @@ var require_bool2 = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/float.js
+// node_modules/yaml/dist/schema/yaml-1.1/float.js
 var require_float2 = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/float.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/float.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var stringifyNumber = require_stringifyNumber();
@@ -2880,9 +2880,9 @@ var require_float2 = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/int.js
+// node_modules/yaml/dist/schema/yaml-1.1/int.js
 var require_int2 = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/int.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/int.js"(exports) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -2959,9 +2959,9 @@ var require_int2 = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/set.js
+// node_modules/yaml/dist/schema/yaml-1.1/set.js
 var require_set = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/set.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/set.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -3048,9 +3048,9 @@ var require_set = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
+// node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
 var require_timestamp = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/timestamp.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/timestamp.js"(exports) {
     "use strict";
     var stringifyNumber = require_stringifyNumber();
     function parseSexagesimal(str, asBigInt) {
@@ -3136,9 +3136,9 @@ var require_timestamp = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/yaml-1.1/schema.js
+// node_modules/yaml/dist/schema/yaml-1.1/schema.js
 var require_schema3 = __commonJS({
-  "../../../node_modules/yaml/dist/schema/yaml-1.1/schema.js"(exports) {
+  "node_modules/yaml/dist/schema/yaml-1.1/schema.js"(exports) {
     "use strict";
     var map = require_map();
     var _null = require_null();
@@ -3180,9 +3180,9 @@ var require_schema3 = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/tags.js
+// node_modules/yaml/dist/schema/tags.js
 var require_tags = __commonJS({
-  "../../../node_modules/yaml/dist/schema/tags.js"(exports) {
+  "node_modules/yaml/dist/schema/tags.js"(exports) {
     "use strict";
     var map = require_map();
     var _null = require_null();
@@ -3274,9 +3274,9 @@ var require_tags = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/schema/Schema.js
+// node_modules/yaml/dist/schema/Schema.js
 var require_Schema = __commonJS({
-  "../../../node_modules/yaml/dist/schema/Schema.js"(exports) {
+  "node_modules/yaml/dist/schema/Schema.js"(exports) {
     "use strict";
     var identity = require_identity();
     var map = require_map();
@@ -3306,9 +3306,9 @@ var require_Schema = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/stringify/stringifyDocument.js
+// node_modules/yaml/dist/stringify/stringifyDocument.js
 var require_stringifyDocument = __commonJS({
-  "../../../node_modules/yaml/dist/stringify/stringifyDocument.js"(exports) {
+  "node_modules/yaml/dist/stringify/stringifyDocument.js"(exports) {
     "use strict";
     var identity = require_identity();
     var stringify = require_stringify();
@@ -3386,9 +3386,9 @@ var require_stringifyDocument = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/doc/Document.js
+// node_modules/yaml/dist/doc/Document.js
 var require_Document = __commonJS({
-  "../../../node_modules/yaml/dist/doc/Document.js"(exports) {
+  "node_modules/yaml/dist/doc/Document.js"(exports) {
     "use strict";
     var Alias = require_Alias();
     var Collection = require_Collection();
@@ -3695,9 +3695,9 @@ var require_Document = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/errors.js
+// node_modules/yaml/dist/errors.js
 var require_errors = __commonJS({
-  "../../../node_modules/yaml/dist/errors.js"(exports) {
+  "node_modules/yaml/dist/errors.js"(exports) {
     "use strict";
     var YAMLError = class extends Error {
       constructor(name, pos, code, message) {
@@ -3760,9 +3760,9 @@ ${pointer}
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/resolve-props.js
+// node_modules/yaml/dist/compose/resolve-props.js
 var require_resolve_props = __commonJS({
-  "../../../node_modules/yaml/dist/compose/resolve-props.js"(exports) {
+  "node_modules/yaml/dist/compose/resolve-props.js"(exports) {
     "use strict";
     function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
       let spaceBefore = false;
@@ -3894,9 +3894,9 @@ var require_resolve_props = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/util-contains-newline.js
+// node_modules/yaml/dist/compose/util-contains-newline.js
 var require_util_contains_newline = __commonJS({
-  "../../../node_modules/yaml/dist/compose/util-contains-newline.js"(exports) {
+  "node_modules/yaml/dist/compose/util-contains-newline.js"(exports) {
     "use strict";
     function containsNewline(key) {
       if (!key)
@@ -3936,9 +3936,9 @@ var require_util_contains_newline = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/util-flow-indent-check.js
+// node_modules/yaml/dist/compose/util-flow-indent-check.js
 var require_util_flow_indent_check = __commonJS({
-  "../../../node_modules/yaml/dist/compose/util-flow-indent-check.js"(exports) {
+  "node_modules/yaml/dist/compose/util-flow-indent-check.js"(exports) {
     "use strict";
     var utilContainsNewline = require_util_contains_newline();
     function flowIndentCheck(indent, fc, onError) {
@@ -3954,9 +3954,9 @@ var require_util_flow_indent_check = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/util-map-includes.js
+// node_modules/yaml/dist/compose/util-map-includes.js
 var require_util_map_includes = __commonJS({
-  "../../../node_modules/yaml/dist/compose/util-map-includes.js"(exports) {
+  "node_modules/yaml/dist/compose/util-map-includes.js"(exports) {
     "use strict";
     var identity = require_identity();
     function mapIncludes(ctx, items, search) {
@@ -3970,9 +3970,9 @@ var require_util_map_includes = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/resolve-block-map.js
+// node_modules/yaml/dist/compose/resolve-block-map.js
 var require_resolve_block_map = __commonJS({
-  "../../../node_modules/yaml/dist/compose/resolve-block-map.js"(exports) {
+  "node_modules/yaml/dist/compose/resolve-block-map.js"(exports) {
     "use strict";
     var Pair = require_Pair();
     var YAMLMap = require_YAMLMap();
@@ -4078,9 +4078,9 @@ var require_resolve_block_map = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/resolve-block-seq.js
+// node_modules/yaml/dist/compose/resolve-block-seq.js
 var require_resolve_block_seq = __commonJS({
-  "../../../node_modules/yaml/dist/compose/resolve-block-seq.js"(exports) {
+  "node_modules/yaml/dist/compose/resolve-block-seq.js"(exports) {
     "use strict";
     var YAMLSeq = require_YAMLSeq();
     var resolveProps = require_resolve_props();
@@ -4129,9 +4129,9 @@ var require_resolve_block_seq = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/resolve-end.js
+// node_modules/yaml/dist/compose/resolve-end.js
 var require_resolve_end = __commonJS({
-  "../../../node_modules/yaml/dist/compose/resolve-end.js"(exports) {
+  "node_modules/yaml/dist/compose/resolve-end.js"(exports) {
     "use strict";
     function resolveEnd(end, offset, reqSpace, onError) {
       let comment = "";
@@ -4172,9 +4172,9 @@ var require_resolve_end = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/resolve-flow-collection.js
+// node_modules/yaml/dist/compose/resolve-flow-collection.js
 var require_resolve_flow_collection = __commonJS({
-  "../../../node_modules/yaml/dist/compose/resolve-flow-collection.js"(exports) {
+  "node_modules/yaml/dist/compose/resolve-flow-collection.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Pair = require_Pair();
@@ -4366,9 +4366,9 @@ var require_resolve_flow_collection = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/compose-collection.js
+// node_modules/yaml/dist/compose/compose-collection.js
 var require_compose_collection = __commonJS({
-  "../../../node_modules/yaml/dist/compose/compose-collection.js"(exports) {
+  "node_modules/yaml/dist/compose/compose-collection.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -4431,9 +4431,9 @@ var require_compose_collection = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/resolve-block-scalar.js
+// node_modules/yaml/dist/compose/resolve-block-scalar.js
 var require_resolve_block_scalar = __commonJS({
-  "../../../node_modules/yaml/dist/compose/resolve-block-scalar.js"(exports) {
+  "node_modules/yaml/dist/compose/resolve-block-scalar.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     function resolveBlockScalar(ctx, scalar, onError) {
@@ -4614,9 +4614,9 @@ var require_resolve_block_scalar = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/resolve-flow-scalar.js
+// node_modules/yaml/dist/compose/resolve-flow-scalar.js
 var require_resolve_flow_scalar = __commonJS({
-  "../../../node_modules/yaml/dist/compose/resolve-flow-scalar.js"(exports) {
+  "node_modules/yaml/dist/compose/resolve-flow-scalar.js"(exports) {
     "use strict";
     var Scalar = require_Scalar();
     var resolveEnd = require_resolve_end();
@@ -4833,9 +4833,9 @@ var require_resolve_flow_scalar = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/compose-scalar.js
+// node_modules/yaml/dist/compose/compose-scalar.js
 var require_compose_scalar = __commonJS({
-  "../../../node_modules/yaml/dist/compose/compose-scalar.js"(exports) {
+  "node_modules/yaml/dist/compose/compose-scalar.js"(exports) {
     "use strict";
     var identity = require_identity();
     var Scalar = require_Scalar();
@@ -4914,9 +4914,9 @@ var require_compose_scalar = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/util-empty-scalar-position.js
+// node_modules/yaml/dist/compose/util-empty-scalar-position.js
 var require_util_empty_scalar_position = __commonJS({
-  "../../../node_modules/yaml/dist/compose/util-empty-scalar-position.js"(exports) {
+  "node_modules/yaml/dist/compose/util-empty-scalar-position.js"(exports) {
     "use strict";
     function emptyScalarPosition(offset, before, pos) {
       if (before) {
@@ -4944,9 +4944,9 @@ var require_util_empty_scalar_position = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/compose-node.js
+// node_modules/yaml/dist/compose/compose-node.js
 var require_compose_node = __commonJS({
-  "../../../node_modules/yaml/dist/compose/compose-node.js"(exports) {
+  "node_modules/yaml/dist/compose/compose-node.js"(exports) {
     "use strict";
     var Alias = require_Alias();
     var identity = require_identity();
@@ -5050,9 +5050,9 @@ var require_compose_node = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/compose-doc.js
+// node_modules/yaml/dist/compose/compose-doc.js
 var require_compose_doc = __commonJS({
-  "../../../node_modules/yaml/dist/compose/compose-doc.js"(exports) {
+  "node_modules/yaml/dist/compose/compose-doc.js"(exports) {
     "use strict";
     var Document = require_Document();
     var composeNode = require_compose_node();
@@ -5093,9 +5093,9 @@ var require_compose_doc = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/compose/composer.js
+// node_modules/yaml/dist/compose/composer.js
 var require_composer = __commonJS({
-  "../../../node_modules/yaml/dist/compose/composer.js"(exports) {
+  "node_modules/yaml/dist/compose/composer.js"(exports) {
     "use strict";
     var node_process = __require("process");
     var directives = require_directives();
@@ -5299,9 +5299,9 @@ ${end.comment}` : end.comment;
   }
 });
 
-// ../../../node_modules/yaml/dist/parse/cst-scalar.js
+// node_modules/yaml/dist/parse/cst-scalar.js
 var require_cst_scalar = __commonJS({
-  "../../../node_modules/yaml/dist/parse/cst-scalar.js"(exports) {
+  "node_modules/yaml/dist/parse/cst-scalar.js"(exports) {
     "use strict";
     var resolveBlockScalar = require_resolve_block_scalar();
     var resolveFlowScalar = require_resolve_flow_scalar();
@@ -5484,9 +5484,9 @@ var require_cst_scalar = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/parse/cst-stringify.js
+// node_modules/yaml/dist/parse/cst-stringify.js
 var require_cst_stringify = __commonJS({
-  "../../../node_modules/yaml/dist/parse/cst-stringify.js"(exports) {
+  "node_modules/yaml/dist/parse/cst-stringify.js"(exports) {
     "use strict";
     var stringify = (cst) => "type" in cst ? stringifyToken(cst) : stringifyItem(cst);
     function stringifyToken(token) {
@@ -5545,9 +5545,9 @@ var require_cst_stringify = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/parse/cst-visit.js
+// node_modules/yaml/dist/parse/cst-visit.js
 var require_cst_visit = __commonJS({
-  "../../../node_modules/yaml/dist/parse/cst-visit.js"(exports) {
+  "node_modules/yaml/dist/parse/cst-visit.js"(exports) {
     "use strict";
     var BREAK = Symbol("break visit");
     var SKIP = Symbol("skip children");
@@ -5607,9 +5607,9 @@ var require_cst_visit = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/parse/cst.js
+// node_modules/yaml/dist/parse/cst.js
 var require_cst = __commonJS({
-  "../../../node_modules/yaml/dist/parse/cst.js"(exports) {
+  "node_modules/yaml/dist/parse/cst.js"(exports) {
     "use strict";
     var cstScalar = require_cst_scalar();
     var cstStringify = require_cst_stringify();
@@ -5709,9 +5709,9 @@ var require_cst = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/parse/lexer.js
+// node_modules/yaml/dist/parse/lexer.js
 var require_lexer = __commonJS({
-  "../../../node_modules/yaml/dist/parse/lexer.js"(exports) {
+  "node_modules/yaml/dist/parse/lexer.js"(exports) {
     "use strict";
     var cst = require_cst();
     function isEmpty(ch) {
@@ -6288,9 +6288,9 @@ var require_lexer = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/parse/line-counter.js
+// node_modules/yaml/dist/parse/line-counter.js
 var require_line_counter = __commonJS({
-  "../../../node_modules/yaml/dist/parse/line-counter.js"(exports) {
+  "node_modules/yaml/dist/parse/line-counter.js"(exports) {
     "use strict";
     var LineCounter = class {
       constructor() {
@@ -6319,9 +6319,9 @@ var require_line_counter = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/parse/parser.js
+// node_modules/yaml/dist/parse/parser.js
 var require_parser = __commonJS({
-  "../../../node_modules/yaml/dist/parse/parser.js"(exports) {
+  "node_modules/yaml/dist/parse/parser.js"(exports) {
     "use strict";
     var node_process = __require("process");
     var cst = require_cst();
@@ -6886,14 +6886,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs20 = this.flowScalar(this.type);
+              const fs22 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs20, sep: [] });
+                map.items.push({ start, key: fs22, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs20);
+                this.stack.push(fs22);
               } else {
-                Object.assign(it, { key: fs20, sep: [] });
+                Object.assign(it, { key: fs22, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7021,13 +7021,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs20 = this.flowScalar(this.type);
+              const fs22 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs20, sep: [] });
+                fc.items.push({ start: [], key: fs22, sep: [] });
               else if (it.sep)
-                this.stack.push(fs20);
+                this.stack.push(fs22);
               else
-                Object.assign(it, { key: fs20, sep: [] });
+                Object.assign(it, { key: fs22, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7186,9 +7186,9 @@ var require_parser = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/public-api.js
+// node_modules/yaml/dist/public-api.js
 var require_public_api = __commonJS({
-  "../../../node_modules/yaml/dist/public-api.js"(exports) {
+  "node_modules/yaml/dist/public-api.js"(exports) {
     "use strict";
     var composer = require_composer();
     var Document = require_Document();
@@ -7283,9 +7283,9 @@ var require_public_api = __commonJS({
   }
 });
 
-// ../../../node_modules/yaml/dist/index.js
+// node_modules/yaml/dist/index.js
 var require_dist = __commonJS({
-  "../../../node_modules/yaml/dist/index.js"(exports) {
+  "node_modules/yaml/dist/index.js"(exports) {
     "use strict";
     var composer = require_composer();
     var Document = require_Document();
@@ -7335,9 +7335,9 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../../node_modules/glob/node_modules/balanced-match/index.js
+// node_modules/glob/node_modules/balanced-match/index.js
 var require_balanced_match = __commonJS({
-  "../../../node_modules/glob/node_modules/balanced-match/index.js"(exports, module) {
+  "node_modules/glob/node_modules/balanced-match/index.js"(exports, module) {
     "use strict";
     module.exports = balanced;
     function balanced(a, b, str) {
@@ -7393,9 +7393,9 @@ var require_balanced_match = __commonJS({
   }
 });
 
-// ../../../node_modules/glob/node_modules/brace-expansion/index.js
+// node_modules/glob/node_modules/brace-expansion/index.js
 var require_brace_expansion = __commonJS({
-  "../../../node_modules/glob/node_modules/brace-expansion/index.js"(exports, module) {
+  "node_modules/glob/node_modules/brace-expansion/index.js"(exports, module) {
     var balanced = require_balanced_match();
     module.exports = expandTop;
     var escSlash = "\0SLASH" + Math.random() + "\0";
@@ -7546,9 +7546,9 @@ var require_brace_expansion = __commonJS({
 });
 
 // src/commands/start.ts
-import { promises as fs17 } from "node:fs";
-import { join as join15 } from "node:path";
-import { parseArgs } from "node:util";
+import { promises as fs20 } from "node:fs";
+import { join as join18 } from "node:path";
+import { parseArgs as parseArgs2 } from "node:util";
 
 // src/state/store.ts
 import { promises as fs } from "node:fs";
@@ -7581,8 +7581,8 @@ async function atomicWrite(path2, body) {
 }
 async function writeRunState(projectRoot, state) {
   const path2 = statePath(projectRoot, state.run_id);
-  state.updated_at = (/* @__PURE__ */ new Date()).toISOString();
-  await atomicWrite(path2, JSON.stringify(state, null, 2));
+  const stamped = { ...state, updated_at: (/* @__PURE__ */ new Date()).toISOString() };
+  await atomicWrite(path2, JSON.stringify(stamped, null, 2));
 }
 async function readRunState(projectRoot, runId) {
   const body = await fs.readFile(statePath(projectRoot, runId), "utf8");
@@ -7595,6 +7595,45 @@ async function markActive(projectRoot, runId) {
 }
 async function clearActive(projectRoot, runId) {
   await fs.rm(activeMarker(projectRoot, runId), { force: true });
+}
+async function pruneOldRuns(projectRoot, maxRuns) {
+  if (maxRuns === "keep") return;
+  const artifactsDir = resolve(projectRoot, ARTIFACTS_DIR);
+  let entries;
+  try {
+    entries = await fs.readdir(artifactsDir);
+  } catch {
+    return;
+  }
+  const runDirs = entries.filter((e) => e.startsWith("run-"));
+  const candidates = [];
+  for (const name of runDirs) {
+    const activeFile = join(artifactsDir, name, "ACTIVE");
+    try {
+      await fs.access(activeFile);
+      continue;
+    } catch {
+    }
+    let updatedAt = "1970-01-01T00:00:00.000Z";
+    try {
+      const stateFile = join(artifactsDir, name, "state.json");
+      const body = await fs.readFile(stateFile, "utf8");
+      const parsed = JSON.parse(body);
+      if (parsed.updated_at) updatedAt = parsed.updated_at;
+    } catch {
+      try {
+        const stat = await fs.stat(join(artifactsDir, name));
+        updatedAt = stat.mtime.toISOString();
+      } catch {
+      }
+    }
+    candidates.push({ name, updatedAt });
+  }
+  candidates.sort((a, b) => a.updatedAt > b.updatedAt ? -1 : a.updatedAt < b.updatedAt ? 1 : 0);
+  const toDelete = candidates.slice(maxRuns);
+  for (const { name } of toDelete) {
+    await fs.rm(join(artifactsDir, name), { recursive: true, force: true });
+  }
 }
 async function scanRuns(projectRoot) {
   const artifactsDir = resolve(projectRoot, ARTIFACTS_DIR);
@@ -8105,65 +8144,51 @@ async function writeEwhStateFile(projectRoot, state) {
   await atomicWriteStateFile(ewhStatePath(projectRoot), state);
 }
 async function readWorkflowSettings(projectRoot, workflowName) {
-  const path2 = join8(projectRoot, STATE_FILE);
-  let raw = {};
-  try {
-    const content = await fs8.readFile(path2, "utf8");
-    raw = JSON.parse(content);
-  } catch {
-  }
+  const raw = await readEwhStateFile(projectRoot);
   return { ...DEFAULTS, ...raw.workflow_settings?.[workflowName] ?? {} };
 }
 async function writeWorkflowSettings(projectRoot, workflowName, settings) {
-  const path2 = join8(projectRoot, STATE_FILE);
-  let raw = {};
-  try {
-    const content = await fs8.readFile(path2, "utf8");
-    raw = JSON.parse(content);
-  } catch {
-  }
+  const raw = await readEwhStateFile(projectRoot);
   raw.workflow_settings ??= {};
   raw.workflow_settings[workflowName] = {
     ...raw.workflow_settings[workflowName] ?? {},
     ...settings
   };
-  await atomicWriteStateFile(path2, raw);
+  await atomicWriteStateFile(ewhStatePath(projectRoot), raw);
 }
 async function readChunkedPatterns(projectRoot, workflowName, stepName) {
-  const path2 = join8(projectRoot, STATE_FILE);
-  let raw = {};
-  try {
-    const content = await fs8.readFile(path2, "utf8");
-    raw = JSON.parse(content);
-  } catch {
-    return null;
-  }
+  const raw = await readEwhStateFile(projectRoot);
   const key = `${workflowName}/${stepName}`;
   return raw.chunked_patterns?.[key] ?? null;
 }
 async function writeChunkedPatterns(projectRoot, workflowName, stepName, patterns) {
-  const path2 = join8(projectRoot, STATE_FILE);
-  let raw = {};
-  try {
-    const content = await fs8.readFile(path2, "utf8");
-    raw = JSON.parse(content);
-  } catch {
-  }
+  const raw = await readEwhStateFile(projectRoot);
   raw.chunked_patterns ??= {};
   raw.chunked_patterns[`${workflowName}/${stepName}`] = patterns;
-  await atomicWriteStateFile(path2, raw);
+  await atomicWriteStateFile(ewhStatePath(projectRoot), raw);
+}
+async function readArtifactRetention(projectRoot) {
+  const raw = await readEwhStateFile(projectRoot);
+  const maxRuns = raw.artifact_retention?.max_runs ?? 10;
+  return { maxRuns };
 }
 async function atomicWriteStateFile(path2, raw) {
   await fs8.mkdir(dirname3(path2), { recursive: true });
   const tmp = `${path2}.tmp-${randomBytes2(4).toString("hex")}`;
-  await fs8.writeFile(tmp, JSON.stringify(raw, null, 2), "utf8");
+  const fh = await fs8.open(tmp, "w");
+  try {
+    await fh.writeFile(JSON.stringify(raw, null, 2), "utf8");
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
   await fs8.rename(tmp, path2);
 }
 
-// ../../../node_modules/glob/node_modules/minimatch/dist/esm/index.js
+// node_modules/glob/node_modules/minimatch/dist/esm/index.js
 var import_brace_expansion = __toESM(require_brace_expansion(), 1);
 
-// ../../../node_modules/glob/node_modules/minimatch/dist/esm/assert-valid-pattern.js
+// node_modules/glob/node_modules/minimatch/dist/esm/assert-valid-pattern.js
 var MAX_PATTERN_LENGTH = 1024 * 64;
 var assertValidPattern = (pattern) => {
   if (typeof pattern !== "string") {
@@ -8174,7 +8199,7 @@ var assertValidPattern = (pattern) => {
   }
 };
 
-// ../../../node_modules/glob/node_modules/minimatch/dist/esm/brace-expressions.js
+// node_modules/glob/node_modules/minimatch/dist/esm/brace-expressions.js
 var posixClasses = {
   "[:alnum:]": ["\\p{L}\\p{Nl}\\p{Nd}", true],
   "[:alpha:]": ["\\p{L}\\p{Nl}", true],
@@ -8283,12 +8308,12 @@ var parseClass = (glob3, position) => {
   return [comb, uflag, endPos - pos, true];
 };
 
-// ../../../node_modules/glob/node_modules/minimatch/dist/esm/unescape.js
+// node_modules/glob/node_modules/minimatch/dist/esm/unescape.js
 var unescape = (s, { windowsPathsNoEscape = false } = {}) => {
   return windowsPathsNoEscape ? s.replace(/\[([^\/\\])\]/g, "$1") : s.replace(/((?!\\).|^)\[([^\/\\])\]/g, "$1$2").replace(/\\([^\/])/g, "$1");
 };
 
-// ../../../node_modules/glob/node_modules/minimatch/dist/esm/ast.js
+// node_modules/glob/node_modules/minimatch/dist/esm/ast.js
 var _a;
 var types = /* @__PURE__ */ new Set(["!", "?", "+", "*", "@"]);
 var isExtglobType = (c) => types.has(c);
@@ -8900,12 +8925,12 @@ var AST = class {
 };
 _a = AST;
 
-// ../../../node_modules/glob/node_modules/minimatch/dist/esm/escape.js
+// node_modules/glob/node_modules/minimatch/dist/esm/escape.js
 var escape = (s, { windowsPathsNoEscape = false } = {}) => {
   return windowsPathsNoEscape ? s.replace(/[?*()[\]]/g, "[$&]") : s.replace(/[?*()[\]\\]/g, "\\$&");
 };
 
-// ../../../node_modules/glob/node_modules/minimatch/dist/esm/index.js
+// node_modules/glob/node_modules/minimatch/dist/esm/index.js
 var minimatch = (p, pattern, options = {}) => {
   assertValidPattern(pattern);
   if (!options.nocomment && pattern.charAt(0) === "#") {
@@ -9693,10 +9718,10 @@ minimatch.Minimatch = Minimatch;
 minimatch.escape = escape;
 minimatch.unescape = unescape;
 
-// ../../../node_modules/glob/dist/esm/glob.js
+// node_modules/glob/dist/esm/glob.js
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
-// ../../../node_modules/lru-cache/dist/esm/index.js
+// node_modules/lru-cache/dist/esm/index.js
 var perf = typeof performance === "object" && performance && typeof performance.now === "function" ? performance : Date;
 var warned = /* @__PURE__ */ new Set();
 var PROCESS = typeof process === "object" && !!process ? process : {};
@@ -11065,14 +11090,14 @@ var LRUCache = class _LRUCache {
   }
 };
 
-// ../../../node_modules/path-scurry/dist/esm/index.js
+// node_modules/path-scurry/dist/esm/index.js
 import { posix, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { lstatSync, readdir as readdirCB, readdirSync, readlinkSync, realpathSync as rps } from "fs";
 import * as actualFS from "node:fs";
 import { lstat, readdir, readlink, realpath } from "node:fs/promises";
 
-// ../../../node_modules/minipass/dist/esm/index.js
+// node_modules/minipass/dist/esm/index.js
 import { EventEmitter } from "node:events";
 import Stream from "node:stream";
 import { StringDecoder } from "node:string_decoder";
@@ -11954,7 +11979,7 @@ var Minipass = class extends EventEmitter {
   }
 };
 
-// ../../../node_modules/path-scurry/dist/esm/index.js
+// node_modules/path-scurry/dist/esm/index.js
 var realpathSync = rps.native;
 var defaultFS = {
   lstatSync,
@@ -13071,8 +13096,8 @@ var PathScurryBase = class {
    *
    * @internal
    */
-  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs20 = defaultFS } = {}) {
-    this.#fs = fsFromOption(fs20);
+  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs22 = defaultFS } = {}) {
+    this.#fs = fsFromOption(fs22);
     if (cwd instanceof URL || cwd.startsWith("file://")) {
       cwd = fileURLToPath(cwd);
     }
@@ -13630,8 +13655,8 @@ var PathScurryWin32 = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs20) {
-    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs20 });
+  newRoot(fs22) {
+    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs22 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -13659,8 +13684,8 @@ var PathScurryPosix = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs20) {
-    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs20 });
+  newRoot(fs22) {
+    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs22 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -13678,7 +13703,7 @@ var PathScurryDarwin = class extends PathScurryPosix {
 var Path = process.platform === "win32" ? PathWin32 : PathPosix;
 var PathScurry = process.platform === "win32" ? PathScurryWin32 : process.platform === "darwin" ? PathScurryDarwin : PathScurryPosix;
 
-// ../../../node_modules/glob/dist/esm/pattern.js
+// node_modules/glob/dist/esm/pattern.js
 var isPatternList = (pl) => pl.length >= 1;
 var isGlobList = (gl) => gl.length >= 1;
 var Pattern = class _Pattern {
@@ -13843,7 +13868,7 @@ var Pattern = class _Pattern {
   }
 };
 
-// ../../../node_modules/glob/dist/esm/ignore.js
+// node_modules/glob/dist/esm/ignore.js
 var defaultPlatform2 = typeof process === "object" && process && typeof process.platform === "string" ? process.platform : "linux";
 var Ignore = class {
   relative;
@@ -13930,7 +13955,7 @@ var Ignore = class {
   }
 };
 
-// ../../../node_modules/glob/dist/esm/processor.js
+// node_modules/glob/dist/esm/processor.js
 var HasWalkedCache = class _HasWalkedCache {
   store;
   constructor(store = /* @__PURE__ */ new Map()) {
@@ -14151,7 +14176,7 @@ var Processor = class _Processor {
   }
 };
 
-// ../../../node_modules/glob/dist/esm/walker.js
+// node_modules/glob/dist/esm/walker.js
 var makeIgnore = (ignore, opts) => typeof ignore === "string" ? new Ignore([ignore], opts) : Array.isArray(ignore) ? new Ignore(ignore, opts) : ignore;
 var GlobUtil = class {
   path;
@@ -14478,7 +14503,7 @@ var GlobStream = class extends GlobUtil {
   }
 };
 
-// ../../../node_modules/glob/dist/esm/glob.js
+// node_modules/glob/dist/esm/glob.js
 var defaultPlatform3 = typeof process === "object" && process && typeof process.platform === "string" ? process.platform : "linux";
 var Glob = class {
   absolute;
@@ -14678,7 +14703,7 @@ var Glob = class {
   }
 };
 
-// ../../../node_modules/glob/dist/esm/has-magic.js
+// node_modules/glob/dist/esm/has-magic.js
 var hasMagic = (pattern, options = {}) => {
   if (!Array.isArray(pattern)) {
     pattern = [pattern];
@@ -14690,7 +14715,7 @@ var hasMagic = (pattern, options = {}) => {
   return false;
 };
 
-// ../../../node_modules/glob/dist/esm/index.js
+// node_modules/glob/dist/esm/index.js
 function globStreamSync(pattern, options = {}) {
   return new Glob(pattern, options).streamSync();
 }
@@ -17132,320 +17157,16 @@ function formatAge(iso, now) {
   return `${deltaDay}d ago`;
 }
 
-// src/commands/start.ts
-var BUILTIN_SUBCOMMANDS = [
-  "list",
-  "init",
-  "cleanup",
-  "create",
-  "expand-tools",
-  "status",
-  "resume",
-  "abort",
-  "doctor"
-];
-var STATELESS_SUBCOMMANDS = /* @__PURE__ */ new Set([
-  "status",
-  "abort",
-  "doctor"
-]);
-async function runStart(opts) {
-  if (opts.yolo && opts.save) {
-    throw new Error("--yolo --save is rejected: compliance auto-skip cannot be persisted");
-  }
-  const parsed = parseStartArgv(opts.rawArgv);
-  const inlineFlags = collectInlineFlags(parsed.rest);
-  const noOverride = opts.noOverride ?? inlineFlags.has("no-override");
-  const manageTasks = opts.manageTasks ?? inlineFlags.has("manage-tasks");
-  const name = parsed.workflow;
-  if (isBuiltinSubcommand(name)) {
-    const projectOverridePath = join15(
-      opts.projectRoot,
-      ".claude",
-      "workflows",
-      `${name}.md`
-    );
-    const hasProjectOverride = await fileExists2(projectOverridePath);
-    if (noOverride || !hasProjectOverride) {
-      if (STATELESS_SUBCOMMANDS.has(name)) {
-        return runStatelessSubcommand(name, stripFlags(parsed.rest), opts);
-      }
-      return startSubcommandRun(name, stripFlags(parsed.rest), opts, manageTasks);
-    }
-  }
-  const workflowPath = await resolveWorkflowPath(
-    opts.projectRoot,
-    opts.pluginRoot,
-    parsed.workflow
-  );
-  const wf = await loadWorkflow(workflowPath);
-  const settings = await readWorkflowSettings(opts.projectRoot, wf.name);
-  const autoStructural = !!(opts.yolo || opts.trust || settings.auto_structural);
-  const autoCompliance = !!opts.yolo;
-  const maxErrorRetries = opts.maxRetries ?? settings.max_error_retries;
-  if (opts.save) {
-    await writeWorkflowSettings(opts.projectRoot, wf.name, {
-      auto_structural: autoStructural,
-      max_error_retries: maxErrorRetries
-    });
-  }
-  const run = {
-    run_id: newRunId(),
-    workflow: wf.name,
-    raw_argv: opts.rawArgv,
-    current_step_index: 0,
-    steps: wf.steps,
-    started_at: (/* @__PURE__ */ new Date()).toISOString(),
-    updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-    status: "running",
-    strict: opts.strict ?? false
-  };
-  await markActive(opts.projectRoot, run.run_id);
-  if (opts.manageScripts) {
-    const scripts = await listCachedScripts(opts.projectRoot, wf.name);
-    if (scripts.length > 0) {
-      run.manage_scripts_pending = true;
-      await writeRunState(opts.projectRoot, run);
-      const scriptList = scripts.map((s) => `  ${s.stepName}: ${s.path}`).join("\n");
-      const instr2 = {
-        kind: "user-prompt",
-        body: [
-          `Workflow '${wf.name}' has ${scripts.length} cached script(s):`,
-          scriptList,
-          ``,
-          `To delete a script, remove its .sh (and .hash) file, then re-run.`,
-          `To proceed:  ewh report --run ${run.run_id} --step 0 --decision yes`,
-          `To abort:    ewh report --run ${run.run_id} --abort`
-        ].join("\n"),
-        report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`
-      };
-      return formatInstruction(instr2);
-    }
-  }
-  const transOpts = {
-    pluginRoot: opts.pluginRoot,
-    projectRoot: opts.projectRoot,
-    autoStructural,
-    autoCompliance,
-    maxErrorRetries,
-    strictDrift: opts.strict
-  };
-  const instr = await driveUntilVisible(run, transOpts);
-  await writeRunState(opts.projectRoot, run);
-  return formatInstruction(attachReport(instr, run));
-}
-async function driveUntilVisible(run, opts) {
-  for (let i = 0; i < 1e3; i++) {
-    const step = run.steps[run.current_step_index];
-    const result = await transitionStep(step, { kind: "enter" }, run, opts);
-    step.state = result.next;
-    const instr = result.instruction;
-    if (instr.kind === "done") {
-      run.status = "complete";
-      return instr;
-    }
-    if (instr.report_with === "__CONTINUE__") {
-      const next = await advanceRun(run);
-      if (!next) {
-        return {
-          kind: "done",
-          body: `Workflow '${run.workflow}' finished.`
-        };
-      }
-      continue;
-    }
-    return instr;
-  }
-  throw new Error(
-    "dispatcher looped past 1000 transitions without emitting a visible instruction"
-  );
-}
-function attachReport(instr, run) {
-  if (instr.kind === "done" || instr.report_with === "__CONTINUE__") {
-    return { ...instr, report_with: void 0 };
-  }
-  if (instr.report_with) {
-    return instr;
-  }
-  return {
-    ...instr,
-    report_with: `ewh report --run ${run.run_id} --step ${run.current_step_index}`
-  };
-}
-function parseStartArgv(raw) {
-  const tokens = raw.trim().length === 0 ? [] : raw.trim().split(/\s+/);
-  if (tokens.length === 0) {
-    throw new Error("ewh start: missing workflow name");
-  }
-  const [workflow, ...rest] = tokens;
-  return { workflow, rest };
-}
-function collectInlineFlags(rest) {
-  const flags = /* @__PURE__ */ new Set();
-  for (const t of rest) {
-    if (t.startsWith("--")) flags.add(t.slice(2));
-  }
-  return flags;
-}
-function stripFlags(rest) {
-  return rest.filter((t) => !t.startsWith("--"));
-}
-function isBuiltinSubcommand(name) {
-  return BUILTIN_SUBCOMMANDS.includes(name);
-}
-async function fileExists2(path2) {
-  try {
-    await fs17.access(path2);
-    return true;
-  } catch {
-    return false;
-  }
-}
-async function runStatelessSubcommand(name, positionalRest, opts) {
-  switch (name) {
-    case "status": {
-      const body = await buildStatusBody(opts.projectRoot, /* @__PURE__ */ new Date());
-      return formatInstruction({ kind: "done", body });
-    }
-    case "abort":
-    case "doctor":
-      throw new Error(`subcommand not yet implemented: ${name}`);
-    default:
-      throw new Error(`not a stateless subcommand: ${name}`);
-  }
-}
-async function startSubcommandRun(name, positionalRest, opts, manageTasks) {
-  const run = {
-    run_id: newRunId(),
-    workflow: name,
-    raw_argv: opts.rawArgv,
-    current_step_index: 0,
-    steps: [],
-    started_at: (/* @__PURE__ */ new Date()).toISOString(),
-    updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-    status: "running",
-    subcommand: name
-  };
-  await markActive(opts.projectRoot, run.run_id);
-  let state;
-  let instruction;
-  switch (name) {
-    case "list": {
-      instruction = await buildListInstruction({
-        projectRoot: opts.projectRoot,
-        pluginRoot: opts.pluginRoot
-      });
-      state = void 0;
-      break;
-    }
-    case "cleanup": {
-      const r = await startCleanup({
-        projectRoot: opts.projectRoot,
-        pluginRoot: opts.pluginRoot,
-        manageTasks
-      });
-      state = r.state;
-      instruction = r.instruction;
-      break;
-    }
-    case "init": {
-      const r = await startInit({
-        projectRoot: opts.projectRoot,
-        pluginRoot: opts.pluginRoot
-      });
-      state = r.state;
-      instruction = r.instruction;
-      break;
-    }
-    case "create": {
-      const r = await startCreate({
-        projectRoot: opts.projectRoot,
-        pluginRoot: opts.pluginRoot,
-        type: positionalRest[0]
-      });
-      state = r.state;
-      instruction = r.instruction;
-      break;
-    }
-    case "expand-tools": {
-      const r = await startExpandTools({
-        projectRoot: opts.projectRoot,
-        pluginRoot: opts.pluginRoot,
-        description: positionalRest.join(" ").trim() || void 0
-      });
-      state = r.state;
-      instruction = r.instruction;
-      break;
-    }
-    case "status":
-    case "abort":
-    case "doctor":
-    case "resume":
-      throw new Error(`subcommand ${name} should be routed via runStatelessSubcommand or its own entry point`);
-  }
-  run.subcommand_state = state;
-  if (instruction.kind === "done") {
-    run.status = "complete";
-    await writeRunState(opts.projectRoot, run);
-    await clearActive(opts.projectRoot, run.run_id);
-    return formatInstruction({ ...instruction, report_with: void 0 });
-  }
-  await writeRunState(opts.projectRoot, run);
-  const withReport = instruction.report_with ? instruction : { ...instruction, report_with: `ewh report --run ${run.run_id} --step 0` };
-  return formatInstruction(withReport);
-}
-async function main(argv) {
-  const { values, positionals } = parseArgs({
-    args: argv,
-    allowPositionals: true,
-    options: {
-      "plugin-root": { type: "string" },
-      "project-root": { type: "string" },
-      "trust": { type: "boolean" },
-      "yolo": { type: "boolean" },
-      "max-retries": { type: "string" },
-      "save": { type: "boolean" },
-      "manage-scripts": { type: "boolean" },
-      "strict": { type: "boolean" },
-      "no-override": { type: "boolean" },
-      "manage-tasks": { type: "boolean" }
-    },
-    strict: false
-  });
-  const rawArgv = positionals.join(" ");
-  const projectRoot = values["project-root"] ?? process.cwd();
-  const pluginRoot = values["plugin-root"] ?? process.env.CLAUDE_PLUGIN_ROOT ?? projectRoot;
-  const maxRetriesRaw = values["max-retries"];
-  const maxRetries = maxRetriesRaw !== void 0 ? Number.parseInt(maxRetriesRaw, 10) : void 0;
-  if (maxRetries !== void 0 && Number.isNaN(maxRetries)) {
-    throw new Error("--max-retries must be an integer");
-  }
-  const out = await runStart({
-    projectRoot,
-    pluginRoot,
-    rawArgv,
-    trust: values.trust,
-    yolo: values.yolo,
-    maxRetries,
-    save: values.save,
-    manageScripts: values["manage-scripts"],
-    strict: values["strict"],
-    noOverride: values["no-override"],
-    manageTasks: values["manage-tasks"]
-  });
-  process.stdout.write(out);
-}
-
 // src/commands/report.ts
-import { parseArgs as parseArgs2 } from "node:util";
+import { parseArgs } from "node:util";
 import { join as join16 } from "node:path";
 
 // src/hooks/tool-use-log.ts
-import { promises as fs18 } from "node:fs";
+import { promises as fs17 } from "node:fs";
 async function readTurnLogSince(logPath, offset) {
   let buf;
   try {
-    const fh = await fs18.open(logPath, "r");
+    const fh = await fs17.open(logPath, "r");
     try {
       const stat = await fh.stat();
       const size = stat.size;
@@ -17498,6 +17219,188 @@ function compareDrift(expectedTool, entries) {
   if (!primary) return "ok";
   if (primary.tool === expectedTool) return "ok";
   return { kind: "mismatch", expected: expectedTool, actual: primary.tool };
+}
+
+// src/commands/resume.ts
+import { promises as fs18 } from "node:fs";
+import { join as join15 } from "node:path";
+var RESUMABLE_PHASES = /* @__PURE__ */ new Set([
+  "pending",
+  "gate_pending",
+  "agent_run",
+  "script_eval",
+  "script_run"
+]);
+async function runResume(opts) {
+  const runs = await scanRuns(opts.projectRoot);
+  const now = /* @__PURE__ */ new Date();
+  if (opts.runId !== void 0) {
+    const match2 = runs.find((r) => r.run_id === opts.runId);
+    if (!match2) {
+      throw new Error(`run not found: ${opts.runId}`);
+    }
+    if (match2.status !== "running") {
+      const state = await readRunState(opts.projectRoot, opts.runId);
+      return formatInstruction({
+        kind: "done",
+        body: formatTerminalSummaryBody(state, now)
+      });
+    }
+    return formatInstruction(
+      await buildResumeInstruction(opts.projectRoot, opts.pluginRoot, opts.runId)
+    );
+  }
+  const active = runs.filter((r) => r.is_active && r.status === "running");
+  if (active.length === 0) {
+    const terminal = runs.find((r) => r.status !== "running");
+    if (!terminal) {
+      return formatInstruction({ kind: "done", body: "No runs to resume." });
+    }
+    const state = await readRunState(opts.projectRoot, terminal.run_id);
+    return formatInstruction({
+      kind: "done",
+      body: formatTerminalSummaryBody(state, now)
+    });
+  }
+  if (active.length === 1) {
+    return formatInstruction(
+      await buildResumeInstruction(opts.projectRoot, opts.pluginRoot, active[0].run_id)
+    );
+  }
+  return emitResumePickGate(opts.projectRoot, active, now);
+}
+async function buildResumeInstruction(projectRoot, pluginRoot, runId) {
+  const run = await readRunState(projectRoot, runId);
+  if (run.subcommand) {
+    return {
+      kind: "done",
+      body: [
+        `Run ${runId} is a paused '${run.subcommand}' subcommand and can't be resumed.`,
+        `Re-invoke 'ewh ${run.subcommand}' to start fresh, or 'ewh abort ${runId}' to drop this one.`
+      ].join("\n")
+    };
+  }
+  const step = run.steps[run.current_step_index];
+  if (!step) {
+    throw new Error(`run ${runId} has no step at index ${run.current_step_index}`);
+  }
+  const phase = step.state.phase;
+  if (!RESUMABLE_PHASES.has(phase)) {
+    throw new Error(
+      `resume not supported for step phase '${phase}' on run ${runId}; consider 'ewh abort ${runId}'`
+    );
+  }
+  const clone = JSON.parse(JSON.stringify(run));
+  clone.steps[clone.current_step_index].state = { phase: "pending" };
+  const transOpts = {
+    pluginRoot,
+    projectRoot,
+    strictDrift: clone.strict
+  };
+  const instr = await driveUntilVisibleClone(clone, transOpts);
+  if (instr.kind === "done") {
+    return { ...instr, report_with: void 0 };
+  }
+  if (instr.report_with) return instr;
+  return {
+    ...instr,
+    report_with: `ewh report --run ${clone.run_id} --step ${clone.current_step_index}`
+  };
+}
+async function emitResumePickGate(projectRoot, active, now) {
+  const resumeRunId = newRunId();
+  const rd = runDir(projectRoot, resumeRunId);
+  await fs18.mkdir(rd, { recursive: true });
+  const pickPath = join15(rd, "pick.txt");
+  const subState = {
+    kind: "resume",
+    phase: "resume_pick",
+    active_ids: active.map((r) => r.run_id),
+    pick_path: pickPath
+  };
+  const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+  const run = {
+    run_id: resumeRunId,
+    workflow: "resume",
+    raw_argv: "resume",
+    current_step_index: 0,
+    steps: [],
+    started_at: nowIso,
+    updated_at: nowIso,
+    status: "running",
+    subcommand: "resume",
+    subcommand_state: subState
+  };
+  await markActive(projectRoot, resumeRunId);
+  await writeRunState(projectRoot, run);
+  const listing = active.map(
+    (r) => `  ${r.run_id}  ${r.workflow}  step-${r.current_step_index + 1}/${r.total_steps || "?"}  ${r.current_phase}  ${formatAge(r.updated_at, now)}`
+  ).join("\n");
+  const body = [
+    "Multiple active runs \u2014 which should resume?",
+    "",
+    listing,
+    "",
+    "Ask the user which run-id to resume, then write the chosen id (no",
+    "prose, no quotes) to:",
+    `  ${pickPath}`,
+    "",
+    `Then: ewh report --run ${resumeRunId} --step 0 --result ${pickPath}`
+  ].join("\n");
+  return formatInstruction({
+    kind: "user-prompt",
+    body,
+    report_with: `ewh report --run ${resumeRunId} --step 0 --result ${pickPath}`
+  });
+}
+async function continueResume(run, report, ctx) {
+  const sub = run.subcommand_state;
+  if (!sub || sub.kind !== "resume") {
+    throw new Error("resume continuation: subcommand_state is not 'resume'");
+  }
+  if (sub.phase !== "resume_pick") {
+    throw new Error(`resume: unhandled phase '${sub.phase}'`);
+  }
+  if (report.kind === "error") {
+    throw new Error(`resume_pick: ${report.message}`);
+  }
+  if (report.kind !== "result" || !report.result_path) {
+    throw new Error("resume_pick: expected --result <path>");
+  }
+  const raw = (await fs18.readFile(report.result_path, "utf8")).trim();
+  if (!sub.active_ids.includes(raw)) {
+    throw new Error(
+      `'${raw}' is not in the active run list; expected one of: ${sub.active_ids.join(", ")}`
+    );
+  }
+  run.subcommand_state = void 0;
+  run.status = "complete";
+  await clearActive(ctx.projectRoot, run.run_id);
+  return buildResumeInstruction(ctx.projectRoot, ctx.pluginRoot, raw);
+}
+async function driveUntilVisibleClone(run, opts) {
+  for (let i = 0; i < 1e3; i++) {
+    const step = run.steps[run.current_step_index];
+    const result = await transitionStep(step, { kind: "enter" }, run, opts);
+    step.state = result.next;
+    const instr = result.instruction;
+    if (instr.kind === "done") return instr;
+    if (instr.report_with === "__CONTINUE__") {
+      const next = await advanceRun(run);
+      if (!next) {
+        return { kind: "done", body: `Workflow '${run.workflow}' finished.` };
+      }
+      continue;
+    }
+    return instr;
+  }
+  throw new Error(
+    "resume: looped past 1000 transitions without emitting a visible instruction"
+  );
+}
+function formatTerminalSummaryBody(run, now) {
+  const age = formatAge(run.updated_at, now);
+  return `Run ${run.run_id} is ${run.status} (${run.workflow}, ${age}).`;
 }
 
 // src/commands/report.ts
@@ -17651,6 +17554,8 @@ async function dispatchSubcommandReport(run, report, opts) {
       return continueCreate(run, report, ctx);
     case "expand-tools":
       return continueExpandTools(run, report, ctx);
+    case "resume":
+      return continueResume(run, report, ctx);
     default:
       throw new Error(`unknown subcommand '${run.subcommand}' in run state`);
   }
@@ -17675,8 +17580,8 @@ async function driveForward(run, last, opts) {
     "dispatcher looped past 1000 transitions without emitting a visible instruction"
   );
 }
-async function main2(argv) {
-  const { values } = parseArgs2({
+async function main(argv) {
+  const { values } = parseArgs({
     args: argv,
     options: {
       run: { type: "string" },
@@ -17729,13 +17634,778 @@ function parseStepIndex(v) {
   return n;
 }
 
-// src/commands/record-tool-use.ts
-import { parseArgs as parseArgs3 } from "node:util";
+// src/commands/abort.ts
+async function runAbort(opts) {
+  const runs = await scanRuns(opts.projectRoot);
+  if (opts.runId !== void 0) {
+    const match2 = runs.find((r) => r.run_id === opts.runId);
+    if (!match2) {
+      throw new Error(`run not found: ${opts.runId}`);
+    }
+    if (match2.status !== "running") {
+      throw new Error(`run ${match2.run_id} is already ${match2.status}`);
+    }
+    return delegateAbort(opts, match2.run_id, match2.current_step_index);
+  }
+  const active = runs.filter((r) => r.is_active && r.status === "running");
+  if (active.length === 0) {
+    throw new Error("no active run to abort");
+  }
+  if (active.length > 1) {
+    const ids = active.map((r) => `  ${r.run_id}  ${r.workflow}`).join("\n");
+    throw new Error(
+      `multiple active runs; specify one:
+${ids}
+
+Try: ewh abort <run-id>`
+    );
+  }
+  const only = active[0];
+  return delegateAbort(opts, only.run_id, only.current_step_index);
+}
+async function delegateAbort(opts, runId, stepIndex) {
+  return runReport({
+    projectRoot: opts.projectRoot,
+    pluginRoot: opts.pluginRoot,
+    runId,
+    stepIndex,
+    report: { kind: "abort" }
+  });
+}
+
+// src/commands/doctor.ts
+var import_yaml5 = __toESM(require_dist(), 1);
 import { promises as fs19 } from "node:fs";
 import { join as join17 } from "node:path";
+import { tmpdir } from "node:os";
+import { randomBytes as randomBytes3 } from "node:crypto";
+import { spawn } from "node:child_process";
+async function runDoctor(opts) {
+  const results = [];
+  results.push(await checkNodeVersion(opts.pluginRoot));
+  results.push(await checkBinaryPresent(opts.pluginRoot));
+  results.push(await checkPluginDirs(opts.pluginRoot));
+  results.push(await checkArtifactsWritable(opts.projectRoot));
+  results.push(await checkEwhState(opts.projectRoot));
+  results.push(await checkHarnessConfig(opts.projectRoot));
+  results.push(await checkHooksJson(opts.pluginRoot));
+  results.push(await checkAgents(opts.pluginRoot));
+  results.push(await checkRules(opts.pluginRoot));
+  results.push(await checkWorkflows(opts.pluginRoot, opts.projectRoot));
+  if (opts.smoke) {
+    results.push(await checkSmoke(opts.pluginRoot));
+  }
+  return formatDoctor(results);
+}
+function formatDoctor(results) {
+  const lines = ["ewh doctor"];
+  for (const r of results) {
+    const marker = r.status === "pass" ? "\u2713" : r.status === "warn" ? "!" : "\u2717";
+    const paren = renderParen(r);
+    lines.push(`  ${marker} ${r.label}${paren}`);
+    if (r.status !== "pass" && r.issues) {
+      for (const issue of r.issues) lines.push(`      ${issue}`);
+    }
+  }
+  const fail = results.filter((r) => r.status === "fail").length;
+  const warn = results.filter((r) => r.status === "warn").length;
+  const pass = results.filter((r) => r.status === "pass").length;
+  lines.push(`SUMMARY: ${fail} fail, ${warn} warn, ${pass} pass`);
+  const exitCode = fail > 0 ? 2 : warn > 0 ? 1 : 0;
+  return { output: lines.join("\n") + "\n", exitCode, results };
+}
+function renderParen(r) {
+  if (r.status === "pass") return r.detail ? ` (${r.detail})` : "";
+  const n = r.issues?.length ?? 0;
+  if (r.status === "warn") return ` (warning: ${n} issue${n === 1 ? "" : "s"})`;
+  return ` (${n} issue${n === 1 ? "" : "s"})`;
+}
+async function checkNodeVersion(pluginRoot) {
+  const current = process.version;
+  const currentMajor = Number.parseInt(current.slice(1).split(".")[0], 10);
+  let requiredMajor = null;
+  try {
+    const pkg = JSON.parse(
+      await fs19.readFile(join17(pluginRoot, "package.json"), "utf8")
+    );
+    const spec = pkg.engines?.node;
+    if (typeof spec === "string") {
+      const m = spec.match(/(\d+)/);
+      if (m) requiredMajor = Number.parseInt(m[1], 10);
+    }
+  } catch {
+  }
+  const label = "node version";
+  if (requiredMajor !== null && currentMajor < requiredMajor) {
+    return {
+      id: 1,
+      label,
+      status: "fail",
+      issues: [`found ${current}, need node >= ${requiredMajor}`]
+    };
+  }
+  return { id: 1, label, status: "pass", detail: current };
+}
+async function checkBinaryPresent(pluginRoot) {
+  const path2 = join17(pluginRoot, "bin", "ewh.mjs");
+  const label = "binary present";
+  try {
+    const st = await fs19.stat(path2);
+    if (!st.isFile()) {
+      return { id: 2, label, status: "fail", issues: [`${path2}: not a regular file`] };
+    }
+  } catch (err) {
+    return {
+      id: 2,
+      label,
+      status: "fail",
+      issues: [`${path2}: missing (${errMsg(err)})`]
+    };
+  }
+  try {
+    await fs19.access(path2, fs19.constants.X_OK);
+  } catch {
+    return {
+      id: 2,
+      label,
+      status: "fail",
+      issues: [`${path2}: not executable (chmod +x)`]
+    };
+  }
+  return { id: 2, label, status: "pass" };
+}
+async function checkPluginDirs(pluginRoot) {
+  const label = "plugin root layout";
+  const required = ["workflows", "agents", "rules"];
+  const issues = [];
+  for (const name of required) {
+    const path2 = join17(pluginRoot, name);
+    try {
+      const st = await fs19.stat(path2);
+      if (!st.isDirectory()) issues.push(`${name}/: not a directory`);
+    } catch {
+      issues.push(`${name}/: missing`);
+    }
+  }
+  if (issues.length > 0) return { id: 3, label, status: "fail", issues };
+  return { id: 3, label, status: "pass" };
+}
+async function checkArtifactsWritable(projectRoot) {
+  const label = ".ewh-artifacts writable";
+  const dir = join17(projectRoot, ".ewh-artifacts");
+  const probe = join17(dir, `.doctor-probe-${randomBytes3(4).toString("hex")}`);
+  try {
+    await fs19.mkdir(dir, { recursive: true });
+    await fs19.writeFile(probe, "doctor-probe\n", "utf8");
+    await fs19.unlink(probe);
+  } catch (err) {
+    return { id: 4, label, status: "fail", issues: [errMsg(err)] };
+  }
+  return { id: 4, label, status: "pass" };
+}
+async function checkEwhState(projectRoot) {
+  const label = "ewh-state.json";
+  const path2 = join17(projectRoot, ".claude", "ewh-state.json");
+  let body;
+  try {
+    body = await fs19.readFile(path2, "utf8");
+  } catch (err) {
+    if (errCode(err) === "ENOENT") {
+      return { id: 5, label, status: "pass", detail: "not present" };
+    }
+    return { id: 5, label, status: "warn", issues: [errMsg(err)] };
+  }
+  try {
+    JSON.parse(body);
+    return { id: 5, label, status: "pass" };
+  } catch (err) {
+    return { id: 5, label, status: "warn", issues: [`parse error: ${errMsg(err)}`] };
+  }
+}
+async function checkHarnessConfig(projectRoot) {
+  const label = "CLAUDE.md Harness Config";
+  const path2 = join17(projectRoot, "CLAUDE.md");
+  try {
+    const body = await fs19.readFile(path2, "utf8");
+    if (!/^##\s+Harness Config\b/m.test(body)) {
+      return {
+        id: 6,
+        label,
+        status: "warn",
+        issues: ["CLAUDE.md has no `## Harness Config` section"]
+      };
+    }
+    return { id: 6, label, status: "pass" };
+  } catch (err) {
+    if (errCode(err) === "ENOENT") {
+      return { id: 6, label, status: "pass", detail: "not present" };
+    }
+    return { id: 6, label, status: "warn", issues: [errMsg(err)] };
+  }
+}
+async function checkHooksJson(pluginRoot) {
+  const label = "hooks.json";
+  const path2 = join17(pluginRoot, "hooks", "hooks.json");
+  let body;
+  try {
+    body = await fs19.readFile(path2, "utf8");
+  } catch (err) {
+    if (errCode(err) === "ENOENT") {
+      return { id: 7, label, status: "warn", issues: ["hooks/hooks.json missing"] };
+    }
+    return { id: 7, label, status: "warn", issues: [errMsg(err)] };
+  }
+  try {
+    JSON.parse(body);
+    return { id: 7, label, status: "pass" };
+  } catch (err) {
+    return { id: 7, label, status: "warn", issues: [`parse error: ${errMsg(err)}`] };
+  }
+}
+async function checkAgents(pluginRoot) {
+  const label = "plugin agents";
+  const dir = join17(pluginRoot, "agents");
+  let entries;
+  try {
+    entries = (await fs19.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+  } catch {
+    return { id: 8, label, status: "fail", issues: ["agents/ directory missing"] };
+  }
+  const issues = [];
+  for (const name of entries) {
+    const path2 = join17(dir, name);
+    const body = await fs19.readFile(path2, "utf8");
+    const fmErr = validateFrontmatter(body, ["name"]);
+    if (fmErr) {
+      issues.push(`agents/${name}: ${fmErr}`);
+      continue;
+    }
+    if (!checkSentinel(body)) {
+      issues.push(`agents/${name}: missing ${SENTINEL} sentinel`);
+    }
+  }
+  if (issues.length > 0) return { id: 8, label, status: "fail", issues };
+  return { id: 8, label, status: "pass", detail: `${entries.length} ok` };
+}
+async function checkRules(pluginRoot) {
+  const label = "plugin rules";
+  const dir = join17(pluginRoot, "rules");
+  let entries;
+  try {
+    entries = (await fs19.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
+  } catch {
+    return { id: 9, label, status: "fail", issues: ["rules/ directory missing"] };
+  }
+  const issues = [];
+  for (const rel of entries) {
+    const path2 = join17(dir, rel);
+    const body = await fs19.readFile(path2, "utf8");
+    const fmErr = validateFrontmatter(body, ["name"]);
+    if (fmErr) issues.push(`rules/${rel}: ${fmErr}`);
+  }
+  if (issues.length > 0) return { id: 9, label, status: "fail", issues };
+  return { id: 9, label, status: "pass", detail: `${entries.length} ok` };
+}
+async function checkWorkflows(pluginRoot, projectRoot) {
+  const label = "plugin workflows";
+  const dir = join17(pluginRoot, "workflows");
+  let entries;
+  try {
+    entries = (await fs19.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+  } catch {
+    return { id: 10, label, status: "fail", issues: ["workflows/ directory missing"] };
+  }
+  const issues = [];
+  for (const name of entries) {
+    const path2 = join17(dir, name);
+    try {
+      const wf = await loadWorkflow(path2);
+      for (const step of wf.steps) {
+        if (step.agent) {
+          const found = await fileExists2(join17(projectRoot, ".claude", "agents", `${step.agent}.md`)) || await fileExists2(join17(pluginRoot, "agents", `${step.agent}.md`));
+          if (!found) {
+            issues.push(
+              `workflows/${name}: step '${step.name}' references missing agent '${step.agent}'`
+            );
+          }
+        }
+        for (const ruleName of step.rules ?? []) {
+          const pluginMatches = await findRuleFiles2(ruleName, join17(pluginRoot, "rules"));
+          const projectMatches = await findRuleFiles2(
+            ruleName,
+            join17(projectRoot, ".claude", "rules")
+          );
+          if (pluginMatches.length === 0 && projectMatches.length === 0) {
+            issues.push(
+              `workflows/${name}: step '${step.name}' references missing rule '${ruleName}'`
+            );
+          }
+        }
+      }
+    } catch (err) {
+      issues.push(`workflows/${name}: ${errMsg(err)}`);
+    }
+  }
+  if (issues.length > 0) return { id: 10, label, status: "fail", issues };
+  return { id: 10, label, status: "pass", detail: `${entries.length} ok` };
+}
+async function checkSmoke(pluginRoot) {
+  const label = "smoke: ewh start list";
+  const bin = join17(pluginRoot, "bin", "ewh.mjs");
+  try {
+    await fs19.access(bin, fs19.constants.R_OK);
+  } catch {
+    return {
+      id: 11,
+      label,
+      status: "fail",
+      issues: [`${bin}: not readable (see check #2)`]
+    };
+  }
+  const projectDir = await fs19.mkdtemp(join17(tmpdir(), "ewh-smoke-"));
+  try {
+    const { stdout, stderr, exitCode } = await spawnCollect(
+      process.execPath,
+      [bin, "start", "list", "--plugin-root", pluginRoot],
+      projectDir,
+      3e4
+    );
+    if (exitCode !== 0) {
+      return {
+        id: 11,
+        label,
+        status: "fail",
+        issues: [`node ${bin} exited ${exitCode}: ${(stderr || stdout).trim().slice(0, 200)}`]
+      };
+    }
+    if (!stdout.startsWith("ACTION: done")) {
+      return {
+        id: 11,
+        label,
+        status: "fail",
+        issues: [
+          `expected output to start with 'ACTION: done'; got: ${stdout.slice(0, 80).replace(/\n/g, " ")}`
+        ]
+      };
+    }
+    return { id: 11, label, status: "pass" };
+  } catch (err) {
+    return { id: 11, label, status: "fail", issues: [errMsg(err)] };
+  } finally {
+    await fs19.rm(projectDir, { recursive: true, force: true });
+  }
+}
+function spawnCollect(cmd, args, cwd, timeoutMs) {
+  return new Promise((resolve7, reject) => {
+    const child = spawn(cmd, args, { cwd, env: process.env });
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    child.stdout?.on("data", (b) => {
+      stdout += b.toString("utf8");
+    });
+    child.stderr?.on("data", (b) => {
+      stderr += b.toString("utf8");
+    });
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, timeoutMs);
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (timedOut) return reject(new Error(`smoke: timed out after ${timeoutMs}ms`));
+      resolve7({ stdout, stderr, exitCode: code ?? -1 });
+    });
+  });
+}
+function validateFrontmatter(raw, required) {
+  if (!raw.startsWith("---\n")) return "missing YAML frontmatter";
+  const end = raw.indexOf("\n---\n", 4);
+  if (end === -1) return "unterminated YAML frontmatter";
+  let parsed;
+  try {
+    parsed = import_yaml5.default.parse(raw.slice(4, end)) ?? {};
+  } catch (err) {
+    return `invalid YAML frontmatter: ${errMsg(err)}`;
+  }
+  for (const field of required) {
+    const v = parsed[field];
+    if (typeof v !== "string" || v.trim().length === 0) {
+      return `missing required frontmatter field '${field}'`;
+    }
+  }
+  return null;
+}
+async function findRuleFiles2(name, dir) {
+  let entries;
+  try {
+    entries = (await fs19.readdir(dir, { recursive: true })).map(String);
+  } catch {
+    return [];
+  }
+  const target = `${name}.md`;
+  return entries.filter((e) => e === target || e.endsWith(`/${target}`));
+}
+async function fileExists2(path2) {
+  try {
+    await fs19.access(path2);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function errCode(err) {
+  return err?.code;
+}
+function errMsg(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+// src/commands/start.ts
+var BUILTIN_SUBCOMMANDS = [
+  "list",
+  "init",
+  "cleanup",
+  "create",
+  "expand-tools",
+  "status",
+  "resume",
+  "abort",
+  "doctor"
+];
+var STATELESS_SUBCOMMANDS = /* @__PURE__ */ new Set([
+  "status",
+  "abort",
+  "doctor",
+  "resume"
+]);
+async function runStart(opts) {
+  if (opts.yolo && opts.save) {
+    throw new Error("--yolo --save is rejected: compliance auto-skip cannot be persisted");
+  }
+  const { maxRuns } = await readArtifactRetention(opts.projectRoot);
+  await pruneOldRuns(opts.projectRoot, maxRuns).catch(
+    (e) => process.stderr.write(`ewh prune warning: ${e instanceof Error ? e.message : String(e)}
+`)
+  );
+  const parsed = parseStartArgv(opts.rawArgv);
+  const inlineFlags = collectInlineFlags(parsed.rest);
+  const noOverride = opts.noOverride ?? inlineFlags.has("no-override");
+  const manageTasks = opts.manageTasks ?? inlineFlags.has("manage-tasks");
+  const name = parsed.workflow;
+  if (isBuiltinSubcommand(name)) {
+    const projectOverridePath = join18(
+      opts.projectRoot,
+      ".claude",
+      "workflows",
+      `${name}.md`
+    );
+    const hasProjectOverride = await fileExists3(projectOverridePath);
+    if (noOverride || !hasProjectOverride) {
+      if (STATELESS_SUBCOMMANDS.has(name)) {
+        return runStatelessSubcommand(name, stripFlags(parsed.rest), opts, {
+          smoke: opts.smoke ?? inlineFlags.has("smoke")
+        });
+      }
+      return startSubcommandRun(name, stripFlags(parsed.rest), opts, manageTasks);
+    }
+  }
+  const workflowPath = await resolveWorkflowPath(
+    opts.projectRoot,
+    opts.pluginRoot,
+    parsed.workflow
+  );
+  const wf = await loadWorkflow(workflowPath);
+  const settings = await readWorkflowSettings(opts.projectRoot, wf.name);
+  const autoStructural = !!(opts.yolo || opts.trust || settings.auto_structural);
+  const autoCompliance = !!opts.yolo;
+  const maxErrorRetries = opts.maxRetries ?? settings.max_error_retries;
+  if (opts.save) {
+    await writeWorkflowSettings(opts.projectRoot, wf.name, {
+      auto_structural: autoStructural,
+      max_error_retries: maxErrorRetries
+    });
+  }
+  const run = {
+    run_id: newRunId(),
+    workflow: wf.name,
+    raw_argv: opts.rawArgv,
+    current_step_index: 0,
+    steps: wf.steps,
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    updated_at: (/* @__PURE__ */ new Date()).toISOString(),
+    status: "running",
+    strict: opts.strict ?? false
+  };
+  await markActive(opts.projectRoot, run.run_id);
+  if (opts.manageScripts) {
+    const scripts = await listCachedScripts(opts.projectRoot, wf.name);
+    if (scripts.length > 0) {
+      run.manage_scripts_pending = true;
+      await writeRunState(opts.projectRoot, run);
+      const scriptList = scripts.map((s) => `  ${s.stepName}: ${s.path}`).join("\n");
+      const instr2 = {
+        kind: "user-prompt",
+        body: [
+          `Workflow '${wf.name}' has ${scripts.length} cached script(s):`,
+          scriptList,
+          ``,
+          `To delete a script, remove its .sh (and .hash) file, then re-run.`,
+          `To proceed:  ewh report --run ${run.run_id} --step 0 --decision yes`,
+          `To abort:    ewh report --run ${run.run_id} --abort`
+        ].join("\n"),
+        report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`
+      };
+      return formatInstruction(instr2);
+    }
+  }
+  const transOpts = {
+    pluginRoot: opts.pluginRoot,
+    projectRoot: opts.projectRoot,
+    autoStructural,
+    autoCompliance,
+    maxErrorRetries,
+    strictDrift: opts.strict
+  };
+  const instr = await driveUntilVisible(run, transOpts);
+  await writeRunState(opts.projectRoot, run);
+  return formatInstruction(attachReport(instr, run));
+}
+async function driveUntilVisible(run, opts) {
+  for (let i = 0; i < 1e3; i++) {
+    const step = run.steps[run.current_step_index];
+    const result = await transitionStep(step, { kind: "enter" }, run, opts);
+    step.state = result.next;
+    const instr = result.instruction;
+    if (instr.kind === "done") {
+      run.status = "complete";
+      return instr;
+    }
+    if (instr.report_with === "__CONTINUE__") {
+      const next = await advanceRun(run);
+      if (!next) {
+        return {
+          kind: "done",
+          body: `Workflow '${run.workflow}' finished.`
+        };
+      }
+      continue;
+    }
+    return instr;
+  }
+  throw new Error(
+    "dispatcher looped past 1000 transitions without emitting a visible instruction"
+  );
+}
+function attachReport(instr, run) {
+  if (instr.kind === "done" || instr.report_with === "__CONTINUE__") {
+    return { ...instr, report_with: void 0 };
+  }
+  if (instr.report_with) {
+    return instr;
+  }
+  return {
+    ...instr,
+    report_with: `ewh report --run ${run.run_id} --step ${run.current_step_index}`
+  };
+}
+function parseStartArgv(raw) {
+  const tokens = raw.trim().length === 0 ? [] : raw.trim().split(/\s+/);
+  if (tokens.length === 0) {
+    throw new Error("ewh start: missing workflow name");
+  }
+  const [workflow, ...rest] = tokens;
+  return { workflow, rest };
+}
+function collectInlineFlags(rest) {
+  const flags = /* @__PURE__ */ new Set();
+  for (const t of rest) {
+    if (t.startsWith("--")) flags.add(t.slice(2));
+  }
+  return flags;
+}
+function stripFlags(rest) {
+  return rest.filter((t) => !t.startsWith("--"));
+}
+function isBuiltinSubcommand(name) {
+  return BUILTIN_SUBCOMMANDS.includes(name);
+}
+async function fileExists3(path2) {
+  try {
+    await fs20.access(path2);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function runStatelessSubcommand(name, positionalRest, opts, extras = {}) {
+  switch (name) {
+    case "status": {
+      const body = await buildStatusBody(opts.projectRoot, /* @__PURE__ */ new Date());
+      return formatInstruction({ kind: "done", body });
+    }
+    case "abort": {
+      return runAbort({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        runId: positionalRest[0]
+      });
+    }
+    case "resume": {
+      return runResume({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        runId: positionalRest[0]
+      });
+    }
+    case "doctor": {
+      const { output, exitCode } = await runDoctor({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        smoke: extras.smoke
+      });
+      if (exitCode !== 0) process.exitCode = exitCode;
+      return formatInstruction({ kind: "done", body: output.trimEnd() });
+    }
+    default:
+      throw new Error(`not a stateless subcommand: ${name}`);
+  }
+}
+async function startSubcommandRun(name, positionalRest, opts, manageTasks) {
+  const run = {
+    run_id: newRunId(),
+    workflow: name,
+    raw_argv: opts.rawArgv,
+    current_step_index: 0,
+    steps: [],
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    updated_at: (/* @__PURE__ */ new Date()).toISOString(),
+    status: "running",
+    subcommand: name
+  };
+  await markActive(opts.projectRoot, run.run_id);
+  let state;
+  let instruction;
+  switch (name) {
+    case "list": {
+      instruction = await buildListInstruction({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot
+      });
+      state = void 0;
+      break;
+    }
+    case "cleanup": {
+      const r = await startCleanup({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        manageTasks
+      });
+      state = r.state;
+      instruction = r.instruction;
+      break;
+    }
+    case "init": {
+      const r = await startInit({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot
+      });
+      state = r.state;
+      instruction = r.instruction;
+      break;
+    }
+    case "create": {
+      const r = await startCreate({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        type: positionalRest[0]
+      });
+      state = r.state;
+      instruction = r.instruction;
+      break;
+    }
+    case "expand-tools": {
+      const r = await startExpandTools({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        description: positionalRest.join(" ").trim() || void 0
+      });
+      state = r.state;
+      instruction = r.instruction;
+      break;
+    }
+    case "status":
+    case "abort":
+    case "doctor":
+    case "resume":
+      throw new Error(`subcommand ${name} should be routed via runStatelessSubcommand or its own entry point`);
+  }
+  run.subcommand_state = state;
+  if (instruction.kind === "done") {
+    run.status = "complete";
+    await writeRunState(opts.projectRoot, run);
+    await clearActive(opts.projectRoot, run.run_id);
+    return formatInstruction({ ...instruction, report_with: void 0 });
+  }
+  await writeRunState(opts.projectRoot, run);
+  const withReport = instruction.report_with ? instruction : { ...instruction, report_with: `ewh report --run ${run.run_id} --step 0` };
+  return formatInstruction(withReport);
+}
+async function main2(argv) {
+  const { values, positionals } = parseArgs2({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      "plugin-root": { type: "string" },
+      "project-root": { type: "string" },
+      "trust": { type: "boolean" },
+      "yolo": { type: "boolean" },
+      "max-retries": { type: "string" },
+      "save": { type: "boolean" },
+      "manage-scripts": { type: "boolean" },
+      "strict": { type: "boolean" },
+      "no-override": { type: "boolean" },
+      "manage-tasks": { type: "boolean" },
+      "smoke": { type: "boolean" }
+    },
+    strict: false
+  });
+  const rawArgv = positionals.join(" ");
+  const projectRoot = values["project-root"] ?? process.cwd();
+  const pluginRoot = values["plugin-root"] ?? process.env.CLAUDE_PLUGIN_ROOT ?? projectRoot;
+  const maxRetriesRaw = values["max-retries"];
+  const maxRetries = maxRetriesRaw !== void 0 ? Number.parseInt(maxRetriesRaw, 10) : void 0;
+  if (maxRetries !== void 0 && Number.isNaN(maxRetries)) {
+    throw new Error("--max-retries must be an integer");
+  }
+  const out = await runStart({
+    projectRoot,
+    pluginRoot,
+    rawArgv,
+    trust: values.trust,
+    yolo: values.yolo,
+    maxRetries,
+    save: values.save,
+    manageScripts: values["manage-scripts"],
+    strict: values["strict"],
+    noOverride: values["no-override"],
+    manageTasks: values["manage-tasks"],
+    smoke: values["smoke"]
+  });
+  process.stdout.write(out);
+}
+
+// src/commands/record-tool-use.ts
+import { parseArgs as parseArgs3 } from "node:util";
+import { promises as fs21 } from "node:fs";
+import { join as join19 } from "node:path";
 import { glob as glob2 } from "node:fs/promises";
 async function findActiveRunDir(projectRoot) {
-  const artifactsDir = join17(projectRoot, ".ewh-artifacts");
+  const artifactsDir = join19(projectRoot, ".ewh-artifacts");
   let matches = [];
   try {
     const iter = glob2("*/ACTIVE", { cwd: artifactsDir });
@@ -17748,7 +18418,7 @@ async function findActiveRunDir(projectRoot) {
   if (matches.length === 0) return null;
   const first = matches[0];
   const runDirName = first.split("/")[0];
-  return join17(artifactsDir, runDirName);
+  return join19(artifactsDir, runDirName);
 }
 async function readStdin() {
   const chunks = [];
@@ -17801,21 +18471,31 @@ async function main3(argv) {
   } else {
     return;
   }
-  const logPath = join17(runDir2, "turn-log.jsonl");
+  const logPath = join19(runDir2, "turn-log.jsonl");
   const line = JSON.stringify(record) + "\n";
-  await fs19.appendFile(logPath, line, "utf8");
+  await fs21.appendFile(logPath, line, "utf8");
 }
 
 // src/index.ts
-var SUBCOMMAND_ALIASES = ["list", "init", "cleanup", "create", "expand-tools"];
+var SUBCOMMAND_ALIASES = [
+  "list",
+  "init",
+  "cleanup",
+  "create",
+  "expand-tools",
+  "status",
+  "resume",
+  "abort",
+  "doctor"
+];
 function aliasTo(name) {
   return async (argv) => {
-    await main([name, ...argv]);
+    await main2([name, ...argv]);
   };
 }
 var COMMANDS = {
-  start: main,
-  report: main2,
+  start: main2,
+  report: main,
   "record-tool-use": main3,
   ...Object.fromEntries(SUBCOMMAND_ALIASES.map((n) => [n, aliasTo(n)]))
 };
@@ -17856,6 +18536,10 @@ var HELP = [
   "  ewh cleanup [--manage-tasks]    Run or configure cleanup tasks.",
   "  ewh create [rule|agent|workflow]  Scaffold a new rule/agent/workflow.",
   "  ewh expand-tools [description]  Discover and assign agent tools.",
+  "  ewh status                      List in-flight and recent runs.",
+  "  ewh resume [<run-id>]           Re-emit the pending instruction for a paused run.",
+  "  ewh abort [<run-id>]            Mark a run aborted and clear ACTIVE.",
+  "  ewh doctor                      Validate plugin + project environment.",
   "",
   "Start flags:",
   "  --trust                 auto-approve structural gates this run",
