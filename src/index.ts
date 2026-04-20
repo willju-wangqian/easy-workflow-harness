@@ -14,7 +14,17 @@ import { main as recordToolUseMain } from './commands/record-tool-use.js';
 
 type Cmd = (argv: string[]) => Promise<void>;
 
-const SUBCOMMAND_ALIASES = ['list', 'init', 'cleanup', 'create', 'expand-tools'] as const;
+const SUBCOMMAND_ALIASES = [
+  'list',
+  'init',
+  'cleanup',
+  'create',
+  'expand-tools',
+  'status',
+  'resume',
+  'abort',
+  'doctor',
+] as const;
 
 function aliasTo(name: string): Cmd {
   return async (argv: string[]) => {
@@ -65,6 +75,10 @@ const HELP = [
   '  ewh cleanup [--manage-tasks]    Run or configure cleanup tasks.',
   '  ewh create [rule|agent|workflow]  Scaffold a new rule/agent/workflow.',
   '  ewh expand-tools [description]  Discover and assign agent tools.',
+  '  ewh status                      List in-flight and recent runs.',
+  '  ewh resume [<run-id>]           Re-emit the pending instruction for a paused run.',
+  '  ewh abort [<run-id>]            Mark a run aborted and clear ACTIVE.',
+  '  ewh doctor                      Validate plugin + project environment.',
   '',
   'Start flags:',
   '  --trust                 auto-approve structural gates this run',

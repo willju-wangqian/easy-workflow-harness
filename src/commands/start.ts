@@ -35,6 +35,7 @@ import { startExpandTools } from './expand-tools.js';
 import { buildStatusBody } from './status.js';
 import { runAbort } from './abort.js';
 import { runResume } from './resume.js';
+import { runDoctor } from './doctor.js';
 
 export const BUILTIN_SUBCOMMANDS = [
   'list',
@@ -293,10 +294,15 @@ async function runStatelessSubcommand(
         runId: positionalRest[0],
       });
     }
-    case 'doctor':
-      // Implemented in a subsequent commit; keep the exhaustive branch shape.
+    case 'doctor': {
       void positionalRest;
-      throw new Error(`subcommand not yet implemented: ${name}`);
+      const { output, exitCode } = await runDoctor({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+      });
+      if (exitCode !== 0) process.exitCode = exitCode;
+      return formatInstruction({ kind: 'done', body: output.trimEnd() });
+    }
     default:
       throw new Error(`not a stateless subcommand: ${name}`);
   }
