@@ -19,6 +19,7 @@ import { continueCleanup } from './cleanup.js';
 import { continueInit } from './init.js';
 import { continueCreate } from './create.js';
 import { continueExpandTools } from './expand-tools.js';
+import { continueResume } from './resume.js';
 
 export type ReportOptions = {
   projectRoot: string;
@@ -210,6 +211,8 @@ async function dispatchSubcommandReport(
       return continueCreate(run, report, ctx);
     case 'expand-tools':
       return continueExpandTools(run, report, ctx);
+    case 'resume':
+      return continueResume(run, report, ctx);
     default:
       throw new Error(`unknown subcommand '${run.subcommand}' in run state`);
   }

@@ -247,7 +247,16 @@ export type SubcommandState =
   // `expand-tools`: discover → propose → confirm → write.
   | { kind: 'expand-tools'; phase: 'discover' }
   | { kind: 'expand-tools'; phase: 'propose'; tools_path: string }
-  | { kind: 'expand-tools'; phase: 'confirm'; proposal_path: string };
+  | { kind: 'expand-tools'; phase: 'confirm'; proposal_path: string }
+  // `resume` with >1 active runs: disambiguation pick.
+  | {
+      kind: 'resume';
+      phase: 'resume_pick';
+      /** Run-ids of the active runs the user may pick. */
+      active_ids: string[];
+      /** Scratch path where the LLM writes the chosen run-id. */
+      pick_path: string;
+    };
 
 /**
  * Instruction emitted back to the LLM at every turn.

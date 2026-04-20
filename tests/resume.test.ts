@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 
 import { runResume } from '../src/commands/resume.js';
 import { runStart } from '../src/commands/start.js';
+import { runReport } from '../src/commands/report.js';
 import {
   writeRunState,
   markActive,
@@ -25,12 +26,21 @@ async function writeFileEnsuring(path: string, content: string): Promise<void> {
   await fs.writeFile(path, content, 'utf8');
 }
 
-function parseAction(raw: string): { action: string; runId?: string; body: string } {
+function parseAction(raw: string): {
+  action: string;
+  runId?: string;
+  body: string;
+  reportWith?: string;
+} {
   const m = raw.match(/^ACTION: (\S+)\n([\s\S]*)$/);
   if (!m) throw new Error(`cannot parse: ${raw}`);
-  const body = m[2]!;
-  const runId = body.match(/--run (\S+)/)?.[1];
-  return { action: m[1]!, runId, body };
+  const rest = m[2]!;
+  const idx = rest.lastIndexOf('\nREPORT_WITH: ');
+  const body = idx === -1 ? rest : rest.slice(0, idx);
+  const reportWith =
+    idx === -1 ? undefined : rest.slice(idx + '\nREPORT_WITH: '.length).trim();
+  const runId = reportWith?.match(/--run (\S+)/)?.[1] ?? body.match(/--run (\S+)/)?.[1];
+  return { action: m[1]!, runId, body, reportWith };
 }
 
 // A low-level RunState builder for cases where we don't need the full
@@ -144,22 +154,38 @@ describe('runResume — no-active and terminal branches', () => {
     expect(state.status).toBe('running');
   });
 
-  it('omitted <run-id>: >1 active runs errors with disambiguation list', async () => {
+  it('omitted <run-id>: >1 active runs → disambiguation gate prompt + new resume subcommand run', async () => {
     await writeRunState(projectRoot, fakeRun({ run_id: 'active01' }));
     await markActive(projectRoot, 'active01');
     await writeRunState(projectRoot, fakeRun({ run_id: 'active02' }));
     await markActive(projectRoot, 'active02');
 
-    let msg = '';
-    try {
-      await runResume({ projectRoot, pluginRoot });
-    } catch (e) {
-      msg = (e as Error).message;
-    }
-    expect(msg).toMatch(/multiple active runs/);
-    expect(msg).toContain('active01');
-    expect(msg).toContain('active02');
-    expect(msg).toContain('ewh resume <run-id>');
+    const out = await runResume({ projectRoot, pluginRoot });
+    const parsed = parseAction(out);
+    expect(parsed.action).toBe('user-prompt');
+    expect(parsed.body).toContain('Multiple active runs');
+    expect(parsed.body).toContain('active01');
+    expect(parsed.body).toContain('active02');
+    expect(parsed.body).toMatch(/write the chosen id/);
+
+    // A fresh resume subcommand run was created and is the one in
+    // report_with, not either of the candidates.
+    const resumeRunId = parsed.runId!;
+    expect(resumeRunId).not.toBe('active01');
+    expect(resumeRunId).not.toBe('active02');
+    const resumeState = await readRunState(projectRoot, resumeRunId);
+    expect(resumeState.subcommand).toBe('resume');
+    expect(resumeState.status).toBe('running');
+    expect(resumeState.subcommand_state).toMatchObject({
+      kind: 'resume',
+      phase: 'resume_pick',
+      active_ids: expect.arrayContaining(['active01', 'active02']),
+    });
+    expect(await fileExists(activeMarker(projectRoot, resumeRunId))).toBe(true);
+
+    // Candidate runs are untouched.
+    expect((await readRunState(projectRoot, 'active01')).status).toBe('running');
+    expect((await readRunState(projectRoot, 'active02')).status).toBe('running');
   });
 });
 
@@ -249,5 +275,87 @@ describe('runResume — re-emission of workflow runs', () => {
     const parsed = parseAction(out);
     expect(parsed.action).toBe('user-prompt');
     expect(parsed.runId).toBe(runId);
+  });
+
+  it('>1 active: pick gate → report --result <id> → re-emits chosen run', async () => {
+    await writeFileEnsuring(
+      join(pluginRoot, 'workflows', 'w1.md'),
+      `---\nname: w1\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
+    );
+    await writeFileEnsuring(
+      join(pluginRoot, 'workflows', 'w2.md'),
+      `---\nname: w2\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
+    );
+    const run1 = parseAction(await runStart({ projectRoot, pluginRoot, rawArgv: 'w1' }));
+    const run2 = parseAction(await runStart({ projectRoot, pluginRoot, rawArgv: 'w2' }));
+    expect(run1.runId).toBeDefined();
+    expect(run2.runId).toBeDefined();
+
+    // Resume with >1 active → pick gate.
+    const gate = parseAction(await runResume({ projectRoot, pluginRoot }));
+    expect(gate.action).toBe('user-prompt');
+    expect(gate.body).toContain('Multiple active runs');
+    const resumeRunId = gate.runId!;
+    const pickPath = gate.reportWith!.match(/--result (\S+)/)![1]!;
+
+    // LLM writes the chosen run-id to the pick file.
+    await fs.writeFile(pickPath, `${run2.runId}\n`, 'utf8');
+
+    // Report the pick. continueResume should close the outer resume run
+    // and emit run2's pending gate prompt.
+    const picked = parseAction(
+      await runReport({
+        projectRoot,
+        pluginRoot,
+        runId: resumeRunId,
+        stepIndex: 0,
+        report: { kind: 'result', step_index: 0, result_path: pickPath },
+      }),
+    );
+    expect(picked.action).toBe('user-prompt');
+    expect(picked.body).toContain('structural gate');
+    // report_with is scoped to the picked run, NOT the resume wrapper.
+    expect(picked.runId).toBe(run2.runId);
+
+    // Outer resume run is complete and no longer active.
+    const outer = await readRunState(projectRoot, resumeRunId);
+    expect(outer.status).toBe('complete');
+    expect(await fileExists(activeMarker(projectRoot, resumeRunId))).toBe(false);
+
+    // Picked run is untouched (still running, state.json unchanged).
+    const pickedState = await readRunState(projectRoot, run2.runId!);
+    expect(pickedState.status).toBe('running');
+    expect(await fileExists(activeMarker(projectRoot, run2.runId!))).toBe(true);
+    // Non-picked run is also untouched.
+    expect((await readRunState(projectRoot, run1.runId!)).status).toBe('running');
+  });
+
+  it('>1 active: report with a non-active run-id errors', async () => {
+    await writeFileEnsuring(
+      join(pluginRoot, 'workflows', 'w3.md'),
+      `---\nname: w3\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
+    );
+    await writeFileEnsuring(
+      join(pluginRoot, 'workflows', 'w4.md'),
+      `---\nname: w4\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
+    );
+    await runStart({ projectRoot, pluginRoot, rawArgv: 'w3' });
+    await runStart({ projectRoot, pluginRoot, rawArgv: 'w4' });
+
+    const gate = parseAction(await runResume({ projectRoot, pluginRoot }));
+    const resumeRunId = gate.runId!;
+    const pickPath = gate.reportWith!.match(/--result (\S+)/)![1]!;
+
+    await fs.writeFile(pickPath, 'bogus-id\n', 'utf8');
+
+    await expect(
+      runReport({
+        projectRoot,
+        pluginRoot,
+        runId: resumeRunId,
+        stepIndex: 0,
+        report: { kind: 'result', step_index: 0, result_path: pickPath },
+      }),
+    ).rejects.toThrow(/not in the active run list/);
   });
 });
