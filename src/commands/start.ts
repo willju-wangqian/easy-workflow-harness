@@ -33,6 +33,7 @@ import { startInit } from './init.js';
 import { startCreate } from './create.js';
 import { startExpandTools } from './expand-tools.js';
 import { buildStatusBody } from './status.js';
+import { runAbort } from './abort.js';
 
 export const BUILTIN_SUBCOMMANDS = [
   'list',
@@ -276,9 +277,15 @@ async function runStatelessSubcommand(
       const body = await buildStatusBody(opts.projectRoot, new Date());
       return formatInstruction({ kind: 'done', body });
     }
-    case 'abort':
+    case 'abort': {
+      return runAbort({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        runId: positionalRest[0],
+      });
+    }
     case 'doctor':
-      // Implemented in subsequent commits; keep the exhaustive branch shape.
+      // Implemented in a subsequent commit; keep the exhaustive branch shape.
       void positionalRest;
       throw new Error(`subcommand not yet implemented: ${name}`);
     default:
