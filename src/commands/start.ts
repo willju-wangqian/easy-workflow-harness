@@ -34,6 +34,7 @@ import { startCreate } from './create.js';
 import { startExpandTools } from './expand-tools.js';
 import { buildStatusBody } from './status.js';
 import { runAbort } from './abort.js';
+import { runResume } from './resume.js';
 
 export const BUILTIN_SUBCOMMANDS = [
   'list',
@@ -58,6 +59,7 @@ const STATELESS_SUBCOMMANDS: ReadonlySet<BuiltinSubcommand> = new Set([
   'status',
   'abort',
   'doctor',
+  'resume',
 ] as const);
 
 export type StartOptions = {
@@ -279,6 +281,13 @@ async function runStatelessSubcommand(
     }
     case 'abort': {
       return runAbort({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        runId: positionalRest[0],
+      });
+    }
+    case 'resume': {
+      return runResume({
         projectRoot: opts.projectRoot,
         pluginRoot: opts.pluginRoot,
         runId: positionalRest[0],
