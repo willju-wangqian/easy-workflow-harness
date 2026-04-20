@@ -7,20 +7,17 @@ trigger: "/ewh:doit add-feature"
 ## Steps
 
 - name: plan
-  agent: null
-  skill: null
+  agent: planner
   gate: structural
   rules: []
   context: []
   artifact: .ewh-artifacts/plan.md
   description: >
-    Enter plan mode to design the feature before implementation.
-    If the brainstorming skill is available, it is highly recommended
-    for structured design (understanding lock, decision log, alternatives).
-    Otherwise, use Claude's built-in plan mode to explore approaches,
-    validate understanding, and produce a design before coding.
-    Write the final plan to .ewh-artifacts/plan.md — include:
-    files to create/modify, approach, key decisions, and acceptance criteria.
+    Design the feature before implementation. The planner agent explores
+    the codebase, weighs alternatives, and produces .ewh-artifacts/plan.md
+    with files to create/modify, approach, key decisions, and acceptance
+    criteria. If the brainstorming skill is available, the planner should
+    use it for structured design.
 
 - name: code
   agent: coder
