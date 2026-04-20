@@ -259,11 +259,11 @@ export type SubcommandState =
     }
   // `design`: conversational interview → shape gate → per-file author/gate/refine → write.
   | { kind: 'design'; phase: 'interview'; description: string; catalog_path: string }
-  | { kind: 'design'; phase: 'shape_gate'; proposal_path: string }
+  | { kind: 'design'; phase: 'shape_gate'; proposal_path: string; plugin_confirm_done?: boolean }
   | { kind: 'design'; phase: 'author'; proposal_path: string; author_index: number }
   | { kind: 'design'; phase: 'file_gate'; proposal_path: string; file_index: number }
   | { kind: 'design'; phase: 'refine'; proposal_path: string; file_index: number; instruction: string }
-  | { kind: 'design'; phase: 'write'; proposal_path: string };
+  | { kind: 'design'; phase: 'write'; proposal_path: string; written?: string[] };
 
 /**
  * Instruction emitted back to the LLM at every turn.

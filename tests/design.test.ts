@@ -9,6 +9,7 @@ import {
   validateShape,
   designPaths,
   stagedPathForArtifact,
+  isInsidePluginRepo,
   type ShapeProposal,
 } from '../src/commands/design.js';
 import type { CatalogEntry } from '../src/commands/design-catalog.js';
@@ -480,14 +481,15 @@ describe('continueDesign — file_gate phase', () => {
     expect(instr.kind).toBe('user-prompt');
     expect(instr.body).toMatch(/rule-1/);
 
-    // Approve second file → transitions to write (session 3 stub)
+    // Approve second file → write phase executes and completes
     instr = await continueDesign(
       run,
       { kind: 'decision', step_index: 0, decision: 'yes' },
       { projectRoot, pluginRoot },
     );
-    expect(run.subcommand_state).toMatchObject({ phase: 'write' });
+    expect(run.subcommand_state).toBeUndefined();
     expect(instr.kind).toBe('done');
+    expect(instr.body).toContain('Wrote 2 artifacts');
   });
 
   it('reject: file 2 of 3 → done with rejection message, state cleared', async () => {
@@ -563,5 +565,155 @@ describe('continueDesign — refine phase', () => {
     expect(instr.kind).toBe('user-prompt');
     expect(instr.body).toMatch(/file gate/i);
     expect(instr.body).toMatch(/More details here/);
+  });
+});
+
+// ── scope validation ──────────────────────────────────────────────────────
+
+describe('scope validation', () => {
+  it('non-plugin project: rewrites scope:plugin → scope:project, gate body has note, shape.json mutated on disk', async () => {
+    await seedCatalog();
+    const start = await startDesign({ projectRoot, pluginRoot, runId: RUN_ID, description: 'add rule' });
+    const paths = designPaths(projectRoot, RUN_ID);
+    const proposal = makeProposal([
+      {
+        type: 'rule',
+        op: 'create',
+        name: 'my-rule',
+        scope: 'plugin',
+        path: 'rules/my-rule.md',
+        description: '',
+        frontmatter: { name: 'my-rule' },
+      },
+    ]);
+    const shapePath = await writeShape(paths, proposal);
+    const run = makeRun(start.state!);
+
+    const instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0, result_path: shapePath },
+      { projectRoot, pluginRoot },
+    );
+
+    // Shape gate should be emitted with the rewrite note
+    expect(instr.kind).toBe('user-prompt');
+    expect(instr.body).toContain('Auto-rewrote 1');
+    expect(instr.body).toContain('scope:plugin');
+
+    // shape.json on disk must have scope:project
+    const mutated = JSON.parse(await fs.readFile(shapePath, 'utf8')) as ShapeProposal;
+    expect(mutated.artifacts[0]!.scope).toBe('project');
+  });
+
+  it('isInsidePluginRepo returns false when no package.json in projectRoot', async () => {
+    expect(await isInsidePluginRepo(projectRoot)).toBe(false);
+  });
+
+  it('isInsidePluginRepo returns true when package.json has name=easy-workflow-harness', async () => {
+    await fs.writeFile(
+      join(projectRoot, 'package.json'),
+      JSON.stringify({ name: 'easy-workflow-harness' }),
+      'utf8',
+    );
+    expect(await isInsidePluginRepo(projectRoot)).toBe(true);
+  });
+});
+
+// ── write phase ───────────────────────────────────────────────────────────
+
+describe('continueDesign — write phase', () => {
+  it('dependency-order: rule → agent → workflow regardless of proposal order', async () => {
+    const artifacts: ShapeProposal['artifacts'] = [
+      { type: 'workflow', op: 'create', name: 'my-wf',    scope: 'project', path: 'workflows/my-wf.md',    description: '', frontmatter: {} },
+      { type: 'agent',    op: 'create', name: 'my-agent', scope: 'project', path: 'agents/my-agent.md',    description: '', frontmatter: {} },
+      { type: 'rule',     op: 'create', name: 'my-rule',  scope: 'project', path: 'rules/my-rule.md',      description: '', frontmatter: {} },
+    ];
+    const proposal = makeProposal(artifacts);
+    const paths = designPaths(projectRoot, RUN_ID);
+    const shapePath = await writeShape(paths, proposal);
+    await writeAllStagedFiles(paths, artifacts);
+
+    const run = makeRun({ kind: 'design', phase: 'write', proposal_path: shapePath });
+    const instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0 },
+      { projectRoot, pluginRoot },
+    );
+
+    expect(instr.kind).toBe('done');
+    const lines = instr.body.split('\n');
+    const ruleIdx  = lines.findIndex((l) => l.includes('rules/'));
+    const agentIdx = lines.findIndex((l) => l.includes('agents/'));
+    const wfIdx    = lines.findIndex((l) => l.includes('workflows/'));
+    expect(ruleIdx).toBeGreaterThan(-1);
+    expect(ruleIdx).toBeLessThan(agentIdx);
+    expect(agentIdx).toBeLessThan(wfIdx);
+  });
+
+  it('crash-resume: skips paths already in written, writes only remaining', async () => {
+    const artifacts = [makeArtifact(0), makeArtifact(1), makeArtifact(2)];
+    const proposal = makeProposal(artifacts);
+    const paths = designPaths(projectRoot, RUN_ID);
+    const shapePath = await writeShape(paths, proposal);
+    await writeAllStagedFiles(paths, artifacts);
+
+    // Simulate: target0 was already written before the crash
+    const target0 = join(projectRoot, '.claude', 'rules', 'rule-0.md');
+    await fs.writeFile(target0, '---\nname: rule-0\n---\n\n## Body\n', 'utf8');
+
+    const run = makeRun({
+      kind: 'design',
+      phase: 'write',
+      proposal_path: shapePath,
+      written: [target0],
+    });
+    const instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0 },
+      { projectRoot, pluginRoot },
+    );
+
+    expect(instr.kind).toBe('done');
+    expect(instr.body).toContain('Wrote 3 artifacts');
+
+    // target1 and target2 must have been written
+    const target1 = join(projectRoot, '.claude', 'rules', 'rule-1.md');
+    const target2 = join(projectRoot, '.claude', 'rules', 'rule-2.md');
+    await expect(fs.access(target1)).resolves.toBeUndefined();
+    await expect(fs.access(target2)).resolves.toBeUndefined();
+
+    // target0 content unchanged (was not re-written)
+    expect(await fs.readFile(target0, 'utf8')).toBe('---\nname: rule-0\n---\n\n## Body\n');
+  });
+
+  it('write summary: + for creates, ~ for updates (with "(updated)" suffix)', async () => {
+    const createArtifact: ShapeProposal['artifacts'][number] = {
+      type: 'rule',  op: 'create', name: 'new-rule', scope: 'project',
+      path: 'rules/new-rule.md', description: '', frontmatter: {},
+    };
+    const updateArtifact: ShapeProposal['artifacts'][number] = {
+      type: 'agent', op: 'update', name: 'my-coder', scope: 'project',
+      path: 'agents/my-coder.md', description: '', frontmatter: {},
+    };
+    const artifacts = [createArtifact, updateArtifact];
+    const proposal = makeProposal(artifacts);
+    const paths = designPaths(projectRoot, RUN_ID);
+    const shapePath = await writeShape(paths, proposal);
+    await writeAllStagedFiles(paths, artifacts);
+
+    // op:update requires existing target
+    const existingAgent = join(projectRoot, '.claude', 'agents', 'my-coder.md');
+    await fs.writeFile(existingAgent, '---\nname: my-coder\n---\n\n## Body\n', 'utf8');
+
+    const run = makeRun({ kind: 'design', phase: 'write', proposal_path: shapePath });
+    const instr = await continueDesign(
+      run,
+      { kind: 'result', step_index: 0 },
+      { projectRoot, pluginRoot },
+    );
+
+    expect(instr.kind).toBe('done');
+    expect(instr.body).toMatch(/\+\s+\.claude\/rules\/new-rule\.md/);
+    expect(instr.body).toMatch(/~\s+\.claude\/agents\/my-coder\.md.*updated/);
   });
 });

@@ -2,21 +2,18 @@
  * `ewh design "<description>"` — conversational interview to propose one or
  * more EWH artifacts (workflows, agents, rules), then a shape gate, per-file
  * authoring + gates, and finally atomic writes.
- *
- * Session 2 scope: `interview` and `shape_gate` phases. Later phases
- * (`author`, `file_gate`, `refine`, `write`) are stubbed — each emits a
- * placeholder `done` so the flow doesn't crash if reached.
  */
 
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { dirname, join } from 'node:path';
 import type {
   Instruction,
   Report,
   RunState,
   SubcommandState,
 } from '../state/types.js';
-import { runDir } from '../state/store.js';
+import { runDir, writeRunState } from '../state/store.js';
 import { buildCatalog, type CatalogEntry } from './design-catalog.js';
 
 export type DesignStartOptions = {
@@ -119,11 +116,7 @@ export async function continueDesign(
     case 'refine':
       return continueRefine(run, sub, report, opts);
     case 'write':
-      run.subcommand_state = undefined;
-      return {
-        kind: 'done',
-        body: 'ewh design: write phase not yet implemented (session 3 stub).',
-      };
+      return continueWrite(run, sub, opts);
   }
 }
 
@@ -152,12 +145,51 @@ async function continueInterview(
     return bounceToInterview(run, sub, paths, errors);
   }
 
+  const isPlugin = await isInsidePluginRepo(opts.projectRoot);
+  const notes: string[] = [];
+
+  // In non-plugin projects: rewrite scope:plugin → scope:project
+  if (!isPlugin) {
+    const rewriteCount = await applyScopeRewrites(report.result_path, parsed.proposal);
+    if (rewriteCount > 0) {
+      notes.push(
+        `Auto-rewrote ${rewriteCount} scope:plugin entr${rewriteCount === 1 ? 'y' : 'ies'} to scope:project (cross-project plugin edits not supported).`,
+      );
+    }
+  }
+
+  // In plugin repo: if any scope:project artifacts, prompt for confirmation first
+  if (isPlugin) {
+    const projectScopeCount = parsed.proposal.artifacts.filter((a) => a.scope === 'project').length;
+    if (projectScopeCount > 0) {
+      run.subcommand_state = {
+        kind: 'design',
+        phase: 'shape_gate',
+        proposal_path: report.result_path,
+        plugin_confirm_done: false,
+      };
+      return {
+        kind: 'user-prompt',
+        body: [
+          'EWH design — plugin repo confirmation',
+          '',
+          `These ${projectScopeCount} artifact(s) will write to the plugin's own .claude/ directory.`,
+          'Proceed? yes / no',
+          '',
+          `  yes: ewh report --run ${run.run_id} --step 0 --decision yes`,
+          `  no:  ewh report --run ${run.run_id} --step 0 --decision no`,
+        ].join('\n'),
+        report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`,
+      };
+    }
+  }
+
   run.subcommand_state = {
     kind: 'design',
     phase: 'shape_gate',
     proposal_path: report.result_path,
   };
-  return renderShapeGate(run, parsed.proposal, paths);
+  return renderShapeGate(run, parsed.proposal, paths, notes.length > 0 ? notes : undefined);
 }
 
 async function bounceToInterview(
@@ -191,6 +223,26 @@ async function continueShapeGate(
   report: Report,
   opts: DesignContinueOptions,
 ): Promise<Instruction> {
+  // Handle plugin repo confirmation (plugin_confirm_done === false means pending)
+  if (sub.plugin_confirm_done === false) {
+    if (report.kind !== 'decision') {
+      throw new Error(`design shape_gate plugin confirm: unexpected report kind '${report.kind}'`);
+    }
+    if (report.decision === 'no') {
+      run.subcommand_state = undefined;
+      return { kind: 'done', body: 'Aborted.' };
+    }
+    // User confirmed yes → proceed to shape gate
+    const parsed = await readShape(sub.proposal_path);
+    if (!parsed.ok) {
+      run.subcommand_state = undefined;
+      return { kind: 'done', body: `ewh design: could not read proposal: ${parsed.error}` };
+    }
+    run.subcommand_state = { ...sub, plugin_confirm_done: true };
+    const paths = designPaths(opts.projectRoot, run.run_id);
+    return renderShapeGate(run, parsed.proposal, paths);
+  }
+
   // approve = decision yes, reject = decision no, edit = result (instruction file)
   if (report.kind === 'decision') {
     if (report.decision === 'yes') {
@@ -294,9 +346,16 @@ function renderShapeGate(
   run: RunState,
   proposal: ShapeProposal,
   paths: DesignPaths,
+  notes?: string[],
 ): Instruction {
   const editPath = paths.edit;
   const lines: string[] = [];
+
+  if (notes && notes.length > 0) {
+    for (const note of notes) lines.push(`Note: ${note}`);
+    lines.push('');
+  }
+
   lines.push('EWH design — shape gate');
   lines.push('');
   lines.push(`Description: ${proposal.description}`);
@@ -511,6 +570,134 @@ function existingPathForArtifact(artifact: ShapeArtifact, opts: DesignContinueOp
   return join(opts.projectRoot, '.claude', artifact.path);
 }
 
+// ── Plugin-repo detection ─────────────────────────────────────────────────
+
+export async function isInsidePluginRepo(projectRoot: string): Promise<boolean> {
+  try {
+    const body = await fs.readFile(join(projectRoot, 'package.json'), 'utf8');
+    const pkg = JSON.parse(body) as { name?: unknown };
+    return pkg.name === 'easy-workflow-harness';
+  } catch {
+    return false;
+  }
+}
+
+// ── Scope rewrite ────────────────────────────────────────────────────────
+
+async function applyScopeRewrites(proposalPath: string, proposal: ShapeProposal): Promise<number> {
+  let count = 0;
+  for (const a of proposal.artifacts) {
+    if (a.scope === 'plugin') {
+      a.scope = 'project';
+      count++;
+    }
+  }
+  if (count > 0) {
+    await fs.writeFile(proposalPath, JSON.stringify(proposal, null, 2), 'utf8');
+  }
+  return count;
+}
+
+// ── Atomic file copy (staged → target) ───────────────────────────────────
+
+async function atomicCopy(src: string, dst: string): Promise<void> {
+  await fs.mkdir(dirname(dst), { recursive: true });
+  const body = await fs.readFile(src, 'utf8');
+  const tmp = `${dst}.tmp-${randomBytes(4).toString('hex')}`;
+  const fh = await fs.open(tmp, 'w');
+  try {
+    await fh.writeFile(body, 'utf8');
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await fs.rename(tmp, dst);
+}
+
+// ── Write phase ──────────────────────────────────────────────────────────
+
+async function continueWrite(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'write' }>,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  const parsed = await readShape(sub.proposal_path);
+  if (!parsed.ok) {
+    run.subcommand_state = undefined;
+    return { kind: 'done', body: `ewh design: could not read proposal: ${parsed.error}` };
+  }
+  const proposal = parsed.proposal;
+  const paths = designPaths(opts.projectRoot, run.run_id);
+
+  const CLASS_ORDER: Record<string, number> = { rule: 0, agent: 1, workflow: 2 };
+  const sorted = [...proposal.artifacts].sort(
+    (a, b) => (CLASS_ORDER[a.type] ?? 3) - (CLASS_ORDER[b.type] ?? 3),
+  );
+
+  const written = [...(sub.written ?? [])];
+  const summaryLines: string[] = [];
+
+  for (const artifact of sorted) {
+    const targetPath =
+      artifact.scope === 'plugin'
+        ? join(opts.pluginRoot, artifact.path)
+        : join(opts.projectRoot, '.claude', artifact.path);
+    const displayPath =
+      artifact.scope === 'plugin' ? artifact.path : `.claude/${artifact.path}`;
+    const sigil = artifact.op === 'create' ? '+' : '~';
+    const suffix = artifact.op === 'update' ? '  (updated)' : '';
+
+    if (written.includes(targetPath)) {
+      summaryLines.push(`  ${sigil} ${displayPath}${suffix}`);
+      continue;
+    }
+
+    if (artifact.op === 'create') {
+      let exists = false;
+      try {
+        await fs.access(targetPath);
+        exists = true;
+      } catch { /* target absent — good */ }
+      if (exists) {
+        run.subcommand_state = undefined;
+        return {
+          kind: 'done',
+          body: `ewh design: drift — target already exists: ${targetPath}. No further files written.`,
+        };
+      }
+    } else {
+      try {
+        await fs.access(targetPath);
+      } catch {
+        run.subcommand_state = undefined;
+        return {
+          kind: 'done',
+          body: `ewh design: update target missing: ${targetPath}. No further files written.`,
+        };
+      }
+    }
+
+    const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
+    await atomicCopy(stagedPath, targetPath);
+
+    written.push(targetPath);
+    run.subcommand_state = { ...sub, written };
+    await writeRunState(opts.projectRoot, run);
+
+    summaryLines.push(`  ${sigil} ${displayPath}${suffix}`);
+  }
+
+  run.subcommand_state = undefined;
+  const n = summaryLines.length;
+  const body = [
+    `Wrote ${n} artifact${n === 1 ? '' : 's'}:`,
+    ...summaryLines,
+    '',
+    'Next: /ewh:doit <workflow-name> "<description>" to try it.',
+  ].join('\n');
+  return { kind: 'done', body };
+}
+
 // ── Instruction builders ──────────────────────────────────────────────────
 
 function buildAuthorInstruction(args: {
@@ -698,16 +885,14 @@ async function continueFileGate(
     if (report.decision === 'yes') {
       const nextIndex = sub.file_index + 1;
       if (nextIndex >= proposal.artifacts.length) {
-        // All files approved → write phase (stub for session 4)
-        run.subcommand_state = {
-          kind: 'design',
-          phase: 'write',
+        // All files approved → execute write phase
+        const writeState = {
+          kind: 'design' as const,
+          phase: 'write' as const,
           proposal_path: sub.proposal_path,
         };
-        return {
-          kind: 'done',
-          body: 'ewh design: all files approved — write phase not yet implemented (session 3 stub).',
-        };
+        run.subcommand_state = writeState;
+        return continueWrite(run, writeState, opts);
       }
       run.subcommand_state = {
         kind: 'design',
