@@ -58,6 +58,7 @@ export async function runDoctor(opts: DoctorOptions): Promise<DoctorOutput> {
   results.push(await checkWorkflows(opts.pluginRoot, opts.projectRoot));
   if (opts.smoke) {
     results.push(await checkSmoke(opts.pluginRoot));
+    results.push(await checkDesignSmoke(opts.pluginRoot));
   }
   return formatDoctor(results);
 }
@@ -337,6 +338,163 @@ async function checkWorkflows(
   }
   if (issues.length > 0) return { id: 10, label, status: 'fail', issues };
   return { id: 10, label, status: 'pass', detail: `${entries.length} ok` };
+}
+
+async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
+  const label = 'smoke: design session';
+  const bin = join(pluginRoot, 'bin', 'ewh.mjs');
+  try {
+    await fs.access(bin, fs.constants.R_OK);
+  } catch {
+    return { id: 12, label, status: 'fail', issues: [`${bin}: not readable (see check #2)`] };
+  }
+
+  const projectDir = await fs.mkdtemp(join(tmpdir(), 'ewh-smoke-design-'));
+  const roots = ['--plugin-root', pluginRoot, '--project-root', projectDir];
+
+  try {
+    // Step 1: start design → get runId + shapePath
+    const s1 = await spawnCollect(
+      process.execPath,
+      [bin, 'start', 'design', 'make', 'a', 'smoke', 'rule', ...roots],
+      projectDir,
+      30_000,
+    );
+    if (s1.exitCode !== 0) {
+      return {
+        id: 12,
+        label,
+        status: 'fail',
+        issues: [`start design: exit ${s1.exitCode}: ${(s1.stderr || s1.stdout).trim().slice(0, 200)}`],
+      };
+    }
+    const runId = s1.stdout.match(/--run (\S+)/)?.[1];
+    const shapePath = s1.stdout.match(/--result (\S+)/)?.[1];
+    if (!runId || !shapePath) {
+      return {
+        id: 12,
+        label,
+        status: 'fail',
+        issues: [`start design: could not parse runId/shapePath from: ${s1.stdout.trim().slice(0, 300)}`],
+      };
+    }
+
+    // Mock facilitator: write shape.json
+    const shape = {
+      description: 'make a smoke rule',
+      artifacts: [
+        {
+          type: 'rule',
+          op: 'create',
+          name: 'doctor-smoke-rule',
+          scope: 'project',
+          path: 'rules/doctor-smoke-rule.md',
+          description: 'Doctor smoke test rule',
+          frontmatter: { name: 'doctor-smoke-rule', description: 'Doctor smoke test rule' },
+        },
+      ],
+    };
+    await fs.mkdir(join(shapePath, '..'), { recursive: true });
+    await fs.writeFile(shapePath, JSON.stringify(shape, null, 2), 'utf8');
+
+    // Step 2: report shape.json → shape gate
+    const s2 = await spawnCollect(
+      process.execPath,
+      [bin, 'report', '--run', runId, '--step', '0', '--result', shapePath, ...roots],
+      projectDir,
+      30_000,
+    );
+    if (s2.exitCode !== 0 || !s2.stdout.startsWith('ACTION: user-prompt')) {
+      return {
+        id: 12,
+        label,
+        status: 'fail',
+        issues: [`shape gate: expected user-prompt, got exit=${s2.exitCode}: ${(s2.stderr || s2.stdout).trim().slice(0, 200)}`],
+      };
+    }
+
+    // Step 3: approve shape gate → author instruction
+    const s3 = await spawnCollect(
+      process.execPath,
+      [bin, 'report', '--run', runId, '--step', '0', '--decision', 'yes', ...roots],
+      projectDir,
+      30_000,
+    );
+    if (s3.exitCode !== 0 || !s3.stdout.startsWith('ACTION: tool-call')) {
+      return {
+        id: 12,
+        label,
+        status: 'fail',
+        issues: [`approve shape gate: expected tool-call, got exit=${s3.exitCode}: ${(s3.stderr || s3.stdout).trim().slice(0, 200)}`],
+      };
+    }
+    const stagedPath = s3.stdout.match(/--result (\S+)/)?.[1];
+    if (!stagedPath) {
+      return {
+        id: 12,
+        label,
+        status: 'fail',
+        issues: [`approve shape gate: could not parse stagedPath from: ${s3.stdout.trim().slice(0, 300)}`],
+      };
+    }
+
+    // Mock author: write staged file
+    const stagedContent =
+      '---\nname: doctor-smoke-rule\ndescription: Doctor smoke test rule\n---\n\nDoctor smoke rule body.\n';
+    await fs.mkdir(join(stagedPath, '..'), { recursive: true });
+    await fs.writeFile(stagedPath, stagedContent, 'utf8');
+
+    // Step 4: report staged file → file gate
+    const s4 = await spawnCollect(
+      process.execPath,
+      [bin, 'report', '--run', runId, '--step', '0', '--result', stagedPath, ...roots],
+      projectDir,
+      30_000,
+    );
+    if (s4.exitCode !== 0 || !s4.stdout.startsWith('ACTION: user-prompt')) {
+      return {
+        id: 12,
+        label,
+        status: 'fail',
+        issues: [`file gate: expected user-prompt, got exit=${s4.exitCode}: ${(s4.stderr || s4.stdout).trim().slice(0, 200)}`],
+      };
+    }
+
+    // Step 5: approve file gate → done (write)
+    const s5 = await spawnCollect(
+      process.execPath,
+      [bin, 'report', '--run', runId, '--step', '0', '--decision', 'yes', ...roots],
+      projectDir,
+      30_000,
+    );
+    if (s5.exitCode !== 0 || !s5.stdout.startsWith('ACTION: done')) {
+      return {
+        id: 12,
+        label,
+        status: 'fail',
+        issues: [`approve file gate: expected done, got exit=${s5.exitCode}: ${(s5.stderr || s5.stdout).trim().slice(0, 200)}`],
+      };
+    }
+
+    // Verify final file written
+    const finalPath = join(projectDir, '.claude', 'rules', 'doctor-smoke-rule.md');
+    try {
+      await fs.access(finalPath);
+    } catch {
+      return {
+        id: 12,
+        label,
+        status: 'fail',
+        issues: [`final file not written at ${finalPath}`],
+      };
+    }
+
+    return { id: 12, label, status: 'pass' };
+  } catch (err) {
+    return { id: 12, label, status: 'fail', issues: [errMsg(err)] };
+  } finally {
+    await fs.rm(projectDir, { recursive: true, force: true });
+  }
 }
 
 async function checkSmoke(pluginRoot: string): Promise<CheckResult> {

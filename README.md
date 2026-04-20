@@ -10,7 +10,7 @@ EWH fixes this by breaking the work into discrete, role-scoped steps. Here's wha
 
 - **Lightweight** — workflows, agents, and rules are plain Markdown files you can open, read, and change. The orchestration binary (`bin/ewh`) is a small local Node/TypeScript bundle — no external services, no durable queue, atomic state writes so crashes are resumable.
 - **Beginner-friendly** — `/ewh:doit init` auto-detects your language, test command, and conventions, writes them into your CLAUDE.md, and shows an onboarding guide with all available commands. Zero-config mode works in any project without setup. Commands are discoverable via `/ewh:doit list`.
-- **A good starting point for your own harness** — three customization levels (zero-config, init'd, custom overrides), the `create` subcommand (`/ewh:doit create rule|agent|workflow`) that walks you through authoring your own pieces interactively, and a complete worked example under `examples/project_greedy_snake/`. Fork the project rules, replace the workflows, swap the agents — nothing is locked in.
+- **A good starting point for your own harness** — three customization levels (zero-config, init'd, custom overrides), the `design` subcommand (`/ewh:doit design "<description>"`) that interviews you to create or update EWH artifacts conversationally, and a complete worked example under `examples/project_greedy_snake/`. Fork the project rules, replace the workflows, swap the agents — nothing is locked in.
 - **Separation of concerns** — different agents handle coding, reviewing, and testing. A reviewer literally *cannot* edit code (read-only tool scope), so it can't silently "fix" issues instead of reporting them.
 - **Enforced standards** — rules are injected as prose into agent prompts. Coding conventions, review criteria, and testing requirements apply consistently without you re-pasting them every run.
 - **Guardrails that keep you in control** — structural gates pause at decisions that matter; compliance gates trigger automatically when critical rules are at stake. You can abort any workflow at any gate; completed work is preserved.
@@ -91,7 +91,7 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 /ewh:doit init                                         # bootstrap project + onboarding guide
 /ewh:doit cleanup                                     # run configured cleanup tasks
 /ewh:doit cleanup --manage-tasks                      # configure cleanup tasks
-/ewh:doit create [rule|agent|workflow]                  # scaffold a project artifact
+/ewh:doit design "<description>"                        # design a rule, agent, or workflow conversationally
 /ewh:doit expand-tools [description]                   # discover and persist agent tool expansions
 /ewh:doit list                                         # list all workflows and subcommands
 
@@ -184,7 +184,7 @@ Subcommands are lightweight, interactive operations handled directly by the disp
 |---|---|---|
 | `init` | Bootstrap a project — detect language/framework, write Harness Config, show onboarding guide | [docs](docs/subcommand-init.md) |
 | `cleanup` | Run user-configured cleanup tasks (tests, linting, formatting) | [docs](docs/subcommand-cleanup.md) |
-| `create [type]` | Scaffold a project-specific rule, agent, or workflow interactively | [docs](docs/subcommand-create.md) |
+| `design "<desc>"` | Design a rule, agent, or workflow through a conversational interview | [docs](docs/subcommand-design.md) |
 | `expand-tools` | Discover MCP/plugin tools and persist per-agent expansions | [docs](docs/expand-agent-tools.md) |
 
 **Override control:** If you create a project workflow with the same name as a subcommand (e.g., `.claude/workflows/init.md`), the project workflow takes precedence. Use `--no-override` to force the built-in subcommand:

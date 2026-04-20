@@ -6886,14 +6886,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs24 = this.flowScalar(this.type);
+              const fs23 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs24, sep: [] });
+                map.items.push({ start, key: fs23, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs24);
+                this.stack.push(fs23);
               } else {
-                Object.assign(it, { key: fs24, sep: [] });
+                Object.assign(it, { key: fs23, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7021,13 +7021,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs24 = this.flowScalar(this.type);
+              const fs23 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs24, sep: [] });
+                fc.items.push({ start: [], key: fs23, sep: [] });
               else if (it.sep)
-                this.stack.push(fs24);
+                this.stack.push(fs23);
               else
-                Object.assign(it, { key: fs24, sep: [] });
+                Object.assign(it, { key: fs23, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7546,8 +7546,8 @@ var require_brace_expansion = __commonJS({
 });
 
 // src/commands/start.ts
-import { promises as fs22 } from "node:fs";
-import { join as join20 } from "node:path";
+import { promises as fs21 } from "node:fs";
+import { join as join19 } from "node:path";
 import { parseArgs as parseArgs2 } from "node:util";
 
 // src/state/store.ts
@@ -13096,8 +13096,8 @@ var PathScurryBase = class {
    *
    * @internal
    */
-  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs24 = defaultFS } = {}) {
-    this.#fs = fsFromOption(fs24);
+  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs23 = defaultFS } = {}) {
+    this.#fs = fsFromOption(fs23);
     if (cwd instanceof URL || cwd.startsWith("file://")) {
       cwd = fileURLToPath(cwd);
     }
@@ -13655,8 +13655,8 @@ var PathScurryWin32 = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs24) {
-    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs24 });
+  newRoot(fs23) {
+    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs23 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -13684,8 +13684,8 @@ var PathScurryPosix = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs24) {
-    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs24 });
+  newRoot(fs23) {
+    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs23 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -16211,7 +16211,7 @@ Workflows (multi-step, agent-driven):
 Subcommands (lightweight, interactive):
   /ewh:doit init                    \u2014 bootstrap project and show onboarding guide
   /ewh:doit cleanup                 \u2014 run user-configured cleanup tasks
-  /ewh:doit create [type]           \u2014 scaffold a rule, agent, or workflow
+  /ewh:doit design "<desc>"         \u2014 design a rule, agent, or workflow conversationally
   /ewh:doit expand-tools [desc]     \u2014 discover and assign agent tools
   /ewh:doit list                    \u2014 show this catalog
 
@@ -16718,204 +16718,19 @@ function buildOnboardingSummary() {
   ].join("\n");
 }
 
-// src/commands/create.ts
-var import_yaml4 = __toESM(require_dist(), 1);
-import { promises as fs15 } from "node:fs";
-import { dirname as dirname6, join as join13 } from "node:path";
-async function startCreate(opts) {
-  const type = normalizeType(opts.type);
-  if (!type) {
-    const scratch = typeChoicePath(opts.projectRoot);
-    const state = { kind: "create", phase: "ask-type" };
-    return {
-      state,
-      instruction: {
-        kind: "user-prompt",
-        body: [
-          "Which type would you like to create: rule, agent, or workflow?",
-          "",
-          `Ask the user, then write the single chosen word (no quotes, no prose) to:`,
-          `  ${scratch}`,
-          "",
-          "Then: ewh report --run <id> --step 0 --result <that-path>"
-        ].join("\n")
-      }
-    };
-  }
-  return gatherStep(opts.projectRoot, opts.pluginRoot, type);
-}
-async function gatherStep(projectRoot, pluginRoot, type) {
-  const draftPath = draftScratchPath(projectRoot, type);
-  const templatePath = join13(pluginRoot, "templates", `${type}.md`);
-  const state = { kind: "create", phase: "gather", type, input_path: draftPath };
-  return {
-    state,
-    instruction: {
-      kind: "user-prompt",
-      body: [
-        `Scaffolding a new ${type}.`,
-        "",
-        `Template reference (required frontmatter + body structure):`,
-        `  ${templatePath}`,
-        "",
-        "Gather the required details from the user (ask follow-up questions as",
-        "needed), then author a complete markdown draft \u2014 frontmatter plus",
-        "body \u2014 and write it to:",
-        `  ${draftPath}`,
-        "",
-        "Requirements:",
-        "  - All required frontmatter fields present and non-empty.",
-        `  - \`name:\` uses kebab-case (this becomes the filename).`,
-        ...type === "agent" ? [
-          "  - Body ends with the literal `AGENT_COMPLETE` sentinel instruction.",
-          "  - Includes a `## Before You Start` self-gating section."
-        ] : [],
-        ...type === "workflow" ? ["  - Contains a `## Steps` YAML sequence."] : [],
-        "",
-        `Then: ewh report --run <id> --step 0 --result ${draftPath}`
-      ].join("\n")
-    }
-  };
-}
-async function continueCreate(run, report, opts) {
-  const sub = run.subcommand_state;
-  if (!sub || sub.kind !== "create") {
-    throw new Error("create report called with non-create subcommand state");
-  }
-  if (sub.phase === "ask-type") {
-    if (report.kind === "error") throw new Error(`create ask-type: ${report.message}`);
-    if (report.kind !== "result" || !report.result_path) {
-      throw new Error("create ask-type: expected --result <path>");
-    }
-    const raw = (await fs15.readFile(report.result_path, "utf8")).trim();
-    const type = normalizeType(raw);
-    if (!type) {
-      throw new Error(`create: invalid type '${raw}' (expected rule/agent/workflow)`);
-    }
-    const gather = await gatherStep(opts.projectRoot, opts.pluginRoot, type);
-    run.subcommand_state = gather.state;
-    return gather.instruction;
-  }
-  if (sub.phase === "gather") {
-    if (report.kind === "error") throw new Error(`create gather: ${report.message}`);
-    if (report.kind !== "result" || !report.result_path) {
-      throw new Error("create gather: expected --result <path>");
-    }
-    const draft = await fs15.readFile(report.result_path, "utf8");
-    const name = extractFrontmatterName(draft);
-    if (!name) {
-      throw new Error(
-        "create: could not extract `name:` from draft frontmatter \u2014 rewrite the draft"
-      );
-    }
-    const target = targetPath(opts.projectRoot, sub.type, name);
-    const collision = await fileExists(target);
-    run.subcommand_state = {
-      kind: "create",
-      phase: "confirm",
-      type: sub.type,
-      name,
-      draft,
-      target_path: target
-    };
-    const lines = [
-      `Proposed ${sub.type}: ${target}`,
-      "",
-      "--- draft ---",
-      draft.trimEnd(),
-      "--- end draft ---",
-      ""
-    ];
-    if (collision) {
-      lines.push(
-        `\u26A0 File already exists at ${target}. Writing will overwrite it.`,
-        ""
-      );
-    }
-    lines.push(
-      `Write this file?`,
-      `  confirm: ewh report --run ${run.run_id} --step 0 --decision yes`,
-      `  abort:   ewh report --run ${run.run_id} --abort`
-    );
-    return {
-      kind: "user-prompt",
-      body: lines.join("\n"),
-      report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`
-    };
-  }
-  if (sub.phase === "confirm") {
-    if (report.kind !== "decision") {
-      throw new Error(`create confirm: expected --decision, got ${report.kind}`);
-    }
-    if (report.decision === "no") {
-      run.subcommand_state = void 0;
-      return { kind: "done", body: "Create aborted; no file written." };
-    }
-    await writeCreatedFile(sub.target_path, sub.draft);
-    run.subcommand_state = void 0;
-    return {
-      kind: "done",
-      body: `Created ${sub.target_path}. Effective on next workflow run.`
-    };
-  }
-  throw new Error(`create: unhandled phase ${sub.phase}`);
-}
-function normalizeType(raw) {
-  if (!raw) return null;
-  const v = raw.trim().toLowerCase();
-  if (v === "rule" || v === "agent" || v === "workflow") return v;
-  return null;
-}
-function typeChoicePath(projectRoot) {
-  return join13(projectRoot, ".ewh-artifacts", "create-type.txt");
-}
-function draftScratchPath(projectRoot, type) {
-  return join13(projectRoot, ".ewh-artifacts", `create-${type}-draft.md`);
-}
-function targetPath(projectRoot, type, name) {
-  const dir = `${type}s`;
-  return join13(projectRoot, ".claude", dir, `${name}.md`);
-}
-function extractFrontmatterName(body) {
-  if (!body.startsWith("---\n")) return null;
-  const end = body.indexOf("\n---\n", 4);
-  if (end === -1) return null;
-  const fmText = body.slice(4, end);
-  let fm;
-  try {
-    fm = import_yaml4.default.parse(fmText);
-  } catch {
-    return null;
-  }
-  if (!fm || typeof fm !== "object" || Array.isArray(fm)) return null;
-  const v = fm.name;
-  return typeof v === "string" && v.length > 0 ? v : null;
-}
-async function writeCreatedFile(target, content) {
-  await fs15.mkdir(dirname6(target), { recursive: true });
-  await fs15.writeFile(target, content, "utf8");
-}
-async function fileExists(path2) {
-  try {
-    await fs15.access(path2);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // src/commands/design.ts
-import { promises as fs17 } from "node:fs";
-import { join as join15 } from "node:path";
+import { promises as fs16 } from "node:fs";
+import { randomBytes as randomBytes3 } from "node:crypto";
+import { dirname as dirname6, join as join14 } from "node:path";
 
 // src/commands/design-catalog.ts
-var import_yaml5 = __toESM(require_dist(), 1);
-import { promises as fs16 } from "node:fs";
-import { join as join14 } from "node:path";
+var import_yaml4 = __toESM(require_dist(), 1);
+import { promises as fs15 } from "node:fs";
+import { join as join13 } from "node:path";
 async function readFrontmatter(filePath) {
   let content;
   try {
-    content = await fs16.readFile(filePath, "utf8");
+    content = await fs15.readFile(filePath, "utf8");
   } catch {
     return null;
   }
@@ -16924,7 +16739,7 @@ async function readFrontmatter(filePath) {
   if (end === -1) return null;
   const raw = content.slice(3, end).trim();
   try {
-    return (0, import_yaml5.parse)(raw);
+    return (0, import_yaml4.parse)(raw);
   } catch {
     return null;
   }
@@ -16933,15 +16748,15 @@ async function walkDir(dir) {
   const results = [];
   let entries;
   try {
-    entries = await fs16.readdir(dir);
+    entries = await fs15.readdir(dir);
   } catch {
     return results;
   }
   for (const name of entries) {
-    const full = join14(dir, name);
+    const full = join13(dir, name);
     let stat;
     try {
-      stat = await fs16.stat(full);
+      stat = await fs15.stat(full);
     } catch {
       continue;
     }
@@ -16979,12 +16794,12 @@ async function buildCatalog(projectRoot, pluginRoot) {
     projectAgents,
     projectRules
   ] = await Promise.all([
-    collectEntries(join14(pluginRoot, "workflows"), "workflow", "plugin", pluginRoot + "/"),
-    collectEntries(join14(pluginRoot, "agents"), "agent", "plugin", pluginRoot + "/"),
-    collectEntries(join14(pluginRoot, "rules"), "rule", "plugin", pluginRoot + "/"),
-    collectEntries(join14(projectRoot, ".claude", "workflows"), "workflow", "project", projectRoot + "/.claude/"),
-    collectEntries(join14(projectRoot, ".claude", "agents"), "agent", "project", projectRoot + "/.claude/"),
-    collectEntries(join14(projectRoot, ".claude", "rules"), "rule", "project", projectRoot + "/.claude/")
+    collectEntries(join13(pluginRoot, "workflows"), "workflow", "plugin", pluginRoot + "/"),
+    collectEntries(join13(pluginRoot, "agents"), "agent", "plugin", pluginRoot + "/"),
+    collectEntries(join13(pluginRoot, "rules"), "rule", "plugin", pluginRoot + "/"),
+    collectEntries(join13(projectRoot, ".claude", "workflows"), "workflow", "project", projectRoot + "/.claude/"),
+    collectEntries(join13(projectRoot, ".claude", "agents"), "agent", "project", projectRoot + "/.claude/"),
+    collectEntries(join13(projectRoot, ".claude", "rules"), "rule", "project", projectRoot + "/.claude/")
   ]);
   const dedupeWithProjectWin = (plugin, project) => {
     const projectNames = new Set(project.map((e) => e.name));
@@ -17013,10 +16828,10 @@ async function startDesign(opts) {
     };
   }
   const paths = designPaths(opts.projectRoot, opts.runId);
-  await fs17.mkdir(paths.proposedDir, { recursive: true });
+  await fs16.mkdir(paths.proposedDir, { recursive: true });
   const catalog = await buildCatalog(opts.projectRoot, opts.pluginRoot);
-  await fs17.writeFile(paths.catalog, JSON.stringify(catalog, null, 2), "utf8");
-  await fs17.writeFile(paths.description, description + "\n", "utf8");
+  await fs16.writeFile(paths.catalog, JSON.stringify(catalog, null, 2), "utf8");
+  await fs16.writeFile(paths.description, description + "\n", "utf8");
   const state = {
     kind: "design",
     phase: "interview",
@@ -17044,14 +16859,13 @@ async function continueDesign(run, report, opts) {
     case "shape_gate":
       return continueShapeGate(run, sub, report, opts);
     case "author":
+      return continueAuthor(run, sub, report, opts);
     case "file_gate":
+      return continueFileGate(run, sub, report, opts);
     case "refine":
+      return continueRefine(run, sub, report, opts);
     case "write":
-      run.subcommand_state = void 0;
-      return {
-        kind: "done",
-        body: `ewh design: phase '${sub.phase}' not yet implemented (session 2 MVP).`
-      };
+      return continueWrite(run, sub, opts);
   }
 }
 async function continueInterview(run, sub, report, opts) {
@@ -17071,12 +16885,46 @@ async function continueInterview(run, sub, report, opts) {
   if (errors.length > 0) {
     return bounceToInterview(run, sub, paths, errors);
   }
+  const isPlugin = await isInsidePluginRepo(opts.projectRoot);
+  const notes = [];
+  if (!isPlugin) {
+    const rewriteCount = await applyScopeRewrites(report.result_path, parsed.proposal);
+    if (rewriteCount > 0) {
+      notes.push(
+        `Auto-rewrote ${rewriteCount} scope:plugin entr${rewriteCount === 1 ? "y" : "ies"} to scope:project (cross-project plugin edits not supported).`
+      );
+    }
+  }
+  if (isPlugin) {
+    const projectScopeCount = parsed.proposal.artifacts.filter((a) => a.scope === "project").length;
+    if (projectScopeCount > 0) {
+      run.subcommand_state = {
+        kind: "design",
+        phase: "shape_gate",
+        proposal_path: report.result_path,
+        plugin_confirm_done: false
+      };
+      return {
+        kind: "user-prompt",
+        body: [
+          "EWH design \u2014 plugin repo confirmation",
+          "",
+          `These ${projectScopeCount} artifact(s) will write to the plugin's own .claude/ directory.`,
+          "Proceed? yes / no",
+          "",
+          `  yes: ewh report --run ${run.run_id} --step 0 --decision yes`,
+          `  no:  ewh report --run ${run.run_id} --step 0 --decision no`
+        ].join("\n"),
+        report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`
+      };
+    }
+  }
   run.subcommand_state = {
     kind: "design",
     phase: "shape_gate",
     proposal_path: report.result_path
   };
-  return renderShapeGate(run, parsed.proposal, paths);
+  return renderShapeGate(run, parsed.proposal, paths, notes.length > 0 ? notes : void 0);
 }
 async function bounceToInterview(run, sub, paths, errors) {
   const note = [
@@ -17086,7 +16934,7 @@ async function bounceToInterview(run, sub, paths, errors) {
     "Please re-interview and re-emit shape.json addressing these issues.",
     ""
   ].join("\n");
-  await fs17.appendFile(paths.description, note, "utf8");
+  await fs16.appendFile(paths.description, note, "utf8");
   run.subcommand_state = { ...sub };
   return buildFacilitatorInstruction({
     runId: run.run_id,
@@ -17096,21 +16944,49 @@ async function bounceToInterview(run, sub, paths, errors) {
   });
 }
 async function continueShapeGate(run, sub, report, opts) {
+  if (sub.plugin_confirm_done === false) {
+    if (report.kind !== "decision") {
+      throw new Error(`design shape_gate plugin confirm: unexpected report kind '${report.kind}'`);
+    }
+    if (report.decision === "no") {
+      run.subcommand_state = void 0;
+      return { kind: "done", body: "Aborted." };
+    }
+    const parsed = await readShape(sub.proposal_path);
+    if (!parsed.ok) {
+      run.subcommand_state = void 0;
+      return { kind: "done", body: `ewh design: could not read proposal: ${parsed.error}` };
+    }
+    run.subcommand_state = { ...sub, plugin_confirm_done: true };
+    const paths = designPaths(opts.projectRoot, run.run_id);
+    return renderShapeGate(run, parsed.proposal, paths);
+  }
   if (report.kind === "decision") {
     if (report.decision === "yes") {
+      const parsed = await readShape(sub.proposal_path);
+      if (!parsed.ok) {
+        run.subcommand_state = void 0;
+        return { kind: "done", body: `ewh design: could not read proposal: ${parsed.error}` };
+      }
+      const proposal = parsed.proposal;
+      if (proposal.artifacts.length === 0) {
+        run.subcommand_state = void 0;
+        return { kind: "done", body: "ewh design: proposal has no artifacts to author." };
+      }
+      const paths = designPaths(opts.projectRoot, run.run_id);
       run.subcommand_state = {
         kind: "design",
         phase: "author",
         proposal_path: sub.proposal_path,
         author_index: 0
       };
-      return {
-        kind: "done",
-        body: [
-          "ewh design: proposal approved \u2014 author phase not yet implemented (session 2 MVP).",
-          `Staged proposal: ${sub.proposal_path}`
-        ].join("\n")
-      };
+      return buildAuthorInstruction({
+        runId: run.run_id,
+        artifact: proposal.artifacts[0],
+        catalogPath: paths.catalog,
+        stagedPath: stagedPathForArtifact(paths.proposedDir, proposal.artifacts[0]),
+        opts
+      });
     }
     run.subcommand_state = void 0;
     return { kind: "done", body: "Proposal rejected. No files written." };
@@ -17119,7 +16995,7 @@ async function continueShapeGate(run, sub, report, opts) {
     if (!report.result_path) {
       throw new Error("design shape_gate edit: expected --result <instruction path>");
     }
-    const instruction = (await fs17.readFile(report.result_path, "utf8")).trim();
+    const instruction = (await fs16.readFile(report.result_path, "utf8")).trim();
     const paths = designPaths(opts.projectRoot, run.run_id);
     const note = [
       "",
@@ -17127,7 +17003,7 @@ async function continueShapeGate(run, sub, report, opts) {
       instruction,
       ""
     ].join("\n");
-    await fs17.appendFile(paths.description, note, "utf8");
+    await fs16.appendFile(paths.description, note, "utf8");
     run.subcommand_state = {
       kind: "design",
       phase: "interview",
@@ -17170,9 +17046,13 @@ function buildFacilitatorInstruction(args) {
     report_with: `ewh report --run ${args.runId} --step 0 --result ${args.outputPath}`
   };
 }
-function renderShapeGate(run, proposal, paths) {
+function renderShapeGate(run, proposal, paths, notes) {
   const editPath = paths.edit;
   const lines = [];
+  if (notes && notes.length > 0) {
+    for (const note of notes) lines.push(`Note: ${note}`);
+    lines.push("");
+  }
   lines.push("EWH design \u2014 shape gate");
   lines.push("");
   lines.push(`Description: ${proposal.description}`);
@@ -17204,7 +17084,7 @@ function renderShapeGate(run, proposal, paths) {
 async function readShape(path2) {
   let raw;
   try {
-    raw = await fs17.readFile(path2, "utf8");
+    raw = await fs16.readFile(path2, "utf8");
   } catch (e) {
     return { ok: false, error: `failed to read shape.json at ${path2}: ${e.message}` };
   }
@@ -17312,7 +17192,7 @@ function validateShape(proposal, catalog) {
   return errors;
 }
 async function readCatalog(path2) {
-  const raw = await fs17.readFile(path2, "utf8");
+  const raw = await fs16.readFile(path2, "utf8");
   const parsed = JSON.parse(raw);
   if (!Array.isArray(parsed)) {
     throw new Error(`catalog file ${path2} is not a JSON array`);
@@ -17321,20 +17201,339 @@ async function readCatalog(path2) {
 }
 function designPaths(projectRoot, runId) {
   const runRoot = runDir(projectRoot, runId);
-  const proposedDir = join15(runRoot, "proposed");
+  const proposedDir = join14(runRoot, "proposed");
   return {
     runRoot,
     proposedDir,
-    catalog: join15(runRoot, "catalog.json"),
-    description: join15(runRoot, "description.txt"),
-    shape: join15(proposedDir, "shape.json"),
-    edit: join15(runRoot, "shape-edit.txt")
+    catalog: join14(runRoot, "catalog.json"),
+    description: join14(runRoot, "description.txt"),
+    shape: join14(proposedDir, "shape.json"),
+    edit: join14(runRoot, "shape-edit.txt")
   };
+}
+function safeFilename(artifactPath) {
+  return artifactPath.replace(/[/\\]/g, "_");
+}
+function stagedPathForArtifact(proposedDir, artifact) {
+  return join14(proposedDir, safeFilename(artifact.path));
+}
+function existingPathForArtifact(artifact, opts) {
+  if (artifact.scope === "plugin") {
+    return join14(opts.pluginRoot, artifact.path);
+  }
+  return join14(opts.projectRoot, ".claude", artifact.path);
+}
+async function isInsidePluginRepo(projectRoot) {
+  try {
+    const body = await fs16.readFile(join14(projectRoot, "package.json"), "utf8");
+    const pkg = JSON.parse(body);
+    return pkg.name === "easy-workflow-harness";
+  } catch {
+    return false;
+  }
+}
+async function applyScopeRewrites(proposalPath, proposal) {
+  let count = 0;
+  for (const a of proposal.artifacts) {
+    if (a.scope === "plugin") {
+      a.scope = "project";
+      count++;
+    }
+  }
+  if (count > 0) {
+    await fs16.writeFile(proposalPath, JSON.stringify(proposal, null, 2), "utf8");
+  }
+  return count;
+}
+async function atomicCopy(src, dst) {
+  await fs16.mkdir(dirname6(dst), { recursive: true });
+  const body = await fs16.readFile(src, "utf8");
+  const tmp = `${dst}.tmp-${randomBytes3(4).toString("hex")}`;
+  const fh = await fs16.open(tmp, "w");
+  try {
+    await fh.writeFile(body, "utf8");
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await fs16.rename(tmp, dst);
+}
+async function continueWrite(run, sub, opts) {
+  const parsed = await readShape(sub.proposal_path);
+  if (!parsed.ok) {
+    run.subcommand_state = void 0;
+    return { kind: "done", body: `ewh design: could not read proposal: ${parsed.error}` };
+  }
+  const proposal = parsed.proposal;
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  const CLASS_ORDER = { rule: 0, agent: 1, workflow: 2 };
+  const sorted = [...proposal.artifacts].sort(
+    (a, b) => (CLASS_ORDER[a.type] ?? 3) - (CLASS_ORDER[b.type] ?? 3)
+  );
+  const written = [...sub.written ?? []];
+  const summaryLines = [];
+  for (const artifact of sorted) {
+    const targetPath = artifact.scope === "plugin" ? join14(opts.pluginRoot, artifact.path) : join14(opts.projectRoot, ".claude", artifact.path);
+    const displayPath = artifact.scope === "plugin" ? artifact.path : `.claude/${artifact.path}`;
+    const sigil = artifact.op === "create" ? "+" : "~";
+    const suffix = artifact.op === "update" ? "  (updated)" : "";
+    if (written.includes(targetPath)) {
+      summaryLines.push(`  ${sigil} ${displayPath}${suffix}`);
+      continue;
+    }
+    if (artifact.op === "create") {
+      let exists = false;
+      try {
+        await fs16.access(targetPath);
+        exists = true;
+      } catch {
+      }
+      if (exists) {
+        run.subcommand_state = void 0;
+        return {
+          kind: "done",
+          body: `ewh design: drift \u2014 target already exists: ${targetPath}. No further files written.`
+        };
+      }
+    } else {
+      try {
+        await fs16.access(targetPath);
+      } catch {
+        run.subcommand_state = void 0;
+        return {
+          kind: "done",
+          body: `ewh design: update target missing: ${targetPath}. No further files written.`
+        };
+      }
+    }
+    const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
+    await atomicCopy(stagedPath, targetPath);
+    written.push(targetPath);
+    run.subcommand_state = { ...sub, written };
+    await writeRunState(opts.projectRoot, run);
+    summaryLines.push(`  ${sigil} ${displayPath}${suffix}`);
+  }
+  run.subcommand_state = void 0;
+  const n = summaryLines.length;
+  const body = [
+    `Wrote ${n} artifact${n === 1 ? "" : "s"}:`,
+    ...summaryLines,
+    "",
+    'Next: /ewh:doit <workflow-name> "<description>" to try it.'
+  ].join("\n");
+  return { kind: "done", body };
+}
+function buildAuthorInstruction(args) {
+  const { runId, artifact, catalogPath, stagedPath, opts } = args;
+  const existingLine = artifact.op === "update" ? [`    existing_path: ${existingPathForArtifact(artifact, opts)}`] : [];
+  const body = [
+    "Tool: Agent",
+    "Args:",
+    "  subagent_type: ewh:artifact-author",
+    "  prompt: |",
+    `    shape_entry: ${JSON.stringify(artifact)}`,
+    "",
+    `    catalog_path:  ${catalogPath}`,
+    `    staged_path:   ${stagedPath}`,
+    ...existingLine,
+    "",
+    "    Write the complete artifact body to staged_path.",
+    "    For op:update, also write a unified diff to <staged_path>.diff.",
+    "    After writing, emit AGENT_COMPLETE.",
+    `  description: "design: author ${artifact.type} '${artifact.name}'"`,
+    "",
+    `After the Agent tool returns, report: ewh report --run ${runId} --step 0 --result ${stagedPath}`
+  ].join("\n");
+  return {
+    kind: "tool-call",
+    body,
+    report_with: `ewh report --run ${runId} --step 0 --result ${stagedPath}`
+  };
+}
+function buildRefinerInstruction(args) {
+  const { runId, stagedPath, instruction, existingPath } = args;
+  const existingLine = existingPath ? [`    existing_path: ${existingPath}`] : [];
+  const body = [
+    "Tool: Agent",
+    "Args:",
+    "  subagent_type: ewh:artifact-refiner",
+    "  prompt: |",
+    `    staged_path:  ${stagedPath}`,
+    `    instruction:  ${instruction}`,
+    ...existingLine,
+    "",
+    "    Read staged_path, apply the instruction, overwrite in place.",
+    "    If a .diff file exists at <staged_path>.diff, refresh it.",
+    "    After writing, emit AGENT_COMPLETE.",
+    `  description: "design: refine artifact"`,
+    "",
+    `After the Agent tool returns, report: ewh report --run ${runId} --step 0 --result ${stagedPath}`
+  ].join("\n");
+  return {
+    kind: "tool-call",
+    body,
+    report_with: `ewh report --run ${runId} --step 0 --result ${stagedPath}`
+  };
+}
+async function renderFileGate(run, proposal, fileIndex, paths) {
+  const artifact = proposal.artifacts[fileIndex];
+  const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
+  const total = proposal.artifacts.length;
+  const editInstructionPath = join14(paths.runRoot, `file-gate-${fileIndex}-edit.txt`);
+  const lines = [];
+  lines.push(`EWH design \u2014 file gate (${fileIndex + 1}/${total})`);
+  lines.push("");
+  lines.push(`[${artifact.op}] ${artifact.type} '${artifact.name}' \u2192 ${artifact.path}`);
+  lines.push("");
+  if (artifact.op === "create") {
+    const body = await fs16.readFile(stagedPath, "utf8");
+    lines.push("--- staged file body ---");
+    lines.push(body.trimEnd());
+  } else {
+    const diffPath = stagedPath + ".diff";
+    try {
+      const diff = await fs16.readFile(diffPath, "utf8");
+      lines.push("--- unified diff ---");
+      lines.push(diff.trimEnd());
+    } catch {
+      lines.push("[diff not available]");
+    }
+  }
+  lines.push("");
+  lines.push("Choose:");
+  lines.push(`  approve: ewh report --run ${run.run_id} --step 0 --decision yes`);
+  lines.push(`  reject:  ewh report --run ${run.run_id} --step 0 --decision no`);
+  lines.push(`  edit:    write your edit instruction to ${editInstructionPath},`);
+  lines.push(`           then ewh report --run ${run.run_id} --step 0 --result ${editInstructionPath}`);
+  return {
+    kind: "user-prompt",
+    body: lines.join("\n"),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`
+  };
+}
+async function continueAuthor(run, sub, report, opts) {
+  if (report.kind === "error") {
+    throw new Error(`design author: agent error: ${report.message}`);
+  }
+  if (report.kind !== "result" || !report.result_path) {
+    throw new Error("design author: expected --result <staged-path>");
+  }
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  const parsed = await readShape(sub.proposal_path);
+  if (!parsed.ok) {
+    run.subcommand_state = void 0;
+    return { kind: "done", body: `ewh design: could not read proposal: ${parsed.error}` };
+  }
+  const proposal = parsed.proposal;
+  const nextIndex = sub.author_index + 1;
+  if (nextIndex < proposal.artifacts.length) {
+    run.subcommand_state = {
+      kind: "design",
+      phase: "author",
+      proposal_path: sub.proposal_path,
+      author_index: nextIndex
+    };
+    return buildAuthorInstruction({
+      runId: run.run_id,
+      artifact: proposal.artifacts[nextIndex],
+      catalogPath: paths.catalog,
+      stagedPath: stagedPathForArtifact(paths.proposedDir, proposal.artifacts[nextIndex]),
+      opts
+    });
+  }
+  run.subcommand_state = {
+    kind: "design",
+    phase: "file_gate",
+    proposal_path: sub.proposal_path,
+    file_index: 0
+  };
+  return renderFileGate(run, proposal, 0, paths);
+}
+async function continueFileGate(run, sub, report, opts) {
+  const parsed = await readShape(sub.proposal_path);
+  if (!parsed.ok) {
+    run.subcommand_state = void 0;
+    return { kind: "done", body: `ewh design: could not read proposal: ${parsed.error}` };
+  }
+  const proposal = parsed.proposal;
+  const artifact = proposal.artifacts[sub.file_index];
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  if (report.kind === "decision") {
+    if (report.decision === "yes") {
+      const nextIndex = sub.file_index + 1;
+      if (nextIndex >= proposal.artifacts.length) {
+        const writeState = {
+          kind: "design",
+          phase: "write",
+          proposal_path: sub.proposal_path
+        };
+        run.subcommand_state = writeState;
+        return continueWrite(run, writeState, opts);
+      }
+      run.subcommand_state = {
+        kind: "design",
+        phase: "file_gate",
+        proposal_path: sub.proposal_path,
+        file_index: nextIndex
+      };
+      return renderFileGate(run, proposal, nextIndex, paths);
+    }
+    const current = sub.file_index + 1;
+    const total = proposal.artifacts.length;
+    run.subcommand_state = void 0;
+    return {
+      kind: "done",
+      body: `Rejected file ${current}/${total} (${artifact.path}). No files written.`
+    };
+  }
+  if (report.kind === "result") {
+    if (!report.result_path) {
+      throw new Error("design file_gate edit: expected --result <instruction path>");
+    }
+    const instruction = (await fs16.readFile(report.result_path, "utf8")).trim();
+    const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
+    run.subcommand_state = {
+      kind: "design",
+      phase: "refine",
+      proposal_path: sub.proposal_path,
+      file_index: sub.file_index,
+      instruction
+    };
+    return buildRefinerInstruction({
+      runId: run.run_id,
+      stagedPath,
+      instruction,
+      existingPath: artifact.op === "update" ? existingPathForArtifact(artifact, opts) : void 0
+    });
+  }
+  throw new Error(`design file_gate: unexpected report kind '${report.kind}'`);
+}
+async function continueRefine(run, sub, report, opts) {
+  if (report.kind === "error") {
+    throw new Error(`design refine: agent error: ${report.message}`);
+  }
+  if (report.kind !== "result" || !report.result_path) {
+    throw new Error("design refine: expected --result <staged-path>");
+  }
+  const parsed = await readShape(sub.proposal_path);
+  if (!parsed.ok) {
+    run.subcommand_state = void 0;
+    return { kind: "done", body: `ewh design: could not read proposal: ${parsed.error}` };
+  }
+  const proposal = parsed.proposal;
+  run.subcommand_state = {
+    kind: "design",
+    phase: "file_gate",
+    proposal_path: sub.proposal_path,
+    file_index: sub.file_index
+  };
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  return renderFileGate(run, proposal, sub.file_index, paths);
 }
 
 // src/commands/expand-tools.ts
-import { promises as fs18 } from "node:fs";
-import { dirname as dirname7, join as join16 } from "node:path";
+import { promises as fs17 } from "node:fs";
+import { dirname as dirname7, join as join15 } from "node:path";
 async function startExpandTools(opts) {
   const toolsPath = toolsScratchPath(opts.projectRoot);
   const existing = await readExistingAgentTools(opts.projectRoot);
@@ -17469,13 +17668,13 @@ async function continueExpandTools(run, report, opts) {
   throw new Error(`expand-tools: unhandled phase ${sub.phase}`);
 }
 function toolsScratchPath(projectRoot) {
-  return join16(projectRoot, ".ewh-artifacts", "expand-tools-available.txt");
+  return join15(projectRoot, ".ewh-artifacts", "expand-tools-available.txt");
 }
 function proposalScratchPath(projectRoot) {
-  return join16(projectRoot, ".ewh-artifacts", "expand-tools-proposal.json");
+  return join15(projectRoot, ".ewh-artifacts", "expand-tools-proposal.json");
 }
 async function readProposal(path2) {
-  const content = await fs18.readFile(path2, "utf8");
+  const content = await fs17.readFile(path2, "utf8");
   const parsed = JSON.parse(content);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(`expand-tools proposal ${path2} is not a JSON object`);
@@ -17525,10 +17724,10 @@ async function generateAgentOverrides(projectRoot, pluginRoot, agents, merged) {
     if (!entry) continue;
     const baseTools = await readPluginAgentTools(pluginRoot, agent);
     const allTools = Array.from(/* @__PURE__ */ new Set([...baseTools, ...entry.add]));
-    const path2 = join16(projectRoot, ".claude", "agents", `${agent}.md`);
-    await fs18.mkdir(dirname7(path2), { recursive: true });
+    const path2 = join15(projectRoot, ".claude", "agents", `${agent}.md`);
+    await fs17.mkdir(dirname7(path2), { recursive: true });
     const content = buildOverrideFile(agent, allTools);
-    await fs18.writeFile(path2, content, "utf8");
+    await fs17.writeFile(path2, content, "utf8");
     out.push({ agent, path: path2, toolsAdded: entry.add.length });
   }
   return out;
@@ -17587,14 +17786,14 @@ function formatAge(iso, now) {
 
 // src/commands/report.ts
 import { parseArgs } from "node:util";
-import { join as join18 } from "node:path";
+import { join as join17 } from "node:path";
 
 // src/hooks/tool-use-log.ts
-import { promises as fs19 } from "node:fs";
+import { promises as fs18 } from "node:fs";
 async function readTurnLogSince(logPath, offset) {
   let buf;
   try {
-    const fh = await fs19.open(logPath, "r");
+    const fh = await fs18.open(logPath, "r");
     try {
       const stat = await fh.stat();
       const size = stat.size;
@@ -17650,8 +17849,8 @@ function compareDrift(expectedTool, entries) {
 }
 
 // src/commands/resume.ts
-import { promises as fs20 } from "node:fs";
-import { join as join17 } from "node:path";
+import { promises as fs19 } from "node:fs";
+import { join as join16 } from "node:path";
 var RESUMABLE_PHASES = /* @__PURE__ */ new Set([
   "pending",
   "gate_pending",
@@ -17738,8 +17937,8 @@ async function buildResumeInstruction(projectRoot, pluginRoot, runId) {
 async function emitResumePickGate(projectRoot, active, now) {
   const resumeRunId = newRunId();
   const rd = runDir(projectRoot, resumeRunId);
-  await fs20.mkdir(rd, { recursive: true });
-  const pickPath = join17(rd, "pick.txt");
+  await fs19.mkdir(rd, { recursive: true });
+  const pickPath = join16(rd, "pick.txt");
   const subState = {
     kind: "resume",
     phase: "resume_pick",
@@ -17795,7 +17994,7 @@ async function continueResume(run, report, ctx) {
   if (report.kind !== "result" || !report.result_path) {
     throw new Error("resume_pick: expected --result <path>");
   }
-  const raw = (await fs20.readFile(report.result_path, "utf8")).trim();
+  const raw = (await fs19.readFile(report.result_path, "utf8")).trim();
   if (!sub.active_ids.includes(raw)) {
     throw new Error(
       `'${raw}' is not in the active run list; expected one of: ${sub.active_ids.join(", ")}`
@@ -17864,7 +18063,7 @@ async function runReport(opts) {
       body: `Run ${run.run_id} aborted.`
     });
   }
-  const turnLogPath = join18(runDir(opts.projectRoot, run.run_id), "turn-log.jsonl");
+  const turnLogPath = join17(runDir(opts.projectRoot, run.run_id), "turn-log.jsonl");
   const { entries: logEntries, newOffset } = await readTurnLogSince(turnLogPath, run.turn_log_offset ?? 0);
   run.turn_log_offset = newOffset;
   if (run.last_instructed_tool) {
@@ -17978,8 +18177,6 @@ async function dispatchSubcommandReport(run, report, opts) {
       return continueCleanup(run, report, ctx);
     case "init":
       return continueInit(run, report, ctx);
-    case "create":
-      return continueCreate(run, report, ctx);
     case "design":
       return continueDesign(run, report, ctx);
     case "expand-tools":
@@ -18104,11 +18301,11 @@ async function delegateAbort(opts, runId, stepIndex) {
 }
 
 // src/commands/doctor.ts
-var import_yaml6 = __toESM(require_dist(), 1);
-import { promises as fs21 } from "node:fs";
-import { join as join19 } from "node:path";
+var import_yaml5 = __toESM(require_dist(), 1);
+import { promises as fs20 } from "node:fs";
+import { join as join18 } from "node:path";
 import { tmpdir } from "node:os";
-import { randomBytes as randomBytes3 } from "node:crypto";
+import { randomBytes as randomBytes4 } from "node:crypto";
 import { spawn } from "node:child_process";
 async function runDoctor(opts) {
   const results = [];
@@ -18124,6 +18321,7 @@ async function runDoctor(opts) {
   results.push(await checkWorkflows(opts.pluginRoot, opts.projectRoot));
   if (opts.smoke) {
     results.push(await checkSmoke(opts.pluginRoot));
+    results.push(await checkDesignSmoke(opts.pluginRoot));
   }
   return formatDoctor(results);
 }
@@ -18156,7 +18354,7 @@ async function checkNodeVersion(pluginRoot) {
   let requiredMajor = null;
   try {
     const pkg = JSON.parse(
-      await fs21.readFile(join19(pluginRoot, "package.json"), "utf8")
+      await fs20.readFile(join18(pluginRoot, "package.json"), "utf8")
     );
     const spec = pkg.engines?.node;
     if (typeof spec === "string") {
@@ -18177,10 +18375,10 @@ async function checkNodeVersion(pluginRoot) {
   return { id: 1, label, status: "pass", detail: current };
 }
 async function checkBinaryPresent(pluginRoot) {
-  const path2 = join19(pluginRoot, "bin", "ewh.mjs");
+  const path2 = join18(pluginRoot, "bin", "ewh.mjs");
   const label = "binary present";
   try {
-    const st = await fs21.stat(path2);
+    const st = await fs20.stat(path2);
     if (!st.isFile()) {
       return { id: 2, label, status: "fail", issues: [`${path2}: not a regular file`] };
     }
@@ -18193,7 +18391,7 @@ async function checkBinaryPresent(pluginRoot) {
     };
   }
   try {
-    await fs21.access(path2, fs21.constants.X_OK);
+    await fs20.access(path2, fs20.constants.X_OK);
   } catch {
     return {
       id: 2,
@@ -18209,9 +18407,9 @@ async function checkPluginDirs(pluginRoot) {
   const required = ["workflows", "agents", "rules"];
   const issues = [];
   for (const name of required) {
-    const path2 = join19(pluginRoot, name);
+    const path2 = join18(pluginRoot, name);
     try {
-      const st = await fs21.stat(path2);
+      const st = await fs20.stat(path2);
       if (!st.isDirectory()) issues.push(`${name}/: not a directory`);
     } catch {
       issues.push(`${name}/: missing`);
@@ -18222,12 +18420,12 @@ async function checkPluginDirs(pluginRoot) {
 }
 async function checkArtifactsWritable(projectRoot) {
   const label = ".ewh-artifacts writable";
-  const dir = join19(projectRoot, ".ewh-artifacts");
-  const probe = join19(dir, `.doctor-probe-${randomBytes3(4).toString("hex")}`);
+  const dir = join18(projectRoot, ".ewh-artifacts");
+  const probe = join18(dir, `.doctor-probe-${randomBytes4(4).toString("hex")}`);
   try {
-    await fs21.mkdir(dir, { recursive: true });
-    await fs21.writeFile(probe, "doctor-probe\n", "utf8");
-    await fs21.unlink(probe);
+    await fs20.mkdir(dir, { recursive: true });
+    await fs20.writeFile(probe, "doctor-probe\n", "utf8");
+    await fs20.unlink(probe);
   } catch (err) {
     return { id: 4, label, status: "fail", issues: [errMsg(err)] };
   }
@@ -18235,10 +18433,10 @@ async function checkArtifactsWritable(projectRoot) {
 }
 async function checkEwhState(projectRoot) {
   const label = "ewh-state.json";
-  const path2 = join19(projectRoot, ".claude", "ewh-state.json");
+  const path2 = join18(projectRoot, ".claude", "ewh-state.json");
   let body;
   try {
-    body = await fs21.readFile(path2, "utf8");
+    body = await fs20.readFile(path2, "utf8");
   } catch (err) {
     if (errCode(err) === "ENOENT") {
       return { id: 5, label, status: "pass", detail: "not present" };
@@ -18254,9 +18452,9 @@ async function checkEwhState(projectRoot) {
 }
 async function checkHarnessConfig(projectRoot) {
   const label = "CLAUDE.md Harness Config";
-  const path2 = join19(projectRoot, "CLAUDE.md");
+  const path2 = join18(projectRoot, "CLAUDE.md");
   try {
-    const body = await fs21.readFile(path2, "utf8");
+    const body = await fs20.readFile(path2, "utf8");
     if (!/^##\s+Harness Config\b/m.test(body)) {
       return {
         id: 6,
@@ -18275,10 +18473,10 @@ async function checkHarnessConfig(projectRoot) {
 }
 async function checkHooksJson(pluginRoot) {
   const label = "hooks.json";
-  const path2 = join19(pluginRoot, "hooks", "hooks.json");
+  const path2 = join18(pluginRoot, "hooks", "hooks.json");
   let body;
   try {
-    body = await fs21.readFile(path2, "utf8");
+    body = await fs20.readFile(path2, "utf8");
   } catch (err) {
     if (errCode(err) === "ENOENT") {
       return { id: 7, label, status: "warn", issues: ["hooks/hooks.json missing"] };
@@ -18294,17 +18492,17 @@ async function checkHooksJson(pluginRoot) {
 }
 async function checkAgents(pluginRoot) {
   const label = "plugin agents";
-  const dir = join19(pluginRoot, "agents");
+  const dir = join18(pluginRoot, "agents");
   let entries;
   try {
-    entries = (await fs21.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs20.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 8, label, status: "fail", issues: ["agents/ directory missing"] };
   }
   const issues = [];
   for (const name of entries) {
-    const path2 = join19(dir, name);
-    const body = await fs21.readFile(path2, "utf8");
+    const path2 = join18(dir, name);
+    const body = await fs20.readFile(path2, "utf8");
     const fmErr = validateFrontmatter(body, ["name"]);
     if (fmErr) {
       issues.push(`agents/${name}: ${fmErr}`);
@@ -18319,17 +18517,17 @@ async function checkAgents(pluginRoot) {
 }
 async function checkRules(pluginRoot) {
   const label = "plugin rules";
-  const dir = join19(pluginRoot, "rules");
+  const dir = join18(pluginRoot, "rules");
   let entries;
   try {
-    entries = (await fs21.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs20.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 9, label, status: "fail", issues: ["rules/ directory missing"] };
   }
   const issues = [];
   for (const rel of entries) {
-    const path2 = join19(dir, rel);
-    const body = await fs21.readFile(path2, "utf8");
+    const path2 = join18(dir, rel);
+    const body = await fs20.readFile(path2, "utf8");
     const fmErr = validateFrontmatter(body, ["name"]);
     if (fmErr) issues.push(`rules/${rel}: ${fmErr}`);
   }
@@ -18338,21 +18536,21 @@ async function checkRules(pluginRoot) {
 }
 async function checkWorkflows(pluginRoot, projectRoot) {
   const label = "plugin workflows";
-  const dir = join19(pluginRoot, "workflows");
+  const dir = join18(pluginRoot, "workflows");
   let entries;
   try {
-    entries = (await fs21.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs20.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 10, label, status: "fail", issues: ["workflows/ directory missing"] };
   }
   const issues = [];
   for (const name of entries) {
-    const path2 = join19(dir, name);
+    const path2 = join18(dir, name);
     try {
       const wf = await loadWorkflow(path2);
       for (const step of wf.steps) {
         if (step.agent) {
-          const found = await fileExists2(join19(projectRoot, ".claude", "agents", `${step.agent}.md`)) || await fileExists2(join19(pluginRoot, "agents", `${step.agent}.md`));
+          const found = await fileExists(join18(projectRoot, ".claude", "agents", `${step.agent}.md`)) || await fileExists(join18(pluginRoot, "agents", `${step.agent}.md`));
           if (!found) {
             issues.push(
               `workflows/${name}: step '${step.name}' references missing agent '${step.agent}'`
@@ -18360,10 +18558,10 @@ async function checkWorkflows(pluginRoot, projectRoot) {
           }
         }
         for (const ruleName of step.rules ?? []) {
-          const pluginMatches = await findRuleFiles2(ruleName, join19(pluginRoot, "rules"));
+          const pluginMatches = await findRuleFiles2(ruleName, join18(pluginRoot, "rules"));
           const projectMatches = await findRuleFiles2(
             ruleName,
-            join19(projectRoot, ".claude", "rules")
+            join18(projectRoot, ".claude", "rules")
           );
           if (pluginMatches.length === 0 && projectMatches.length === 0) {
             issues.push(
@@ -18379,11 +18577,148 @@ async function checkWorkflows(pluginRoot, projectRoot) {
   if (issues.length > 0) return { id: 10, label, status: "fail", issues };
   return { id: 10, label, status: "pass", detail: `${entries.length} ok` };
 }
+async function checkDesignSmoke(pluginRoot) {
+  const label = "smoke: design session";
+  const bin = join18(pluginRoot, "bin", "ewh.mjs");
+  try {
+    await fs20.access(bin, fs20.constants.R_OK);
+  } catch {
+    return { id: 12, label, status: "fail", issues: [`${bin}: not readable (see check #2)`] };
+  }
+  const projectDir = await fs20.mkdtemp(join18(tmpdir(), "ewh-smoke-design-"));
+  const roots = ["--plugin-root", pluginRoot, "--project-root", projectDir];
+  try {
+    const s1 = await spawnCollect(
+      process.execPath,
+      [bin, "start", "design", "make", "a", "smoke", "rule", ...roots],
+      projectDir,
+      3e4
+    );
+    if (s1.exitCode !== 0) {
+      return {
+        id: 12,
+        label,
+        status: "fail",
+        issues: [`start design: exit ${s1.exitCode}: ${(s1.stderr || s1.stdout).trim().slice(0, 200)}`]
+      };
+    }
+    const runId = s1.stdout.match(/--run (\S+)/)?.[1];
+    const shapePath = s1.stdout.match(/--result (\S+)/)?.[1];
+    if (!runId || !shapePath) {
+      return {
+        id: 12,
+        label,
+        status: "fail",
+        issues: [`start design: could not parse runId/shapePath from: ${s1.stdout.trim().slice(0, 300)}`]
+      };
+    }
+    const shape = {
+      description: "make a smoke rule",
+      artifacts: [
+        {
+          type: "rule",
+          op: "create",
+          name: "doctor-smoke-rule",
+          scope: "project",
+          path: "rules/doctor-smoke-rule.md",
+          description: "Doctor smoke test rule",
+          frontmatter: { name: "doctor-smoke-rule", description: "Doctor smoke test rule" }
+        }
+      ]
+    };
+    await fs20.mkdir(join18(shapePath, ".."), { recursive: true });
+    await fs20.writeFile(shapePath, JSON.stringify(shape, null, 2), "utf8");
+    const s2 = await spawnCollect(
+      process.execPath,
+      [bin, "report", "--run", runId, "--step", "0", "--result", shapePath, ...roots],
+      projectDir,
+      3e4
+    );
+    if (s2.exitCode !== 0 || !s2.stdout.startsWith("ACTION: user-prompt")) {
+      return {
+        id: 12,
+        label,
+        status: "fail",
+        issues: [`shape gate: expected user-prompt, got exit=${s2.exitCode}: ${(s2.stderr || s2.stdout).trim().slice(0, 200)}`]
+      };
+    }
+    const s3 = await spawnCollect(
+      process.execPath,
+      [bin, "report", "--run", runId, "--step", "0", "--decision", "yes", ...roots],
+      projectDir,
+      3e4
+    );
+    if (s3.exitCode !== 0 || !s3.stdout.startsWith("ACTION: tool-call")) {
+      return {
+        id: 12,
+        label,
+        status: "fail",
+        issues: [`approve shape gate: expected tool-call, got exit=${s3.exitCode}: ${(s3.stderr || s3.stdout).trim().slice(0, 200)}`]
+      };
+    }
+    const stagedPath = s3.stdout.match(/--result (\S+)/)?.[1];
+    if (!stagedPath) {
+      return {
+        id: 12,
+        label,
+        status: "fail",
+        issues: [`approve shape gate: could not parse stagedPath from: ${s3.stdout.trim().slice(0, 300)}`]
+      };
+    }
+    const stagedContent = "---\nname: doctor-smoke-rule\ndescription: Doctor smoke test rule\n---\n\nDoctor smoke rule body.\n";
+    await fs20.mkdir(join18(stagedPath, ".."), { recursive: true });
+    await fs20.writeFile(stagedPath, stagedContent, "utf8");
+    const s4 = await spawnCollect(
+      process.execPath,
+      [bin, "report", "--run", runId, "--step", "0", "--result", stagedPath, ...roots],
+      projectDir,
+      3e4
+    );
+    if (s4.exitCode !== 0 || !s4.stdout.startsWith("ACTION: user-prompt")) {
+      return {
+        id: 12,
+        label,
+        status: "fail",
+        issues: [`file gate: expected user-prompt, got exit=${s4.exitCode}: ${(s4.stderr || s4.stdout).trim().slice(0, 200)}`]
+      };
+    }
+    const s5 = await spawnCollect(
+      process.execPath,
+      [bin, "report", "--run", runId, "--step", "0", "--decision", "yes", ...roots],
+      projectDir,
+      3e4
+    );
+    if (s5.exitCode !== 0 || !s5.stdout.startsWith("ACTION: done")) {
+      return {
+        id: 12,
+        label,
+        status: "fail",
+        issues: [`approve file gate: expected done, got exit=${s5.exitCode}: ${(s5.stderr || s5.stdout).trim().slice(0, 200)}`]
+      };
+    }
+    const finalPath = join18(projectDir, ".claude", "rules", "doctor-smoke-rule.md");
+    try {
+      await fs20.access(finalPath);
+    } catch {
+      return {
+        id: 12,
+        label,
+        status: "fail",
+        issues: [`final file not written at ${finalPath}`]
+      };
+    }
+    return { id: 12, label, status: "pass" };
+  } catch (err) {
+    return { id: 12, label, status: "fail", issues: [errMsg(err)] };
+  } finally {
+    await fs20.rm(projectDir, { recursive: true, force: true });
+  }
+}
 async function checkSmoke(pluginRoot) {
   const label = "smoke: ewh start list";
-  const bin = join19(pluginRoot, "bin", "ewh.mjs");
+  const bin = join18(pluginRoot, "bin", "ewh.mjs");
   try {
-    await fs21.access(bin, fs21.constants.R_OK);
+    await fs20.access(bin, fs20.constants.R_OK);
   } catch {
     return {
       id: 11,
@@ -18392,7 +18727,7 @@ async function checkSmoke(pluginRoot) {
       issues: [`${bin}: not readable (see check #2)`]
     };
   }
-  const projectDir = await fs21.mkdtemp(join19(tmpdir(), "ewh-smoke-"));
+  const projectDir = await fs20.mkdtemp(join18(tmpdir(), "ewh-smoke-"));
   try {
     const { stdout, stderr, exitCode } = await spawnCollect(
       process.execPath,
@@ -18422,7 +18757,7 @@ async function checkSmoke(pluginRoot) {
   } catch (err) {
     return { id: 11, label, status: "fail", issues: [errMsg(err)] };
   } finally {
-    await fs21.rm(projectDir, { recursive: true, force: true });
+    await fs20.rm(projectDir, { recursive: true, force: true });
   }
 }
 function spawnCollect(cmd, args, cwd, timeoutMs) {
@@ -18458,7 +18793,7 @@ function validateFrontmatter(raw, required) {
   if (end === -1) return "unterminated YAML frontmatter";
   let parsed;
   try {
-    parsed = import_yaml6.default.parse(raw.slice(4, end)) ?? {};
+    parsed = import_yaml5.default.parse(raw.slice(4, end)) ?? {};
   } catch (err) {
     return `invalid YAML frontmatter: ${errMsg(err)}`;
   }
@@ -18473,16 +18808,16 @@ function validateFrontmatter(raw, required) {
 async function findRuleFiles2(name, dir) {
   let entries;
   try {
-    entries = (await fs21.readdir(dir, { recursive: true })).map(String);
+    entries = (await fs20.readdir(dir, { recursive: true })).map(String);
   } catch {
     return [];
   }
   const target = `${name}.md`;
   return entries.filter((e) => e === target || e.endsWith(`/${target}`));
 }
-async function fileExists2(path2) {
+async function fileExists(path2) {
   try {
-    await fs21.access(path2);
+    await fs20.access(path2);
     return true;
   } catch {
     return false;
@@ -18529,13 +18864,13 @@ async function runStart(opts) {
   const manageTasks = opts.manageTasks ?? inlineFlags.has("manage-tasks");
   const name = parsed.workflow;
   if (isBuiltinSubcommand(name)) {
-    const projectOverridePath = join20(
+    const projectOverridePath = join19(
       opts.projectRoot,
       ".claude",
       "workflows",
       `${name}.md`
     );
-    const hasProjectOverride = await fileExists3(projectOverridePath);
+    const hasProjectOverride = await fileExists2(projectOverridePath);
     if (noOverride || !hasProjectOverride) {
       if (STATELESS_SUBCOMMANDS.has(name)) {
         return runStatelessSubcommand(name, stripFlags(parsed.rest), opts, {
@@ -18665,9 +19000,9 @@ function stripFlags(rest) {
 function isBuiltinSubcommand(name) {
   return BUILTIN_SUBCOMMANDS.includes(name);
 }
-async function fileExists3(path2) {
+async function fileExists2(path2) {
   try {
-    await fs22.access(path2);
+    await fs21.access(path2);
     return true;
   } catch {
     return false;
@@ -18750,13 +19085,15 @@ async function startSubcommandRun(name, positionalRest, opts, manageTasks) {
       break;
     }
     case "create": {
-      const r = await startCreate({
-        projectRoot: opts.projectRoot,
-        pluginRoot: opts.pluginRoot,
-        type: positionalRest[0]
-      });
-      state = r.state;
-      instruction = r.instruction;
+      instruction = {
+        kind: "done",
+        body: [
+          "The `create` subcommand has been replaced by `design` \u2014 it now handles",
+          "both creating and updating artifacts through a conversational interview.",
+          'Run:   /ewh:doit design "<describe what you need>"'
+        ].join("\n")
+      };
+      state = void 0;
       break;
     }
     case "design": {
@@ -18843,11 +19180,11 @@ async function main2(argv) {
 
 // src/commands/record-tool-use.ts
 import { parseArgs as parseArgs3 } from "node:util";
-import { promises as fs23 } from "node:fs";
-import { join as join21 } from "node:path";
+import { promises as fs22 } from "node:fs";
+import { join as join20 } from "node:path";
 import { glob as glob2 } from "node:fs/promises";
 async function findActiveRunDir(projectRoot) {
-  const artifactsDir = join21(projectRoot, ".ewh-artifacts");
+  const artifactsDir = join20(projectRoot, ".ewh-artifacts");
   let matches = [];
   try {
     const iter = glob2("*/ACTIVE", { cwd: artifactsDir });
@@ -18860,7 +19197,7 @@ async function findActiveRunDir(projectRoot) {
   if (matches.length === 0) return null;
   const first = matches[0];
   const runDirName = first.split("/")[0];
-  return join21(artifactsDir, runDirName);
+  return join20(artifactsDir, runDirName);
 }
 async function readStdin() {
   const chunks = [];
@@ -18913,9 +19250,9 @@ async function main3(argv) {
   } else {
     return;
   }
-  const logPath = join21(runDir2, "turn-log.jsonl");
+  const logPath = join20(runDir2, "turn-log.jsonl");
   const line = JSON.stringify(record) + "\n";
-  await fs23.appendFile(logPath, line, "utf8");
+  await fs22.appendFile(logPath, line, "utf8");
 }
 
 // src/index.ts

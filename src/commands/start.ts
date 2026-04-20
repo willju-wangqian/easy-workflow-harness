@@ -30,7 +30,6 @@ import type { Instruction, RunState, SubcommandState } from '../state/types.js';
 import { buildListInstruction } from './list.js';
 import { startCleanup } from './cleanup.js';
 import { startInit } from './init.js';
-import { startCreate } from './create.js';
 import { startDesign } from './design.js';
 import { startExpandTools } from './expand-tools.js';
 import { buildStatusBody } from './status.js';
@@ -366,13 +365,15 @@ async function startSubcommandRun(
       break;
     }
     case 'create': {
-      const r = await startCreate({
-        projectRoot: opts.projectRoot,
-        pluginRoot: opts.pluginRoot,
-        type: positionalRest[0],
-      });
-      state = r.state;
-      instruction = r.instruction;
+      instruction = {
+        kind: 'done',
+        body: [
+          'The `create` subcommand has been replaced by `design` — it now handles',
+          'both creating and updating artifacts through a conversational interview.',
+          'Run:   /ewh:doit design "<describe what you need>"',
+        ].join('\n'),
+      };
+      state = undefined;
       break;
     }
     case 'design': {

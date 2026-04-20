@@ -228,22 +228,6 @@ export type SubcommandState =
   | { kind: 'init'; phase: 'scan' }
   | { kind: 'init'; phase: 'propose'; scan_result_path: string }
   | { kind: 'init'; phase: 'confirm'; proposed_config: string }
-  // `create`: ask-type (if missing) → gather → confirm → write.
-  | { kind: 'create'; phase: 'ask-type' }
-  | {
-      kind: 'create';
-      phase: 'gather';
-      type: 'rule' | 'agent' | 'workflow';
-      input_path: string;
-    }
-  | {
-      kind: 'create';
-      phase: 'confirm';
-      type: 'rule' | 'agent' | 'workflow';
-      name: string;
-      draft: string;
-      target_path: string;
-    }
   // `expand-tools`: discover → propose → confirm → write.
   | { kind: 'expand-tools'; phase: 'discover' }
   | { kind: 'expand-tools'; phase: 'propose'; tools_path: string }

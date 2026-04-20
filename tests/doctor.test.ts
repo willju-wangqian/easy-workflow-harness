@@ -267,18 +267,68 @@ describe('runDoctor', () => {
     expect(r.output).not.toContain('smoke');
   });
 
-  it('smoke: stub bin emitting ACTION: done → pass, 11 checks', async () => {
+  it('smoke: simple stub emits ACTION: done → check #11 pass, check #12 fail, 12 total', async () => {
     await fs.writeFile(
       join(root, 'bin', 'ewh.mjs'),
       "#!/usr/bin/env node\nprocess.stdout.write('ACTION: done\\nCatalog body\\n');\n",
       { mode: 0o755 },
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
-    expect(r.results.length).toBe(11);
-    const c = r.results.find((x) => x.id === 11)!;
-    expect(c.status).toBe('pass');
+    expect(r.results.length).toBe(12);
+    const c11 = r.results.find((x) => x.id === 11)!;
+    expect(c11.status).toBe('pass');
+    const c12 = r.results.find((x) => x.id === 12)!;
+    expect(c12.status).toBe('fail');
+    expect(r.exitCode).toBe(2);
+    expect(r.output).toContain('✓ smoke: ewh start list');
+    expect(r.output).toContain('✗ smoke: design session');
+  });
+
+  it('smoke: multi-step stub → check #11 and #12 both pass, 12 total', async () => {
+    // Stub uses a per-projectDir step counter to simulate the design protocol.
+    const stubSrc = [
+      '#!/usr/bin/env node',
+      "import fs from 'node:fs';",
+      "import path from 'node:path';",
+      'const args = process.argv.slice(2);',
+      "const prIdx = args.indexOf('--project-root');",
+      'const projectRoot = prIdx !== -1 ? args[prIdx + 1] : process.cwd();',
+      "const stateFile = path.join(projectRoot, '.ewh-stub-step');",
+      'let step = 0;',
+      "try { step = parseInt(fs.readFileSync(stateFile, 'utf8')); } catch {}",
+      'step++;',
+      "fs.writeFileSync(stateFile, String(step), 'utf8');",
+      "const shapePath = path.join(projectRoot, 'stub-shape.json');",
+      "const stagedPath = path.join(projectRoot, 'stub-staged.md');",
+      "const finalDir = path.join(projectRoot, '.claude', 'rules');",
+      "const finalPath = path.join(finalDir, 'doctor-smoke-rule.md');",
+      "const cmd = args[0];",
+      "if (cmd === 'start' && !args.includes('design')) {",
+      "  process.stdout.write('ACTION: done\\nCatalog body\\n');",
+      "} else if (cmd === 'start') {",
+      "  process.stdout.write('ACTION: tool-call\\nfacilitator\\nREPORT_WITH: ewh report --run fake --step 0 --result ' + shapePath + '\\n');",
+      "} else if (step === 2) {",
+      "  process.stdout.write('ACTION: user-prompt\\nshape gate\\nREPORT_WITH: ewh report --run fake --step 0 --decision yes\\n');",
+      "} else if (step === 3) {",
+      "  process.stdout.write('ACTION: tool-call\\nauthor\\nREPORT_WITH: ewh report --run fake --step 0 --result ' + stagedPath + '\\n');",
+      "} else if (step === 4) {",
+      "  process.stdout.write('ACTION: user-prompt\\nfile gate\\nREPORT_WITH: ewh report --run fake --step 0 --decision yes\\n');",
+      '} else {',
+      '  fs.mkdirSync(finalDir, { recursive: true });',
+      "  fs.writeFileSync(finalPath, '---\\nname: doctor-smoke-rule\\n---\\nBody.\\n', 'utf8');",
+      "  process.stdout.write('ACTION: done\\nWrote 1 artifact\\n');",
+      '}',
+    ].join('\n');
+    await fs.writeFile(join(root, 'bin', 'ewh.mjs'), stubSrc, { mode: 0o755 });
+    const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
+    expect(r.results.length).toBe(12);
+    const c11 = r.results.find((x) => x.id === 11)!;
+    expect(c11.status).toBe('pass');
+    const c12 = r.results.find((x) => x.id === 12)!;
+    expect(c12.status).toBe('pass');
     expect(r.exitCode).toBe(0);
     expect(r.output).toContain('✓ smoke: ewh start list');
+    expect(r.output).toContain('✓ smoke: design session');
   });
 
   it('smoke: stub bin emitting wrong output → fail', async () => {

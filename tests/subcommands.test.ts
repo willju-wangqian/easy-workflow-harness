@@ -17,12 +17,6 @@ import {
   upsertHarnessConfig,
 } from '../src/commands/init.js';
 import {
-  extractFrontmatterName,
-  normalizeType,
-  targetPath,
-  writeCreatedFile,
-} from '../src/commands/create.js';
-import {
   buildOverrideFile,
   persistAgentTools,
   readExistingAgentTools,
@@ -486,45 +480,6 @@ describe('init subcommand', () => {
     expect(body).toContain('node_modules');
     expect(body).toContain('.claude/ewh-state.json');
     expect(body.match(/\.ewh-artifacts\//g)?.length).toBe(1);
-  });
-});
-
-// ── create ──────────────────────────────────────────────────────────────
-
-describe('create subcommand', () => {
-  it('normalizeType accepts valid values', () => {
-    expect(normalizeType('rule')).toBe('rule');
-    expect(normalizeType('AGENT')).toBe('agent');
-    expect(normalizeType(' workflow ')).toBe('workflow');
-    expect(normalizeType('skill')).toBeNull();
-    expect(normalizeType(undefined)).toBeNull();
-  });
-
-  it('extractFrontmatterName reads the name field', () => {
-    const body = '---\nname: my-rule\nother: 1\n---\n\nBody\n';
-    expect(extractFrontmatterName(body)).toBe('my-rule');
-  });
-
-  it('extractFrontmatterName returns null when missing or malformed', () => {
-    expect(extractFrontmatterName('no frontmatter')).toBeNull();
-    expect(extractFrontmatterName('---\nfoo: bar\n---\n')).toBeNull();
-  });
-
-  it('targetPath puts files under the type-specific directory', () => {
-    const p = targetPath('/root', 'rule', 'no-magic-numbers');
-    expect(p).toBe('/root/.claude/rules/no-magic-numbers.md');
-    expect(targetPath('/root', 'agent', 'coder')).toBe(
-      '/root/.claude/agents/coder.md',
-    );
-    expect(targetPath('/root', 'workflow', 'ship-it')).toBe(
-      '/root/.claude/workflows/ship-it.md',
-    );
-  });
-
-  it('writeCreatedFile creates parents and writes content', async () => {
-    const target = join(tmpDir, '.claude', 'rules', 'x.md');
-    await writeCreatedFile(target, 'hello\n');
-    expect(await fs.readFile(target, 'utf8')).toBe('hello\n');
   });
 });
 

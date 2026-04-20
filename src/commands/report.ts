@@ -17,7 +17,6 @@ import { compareDrift } from '../hooks/drift.js';
 import type { Instruction, Report, RunState } from '../state/types.js';
 import { continueCleanup } from './cleanup.js';
 import { continueInit } from './init.js';
-import { continueCreate } from './create.js';
 import { continueDesign } from './design.js';
 import { continueExpandTools } from './expand-tools.js';
 import { continueResume } from './resume.js';
@@ -208,8 +207,6 @@ async function dispatchSubcommandReport(
       return continueCleanup(run, report, ctx);
     case 'init':
       return continueInit(run, report, ctx);
-    case 'create':
-      return continueCreate(run, report, ctx);
     case 'design':
       return continueDesign(run, report, ctx);
     case 'expand-tools':

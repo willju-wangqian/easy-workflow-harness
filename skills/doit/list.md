@@ -9,7 +9,7 @@ Workflows (multi-step, agent-driven):
 Subcommands (lightweight, interactive):
   /ewh:doit init                    — bootstrap project and show onboarding guide
   /ewh:doit cleanup                 — run user-configured cleanup tasks
-  /ewh:doit create [type]           — scaffold a rule, agent, or workflow
+  /ewh:doit design "<desc>"         — design a rule, agent, or workflow conversationally
   /ewh:doit expand-tools [desc]     — discover and assign agent tools
   /ewh:doit status                  — report in-flight runs from .ewh-artifacts/
   /ewh:doit resume [<run-id>]       — re-emit the stored instruction for a run
