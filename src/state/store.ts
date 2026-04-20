@@ -132,3 +132,77 @@ export async function pruneOldRuns(
     await fs.rm(join(artifactsDir, name), { recursive: true, force: true });
   }
 }
+
+export type RunSummary = {
+  run_id: string;
+  workflow: string;
+  status: 'running' | 'complete' | 'aborted';
+  current_step_index: number;
+  total_steps: number;
+  current_phase: string;
+  is_active: boolean;
+  updated_at: string;
+};
+
+/**
+ * Enumerate runs in `.ewh-artifacts/`. Returns all parseable runs; emits
+ * stderr warnings for malformed state files (does not throw).
+ *
+ * Sort order: active+running first, then by `updated_at` descending.
+ */
+export async function scanRuns(projectRoot: string): Promise<RunSummary[]> {
+  const artifactsDir = resolve(projectRoot, ARTIFACTS_DIR);
+  let entries: string[];
+  try {
+    entries = await fs.readdir(artifactsDir);
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException | null)?.code;
+    if (code === 'ENOENT') return [];
+    throw err;
+  }
+
+  const summaries: RunSummary[] = [];
+  for (const name of entries) {
+    if (!name.startsWith('run-')) continue;
+    const runId = name.slice('run-'.length);
+    const stPath = statePath(projectRoot, runId);
+    let state: RunState;
+    try {
+      const body = await fs.readFile(stPath, 'utf8');
+      state = JSON.parse(body) as RunState;
+    } catch (err: unknown) {
+      const code = (err as NodeJS.ErrnoException | null)?.code;
+      if (code !== 'ENOENT') {
+        process.stderr.write(`[ewh] warning: ${stPath} unreadable: ${String(err)}\n`);
+      }
+      continue;
+    }
+    let isActive = false;
+    try {
+      await fs.access(activeMarker(projectRoot, runId));
+      isActive = true;
+    } catch {
+      /* no ACTIVE marker */
+    }
+    const step = state.steps?.[state.current_step_index];
+    const phase = step?.state?.phase ?? (state.subcommand ? `subcommand:${state.subcommand}` : 'unknown');
+    summaries.push({
+      run_id: state.run_id,
+      workflow: state.workflow,
+      status: state.status,
+      current_step_index: state.current_step_index,
+      total_steps: state.steps?.length ?? 0,
+      current_phase: phase,
+      is_active: isActive,
+      updated_at: state.updated_at,
+    });
+  }
+
+  summaries.sort((a, b) => {
+    const aActive = a.is_active && a.status === 'running' ? 1 : 0;
+    const bActive = b.is_active && b.status === 'running' ? 1 : 0;
+    if (aActive !== bActive) return bActive - aActive;
+    return b.updated_at.localeCompare(a.updated_at);
+  });
+  return summaries;
+}

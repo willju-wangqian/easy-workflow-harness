@@ -32,9 +32,32 @@ import { startCleanup } from './cleanup.js';
 import { startInit } from './init.js';
 import { startCreate } from './create.js';
 import { startExpandTools } from './expand-tools.js';
+import { buildStatusBody } from './status.js';
 
-export const BUILTIN_SUBCOMMANDS = ['list', 'init', 'cleanup', 'create', 'expand-tools'] as const;
+export const BUILTIN_SUBCOMMANDS = [
+  'list',
+  'init',
+  'cleanup',
+  'create',
+  'expand-tools',
+  'status',
+  'resume',
+  'abort',
+  'doctor',
+] as const;
 export type BuiltinSubcommand = (typeof BUILTIN_SUBCOMMANDS)[number];
+
+/**
+ * Subcommands that do not require a persisted `RunState` — they read or
+ * mutate pre-existing state but never create a new run directory. Routed
+ * via an early-exit path in `runStart` so `ewh status` doesn't pollute
+ * its own output by writing a fresh `state.json` each invocation.
+ */
+const STATELESS_SUBCOMMANDS: ReadonlySet<BuiltinSubcommand> = new Set([
+  'status',
+  'abort',
+  'doctor',
+] as const);
 
 export type StartOptions = {
   projectRoot: string;
@@ -85,6 +108,9 @@ export async function runStart(opts: StartOptions): Promise<string> {
     );
     const hasProjectOverride = await fileExists(projectOverridePath);
     if (noOverride || !hasProjectOverride) {
+      if (STATELESS_SUBCOMMANDS.has(name)) {
+        return runStatelessSubcommand(name, stripFlags(parsed.rest), opts);
+      }
       return startSubcommandRun(name, stripFlags(parsed.rest), opts, manageTasks);
     }
   }
@@ -240,6 +266,26 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
+async function runStatelessSubcommand(
+  name: BuiltinSubcommand,
+  positionalRest: string[],
+  opts: StartOptions,
+): Promise<string> {
+  switch (name) {
+    case 'status': {
+      const body = await buildStatusBody(opts.projectRoot, new Date());
+      return formatInstruction({ kind: 'done', body });
+    }
+    case 'abort':
+    case 'doctor':
+      // Implemented in subsequent commits; keep the exhaustive branch shape.
+      void positionalRest;
+      throw new Error(`subcommand not yet implemented: ${name}`);
+    default:
+      throw new Error(`not a stateless subcommand: ${name}`);
+  }
+}
+
 async function startSubcommandRun(
   name: BuiltinSubcommand,
   positionalRest: string[],
@@ -309,6 +355,11 @@ async function startSubcommandRun(
       instruction = r.instruction;
       break;
     }
+    case 'status':
+    case 'abort':
+    case 'doctor':
+    case 'resume':
+      throw new Error(`subcommand ${name} should be routed via runStatelessSubcommand or its own entry point`);
   }
 
   run.subcommand_state = state;

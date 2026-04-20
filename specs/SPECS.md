@@ -2,7 +2,7 @@
 
 ## Active Decisions
 
-_None at this time._
+- [status-resume-abort-doctor](status-resume-abort-doctor.md) — Four deferred v2 subcommands: `status`, `resume`, `abort`, `doctor` (single-turn pattern + gate-disambiguation for `resume`).
 
 ## TODO
 
