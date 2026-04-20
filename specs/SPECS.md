@@ -2,7 +2,7 @@
 
 ## Active Decisions
 
-_(none)_
+- [design-subcommand](design-subcommand.md) — New `/ewh:doit design` subcommand replacing `create`: conversational interview via a tool-stripped facilitator subagent, two-tier approval (shape gate → per-file gates), supports both create and update for workflows/agents/rules.
 
 ## Reference
 
