@@ -11,6 +11,10 @@ Subcommands (lightweight, interactive):
   /ewh:doit cleanup                 — run user-configured cleanup tasks
   /ewh:doit create [type]           — scaffold a rule, agent, or workflow
   /ewh:doit expand-tools [desc]     — discover and assign agent tools
+  /ewh:doit status                  — report in-flight runs from .ewh-artifacts/
+  /ewh:doit resume [<run-id>]       — re-emit the stored instruction for a run
+  /ewh:doit abort [<run-id>]        — abort a run (syntactic sugar for report --abort)
+  /ewh:doit doctor                  — environment/config health checks (use --smoke for CI)
   /ewh:doit list                    — show this catalog
 
 Flags:

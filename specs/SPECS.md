@@ -25,10 +25,12 @@ Captured from a post-v2.0.1 audit (2026-04-19). Order is rough priority.
 
 ### Subcommands deferred from v2 spec
 
-- **`ewh status`** — read `.ewh-artifacts/<run>/ACTIVE` + `state.json`, report in-flight runs. Pure read; small effort.
-- **`ewh resume`** — re-emit the stored instruction for the current run; `runReport` already does this idempotently. Small-medium effort. Together with `status`, these deliver on the crash-resume UX promised in README §Gates.
-- **`ewh abort`** — already works as `ewh report --abort`; a standalone command is syntactic sugar. Low priority.
-- **`ewh doctor`** — CI smoke / environment check; spec acceptance criterion #7. Medium effort, low urgency.
+Shipped per [status-resume-abort-doctor](status-resume-abort-doctor.md):
+
+- ~~**`ewh status`**~~ — done.
+- ~~**`ewh resume`**~~ — done (single-turn + multi-turn gate for >1 active runs).
+- ~~**`ewh abort`**~~ — done.
+- ~~**`ewh doctor`**~~ — done (checks 1–10 + `--smoke` for CI).
 
 ### Tests
 
