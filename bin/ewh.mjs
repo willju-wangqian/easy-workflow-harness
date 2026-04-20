@@ -6886,14 +6886,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs22 = this.flowScalar(this.type);
+              const fs24 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs22, sep: [] });
+                map.items.push({ start, key: fs24, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs22);
+                this.stack.push(fs24);
               } else {
-                Object.assign(it, { key: fs22, sep: [] });
+                Object.assign(it, { key: fs24, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7021,13 +7021,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs22 = this.flowScalar(this.type);
+              const fs24 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs22, sep: [] });
+                fc.items.push({ start: [], key: fs24, sep: [] });
               else if (it.sep)
-                this.stack.push(fs22);
+                this.stack.push(fs24);
               else
-                Object.assign(it, { key: fs22, sep: [] });
+                Object.assign(it, { key: fs24, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7546,8 +7546,8 @@ var require_brace_expansion = __commonJS({
 });
 
 // src/commands/start.ts
-import { promises as fs20 } from "node:fs";
-import { join as join18 } from "node:path";
+import { promises as fs22 } from "node:fs";
+import { join as join20 } from "node:path";
 import { parseArgs as parseArgs2 } from "node:util";
 
 // src/state/store.ts
@@ -13096,8 +13096,8 @@ var PathScurryBase = class {
    *
    * @internal
    */
-  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs22 = defaultFS } = {}) {
-    this.#fs = fsFromOption(fs22);
+  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs24 = defaultFS } = {}) {
+    this.#fs = fsFromOption(fs24);
     if (cwd instanceof URL || cwd.startsWith("file://")) {
       cwd = fileURLToPath(cwd);
     }
@@ -13655,8 +13655,8 @@ var PathScurryWin32 = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs22) {
-    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs22 });
+  newRoot(fs24) {
+    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs24 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -13684,8 +13684,8 @@ var PathScurryPosix = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs22) {
-    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs22 });
+  newRoot(fs24) {
+    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs24 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -16904,9 +16904,437 @@ async function fileExists(path2) {
   }
 }
 
-// src/commands/expand-tools.ts
+// src/commands/design.ts
+import { promises as fs17 } from "node:fs";
+import { join as join15 } from "node:path";
+
+// src/commands/design-catalog.ts
+var import_yaml5 = __toESM(require_dist(), 1);
 import { promises as fs16 } from "node:fs";
-import { dirname as dirname7, join as join14 } from "node:path";
+import { join as join14 } from "node:path";
+async function readFrontmatter(filePath) {
+  let content;
+  try {
+    content = await fs16.readFile(filePath, "utf8");
+  } catch {
+    return null;
+  }
+  if (!content.startsWith("---")) return null;
+  const end = content.indexOf("\n---", 3);
+  if (end === -1) return null;
+  const raw = content.slice(3, end).trim();
+  try {
+    return (0, import_yaml5.parse)(raw);
+  } catch {
+    return null;
+  }
+}
+async function walkDir(dir) {
+  const results = [];
+  let entries;
+  try {
+    entries = await fs16.readdir(dir);
+  } catch {
+    return results;
+  }
+  for (const name of entries) {
+    const full = join14(dir, name);
+    let stat;
+    try {
+      stat = await fs16.stat(full);
+    } catch {
+      continue;
+    }
+    if (stat.isDirectory()) {
+      results.push(...await walkDir(full));
+    } else if (stat.isFile() && name.endsWith(".md")) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+async function collectEntries(baseDir, type, scope, relativeFrom) {
+  const files = await walkDir(baseDir);
+  const entries = [];
+  for (const file of files) {
+    const fm = await readFrontmatter(file);
+    if (!fm || !fm.name) continue;
+    const relPath = file.slice(relativeFrom.length).replace(/^\//, "");
+    entries.push({
+      type,
+      name: String(fm.name),
+      path: relPath,
+      scope,
+      description: fm.description ? String(fm.description) : ""
+    });
+  }
+  return entries;
+}
+async function buildCatalog(projectRoot, pluginRoot) {
+  const [
+    pluginWorkflows,
+    pluginAgents,
+    pluginRules,
+    projectWorkflows,
+    projectAgents,
+    projectRules
+  ] = await Promise.all([
+    collectEntries(join14(pluginRoot, "workflows"), "workflow", "plugin", pluginRoot + "/"),
+    collectEntries(join14(pluginRoot, "agents"), "agent", "plugin", pluginRoot + "/"),
+    collectEntries(join14(pluginRoot, "rules"), "rule", "plugin", pluginRoot + "/"),
+    collectEntries(join14(projectRoot, ".claude", "workflows"), "workflow", "project", projectRoot + "/.claude/"),
+    collectEntries(join14(projectRoot, ".claude", "agents"), "agent", "project", projectRoot + "/.claude/"),
+    collectEntries(join14(projectRoot, ".claude", "rules"), "rule", "project", projectRoot + "/.claude/")
+  ]);
+  const dedupeWithProjectWin = (plugin, project) => {
+    const projectNames = new Set(project.map((e) => e.name));
+    return [...plugin.filter((e) => !projectNames.has(e.name)), ...project];
+  };
+  const workflows = dedupeWithProjectWin(pluginWorkflows, projectWorkflows);
+  const agents = dedupeWithProjectWin(pluginAgents, projectAgents);
+  const rules = [...pluginRules, ...projectRules];
+  return [...workflows, ...agents, ...rules];
+}
+
+// src/commands/design.ts
+async function startDesign(opts) {
+  const description = opts.description.trim();
+  if (!description) {
+    return {
+      state: void 0,
+      instruction: {
+        kind: "done",
+        body: [
+          "ewh design: missing description.",
+          "",
+          'Usage: /ewh:doit design "<describe what you want to design>"'
+        ].join("\n")
+      }
+    };
+  }
+  const paths = designPaths(opts.projectRoot, opts.runId);
+  await fs17.mkdir(paths.proposedDir, { recursive: true });
+  const catalog = await buildCatalog(opts.projectRoot, opts.pluginRoot);
+  await fs17.writeFile(paths.catalog, JSON.stringify(catalog, null, 2), "utf8");
+  await fs17.writeFile(paths.description, description + "\n", "utf8");
+  const state = {
+    kind: "design",
+    phase: "interview",
+    description,
+    catalog_path: paths.catalog
+  };
+  return {
+    state,
+    instruction: buildFacilitatorInstruction({
+      runId: opts.runId,
+      catalogPath: paths.catalog,
+      descriptionPath: paths.description,
+      outputPath: paths.shape
+    })
+  };
+}
+async function continueDesign(run, report, opts) {
+  const sub = run.subcommand_state;
+  if (!sub || sub.kind !== "design") {
+    throw new Error("design report called with non-design subcommand state");
+  }
+  switch (sub.phase) {
+    case "interview":
+      return continueInterview(run, sub, report, opts);
+    case "shape_gate":
+      return continueShapeGate(run, sub, report, opts);
+    case "author":
+    case "file_gate":
+    case "refine":
+    case "write":
+      run.subcommand_state = void 0;
+      return {
+        kind: "done",
+        body: `ewh design: phase '${sub.phase}' not yet implemented (session 2 MVP).`
+      };
+  }
+}
+async function continueInterview(run, sub, report, opts) {
+  if (report.kind === "error") {
+    throw new Error(`design interview: facilitator error: ${report.message}`);
+  }
+  if (report.kind !== "result" || !report.result_path) {
+    throw new Error("design interview: expected --result <shape.json path>");
+  }
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  const parsed = await readShape(report.result_path);
+  if (!parsed.ok) {
+    return bounceToInterview(run, sub, paths, [parsed.error]);
+  }
+  const catalog = await readCatalog(paths.catalog);
+  const errors = validateShape(parsed.proposal, catalog);
+  if (errors.length > 0) {
+    return bounceToInterview(run, sub, paths, errors);
+  }
+  run.subcommand_state = {
+    kind: "design",
+    phase: "shape_gate",
+    proposal_path: report.result_path
+  };
+  return renderShapeGate(run, parsed.proposal, paths);
+}
+async function bounceToInterview(run, sub, paths, errors) {
+  const note = [
+    "",
+    "--- validation errors from previous proposal ---",
+    ...errors.map((e) => `  \u2022 ${e}`),
+    "Please re-interview and re-emit shape.json addressing these issues.",
+    ""
+  ].join("\n");
+  await fs17.appendFile(paths.description, note, "utf8");
+  run.subcommand_state = { ...sub };
+  return buildFacilitatorInstruction({
+    runId: run.run_id,
+    catalogPath: paths.catalog,
+    descriptionPath: paths.description,
+    outputPath: paths.shape
+  });
+}
+async function continueShapeGate(run, sub, report, opts) {
+  if (report.kind === "decision") {
+    if (report.decision === "yes") {
+      run.subcommand_state = {
+        kind: "design",
+        phase: "author",
+        proposal_path: sub.proposal_path,
+        author_index: 0
+      };
+      return {
+        kind: "done",
+        body: [
+          "ewh design: proposal approved \u2014 author phase not yet implemented (session 2 MVP).",
+          `Staged proposal: ${sub.proposal_path}`
+        ].join("\n")
+      };
+    }
+    run.subcommand_state = void 0;
+    return { kind: "done", body: "Proposal rejected. No files written." };
+  }
+  if (report.kind === "result") {
+    if (!report.result_path) {
+      throw new Error("design shape_gate edit: expected --result <instruction path>");
+    }
+    const instruction = (await fs17.readFile(report.result_path, "utf8")).trim();
+    const paths = designPaths(opts.projectRoot, run.run_id);
+    const note = [
+      "",
+      "--- user edit instruction after shape gate ---",
+      instruction,
+      ""
+    ].join("\n");
+    await fs17.appendFile(paths.description, note, "utf8");
+    run.subcommand_state = {
+      kind: "design",
+      phase: "interview",
+      description: instruction,
+      catalog_path: paths.catalog
+    };
+    return buildFacilitatorInstruction({
+      runId: run.run_id,
+      catalogPath: paths.catalog,
+      descriptionPath: paths.description,
+      outputPath: paths.shape
+    });
+  }
+  throw new Error(`design shape_gate: unexpected report kind '${report.kind}'`);
+}
+function buildFacilitatorInstruction(args) {
+  const body = [
+    "Tool: Agent",
+    "Args:",
+    "  subagent_type: ewh:design-facilitator",
+    "  prompt: |",
+    "    You are the EWH design-facilitator. Interview the user via AskUserQuestion,",
+    "    then write a shape.json proposal. Every question MUST include a",
+    '    "propose now" option so the user can signal readiness at any turn.',
+    "",
+    `    catalog_path:     ${args.catalogPath}`,
+    `    description_path: ${args.descriptionPath}`,
+    `    output_path:      ${args.outputPath}`,
+    "",
+    "    Read description_path and catalog_path before your first question.",
+    "    When ready, write the shape.json JSON document to output_path, list it",
+    "    under `files_modified:`, then emit AGENT_COMPLETE.",
+    `  description: "design: facilitator interview"`,
+    "",
+    `After the Agent tool returns, report: ewh report --run ${args.runId} --step 0 --result ${args.outputPath}`
+  ].join("\n");
+  return {
+    kind: "tool-call",
+    body,
+    report_with: `ewh report --run ${args.runId} --step 0 --result ${args.outputPath}`
+  };
+}
+function renderShapeGate(run, proposal, paths) {
+  const editPath = paths.edit;
+  const lines = [];
+  lines.push("EWH design \u2014 shape gate");
+  lines.push("");
+  lines.push(`Description: ${proposal.description}`);
+  lines.push("");
+  lines.push(`Proposed ${proposal.artifacts.length} artifact(s):`);
+  proposal.artifacts.forEach((a, i) => {
+    const deps = a.depends_on && a.depends_on.length > 0 ? ` [depends: ${a.depends_on.join(", ")}]` : "";
+    lines.push(`  ${i + 1}. [${a.op}] ${a.type} '${a.name}' (${a.scope}) \u2192 ${a.path}${deps}`);
+    if (a.description) lines.push(`       ${a.description}`);
+  });
+  lines.push("");
+  lines.push("Write order on approval: rules \u2192 agents \u2192 workflows.");
+  lines.push("");
+  lines.push("Choose:");
+  lines.push(`  approve: ewh report --run ${run.run_id} --step 0 --decision yes`);
+  lines.push(`  reject:  ewh report --run ${run.run_id} --step 0 --decision no`);
+  lines.push(
+    `  edit:    write your instruction (free-form text) to ${editPath},`
+  );
+  lines.push(
+    `           then ewh report --run ${run.run_id} --step 0 --result ${editPath}`
+  );
+  return {
+    kind: "user-prompt",
+    body: lines.join("\n"),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`
+  };
+}
+async function readShape(path2) {
+  let raw;
+  try {
+    raw = await fs17.readFile(path2, "utf8");
+  } catch (e) {
+    return { ok: false, error: `failed to read shape.json at ${path2}: ${e.message}` };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    return { ok: false, error: `shape.json is not valid JSON: ${e.message}` };
+  }
+  return validateShapeShape(parsed);
+}
+function validateShapeShape(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return { ok: false, error: "shape.json must be a JSON object" };
+  }
+  const obj = input;
+  if (typeof obj.description !== "string") {
+    return { ok: false, error: "shape.json missing required field 'description' (string)" };
+  }
+  if (!Array.isArray(obj.artifacts)) {
+    return { ok: false, error: "shape.json missing required field 'artifacts' (array)" };
+  }
+  const artifacts = [];
+  for (let i = 0; i < obj.artifacts.length; i++) {
+    const raw = obj.artifacts[i];
+    const r = validateArtifact(raw, i);
+    if (!r.ok) return r;
+    artifacts.push(r.artifact);
+  }
+  return { ok: true, proposal: { description: obj.description, artifacts } };
+}
+function validateArtifact(raw, index) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: `artifacts[${index}] must be an object` };
+  }
+  const a = raw;
+  const stringField = (k) => typeof a[k] === "string" && a[k].length > 0 ? a[k] : null;
+  const type = stringField("type");
+  const op = stringField("op");
+  const name = stringField("name");
+  const scope = stringField("scope");
+  const path2 = stringField("path");
+  const description = stringField("description") ?? "";
+  if (type !== "workflow" && type !== "agent" && type !== "rule") {
+    return { ok: false, error: `artifacts[${index}].type must be one of workflow|agent|rule` };
+  }
+  if (op !== "create" && op !== "update") {
+    return { ok: false, error: `artifacts[${index}].op must be 'create' or 'update'` };
+  }
+  if (!name) return { ok: false, error: `artifacts[${index}].name is required` };
+  if (scope !== "plugin" && scope !== "project") {
+    return { ok: false, error: `artifacts[${index}].scope must be 'plugin' or 'project'` };
+  }
+  if (!path2) return { ok: false, error: `artifacts[${index}].path is required` };
+  const fm = a.frontmatter;
+  if (!fm || typeof fm !== "object" || Array.isArray(fm)) {
+    return { ok: false, error: `artifacts[${index}].frontmatter must be an object` };
+  }
+  let depends_on;
+  if (a.depends_on !== void 0) {
+    if (!Array.isArray(a.depends_on)) {
+      return { ok: false, error: `artifacts[${index}].depends_on must be an array` };
+    }
+    depends_on = a.depends_on.filter((d) => typeof d === "string");
+  }
+  return {
+    ok: true,
+    artifact: {
+      type,
+      op,
+      name,
+      scope,
+      path: path2,
+      description,
+      frontmatter: fm,
+      depends_on
+    }
+  };
+}
+function validateShape(proposal, catalog) {
+  const errors = [];
+  const catalogKeys = new Set(catalog.map((e) => `${e.scope}:${e.path}`));
+  const catalogNames = new Set(catalog.map((e) => e.name));
+  const batchNames = new Set(proposal.artifacts.map((a) => a.name));
+  for (const art of proposal.artifacts) {
+    const key = `${art.scope}:${art.path}`;
+    if (art.op === "update" && !catalogKeys.has(key)) {
+      errors.push(
+        `artifact '${art.name}' is op:update but target ${art.scope}/${art.path} is not in the catalog`
+      );
+    }
+    if (art.op === "create" && catalogKeys.has(key)) {
+      errors.push(
+        `artifact '${art.name}' is op:create but target ${art.scope}/${art.path} already exists in the catalog`
+      );
+    }
+    for (const dep of art.depends_on ?? []) {
+      if (!batchNames.has(dep) && !catalogNames.has(dep)) {
+        errors.push(
+          `artifact '${art.name}' depends_on '${dep}' which is neither in this batch nor in the catalog`
+        );
+      }
+    }
+  }
+  return errors;
+}
+async function readCatalog(path2) {
+  const raw = await fs17.readFile(path2, "utf8");
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error(`catalog file ${path2} is not a JSON array`);
+  }
+  return parsed;
+}
+function designPaths(projectRoot, runId) {
+  const runRoot = runDir(projectRoot, runId);
+  const proposedDir = join15(runRoot, "proposed");
+  return {
+    runRoot,
+    proposedDir,
+    catalog: join15(runRoot, "catalog.json"),
+    description: join15(runRoot, "description.txt"),
+    shape: join15(proposedDir, "shape.json"),
+    edit: join15(runRoot, "shape-edit.txt")
+  };
+}
+
+// src/commands/expand-tools.ts
+import { promises as fs18 } from "node:fs";
+import { dirname as dirname7, join as join16 } from "node:path";
 async function startExpandTools(opts) {
   const toolsPath = toolsScratchPath(opts.projectRoot);
   const existing = await readExistingAgentTools(opts.projectRoot);
@@ -17041,13 +17469,13 @@ async function continueExpandTools(run, report, opts) {
   throw new Error(`expand-tools: unhandled phase ${sub.phase}`);
 }
 function toolsScratchPath(projectRoot) {
-  return join14(projectRoot, ".ewh-artifacts", "expand-tools-available.txt");
+  return join16(projectRoot, ".ewh-artifacts", "expand-tools-available.txt");
 }
 function proposalScratchPath(projectRoot) {
-  return join14(projectRoot, ".ewh-artifacts", "expand-tools-proposal.json");
+  return join16(projectRoot, ".ewh-artifacts", "expand-tools-proposal.json");
 }
 async function readProposal(path2) {
-  const content = await fs16.readFile(path2, "utf8");
+  const content = await fs18.readFile(path2, "utf8");
   const parsed = JSON.parse(content);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(`expand-tools proposal ${path2} is not a JSON object`);
@@ -17097,10 +17525,10 @@ async function generateAgentOverrides(projectRoot, pluginRoot, agents, merged) {
     if (!entry) continue;
     const baseTools = await readPluginAgentTools(pluginRoot, agent);
     const allTools = Array.from(/* @__PURE__ */ new Set([...baseTools, ...entry.add]));
-    const path2 = join14(projectRoot, ".claude", "agents", `${agent}.md`);
-    await fs16.mkdir(dirname7(path2), { recursive: true });
+    const path2 = join16(projectRoot, ".claude", "agents", `${agent}.md`);
+    await fs18.mkdir(dirname7(path2), { recursive: true });
     const content = buildOverrideFile(agent, allTools);
-    await fs16.writeFile(path2, content, "utf8");
+    await fs18.writeFile(path2, content, "utf8");
     out.push({ agent, path: path2, toolsAdded: entry.add.length });
   }
   return out;
@@ -17159,14 +17587,14 @@ function formatAge(iso, now) {
 
 // src/commands/report.ts
 import { parseArgs } from "node:util";
-import { join as join16 } from "node:path";
+import { join as join18 } from "node:path";
 
 // src/hooks/tool-use-log.ts
-import { promises as fs17 } from "node:fs";
+import { promises as fs19 } from "node:fs";
 async function readTurnLogSince(logPath, offset) {
   let buf;
   try {
-    const fh = await fs17.open(logPath, "r");
+    const fh = await fs19.open(logPath, "r");
     try {
       const stat = await fh.stat();
       const size = stat.size;
@@ -17222,8 +17650,8 @@ function compareDrift(expectedTool, entries) {
 }
 
 // src/commands/resume.ts
-import { promises as fs18 } from "node:fs";
-import { join as join15 } from "node:path";
+import { promises as fs20 } from "node:fs";
+import { join as join17 } from "node:path";
 var RESUMABLE_PHASES = /* @__PURE__ */ new Set([
   "pending",
   "gate_pending",
@@ -17310,8 +17738,8 @@ async function buildResumeInstruction(projectRoot, pluginRoot, runId) {
 async function emitResumePickGate(projectRoot, active, now) {
   const resumeRunId = newRunId();
   const rd = runDir(projectRoot, resumeRunId);
-  await fs18.mkdir(rd, { recursive: true });
-  const pickPath = join15(rd, "pick.txt");
+  await fs20.mkdir(rd, { recursive: true });
+  const pickPath = join17(rd, "pick.txt");
   const subState = {
     kind: "resume",
     phase: "resume_pick",
@@ -17367,7 +17795,7 @@ async function continueResume(run, report, ctx) {
   if (report.kind !== "result" || !report.result_path) {
     throw new Error("resume_pick: expected --result <path>");
   }
-  const raw = (await fs18.readFile(report.result_path, "utf8")).trim();
+  const raw = (await fs20.readFile(report.result_path, "utf8")).trim();
   if (!sub.active_ids.includes(raw)) {
     throw new Error(
       `'${raw}' is not in the active run list; expected one of: ${sub.active_ids.join(", ")}`
@@ -17436,7 +17864,7 @@ async function runReport(opts) {
       body: `Run ${run.run_id} aborted.`
     });
   }
-  const turnLogPath = join16(runDir(opts.projectRoot, run.run_id), "turn-log.jsonl");
+  const turnLogPath = join18(runDir(opts.projectRoot, run.run_id), "turn-log.jsonl");
   const { entries: logEntries, newOffset } = await readTurnLogSince(turnLogPath, run.turn_log_offset ?? 0);
   run.turn_log_offset = newOffset;
   if (run.last_instructed_tool) {
@@ -17552,6 +17980,8 @@ async function dispatchSubcommandReport(run, report, opts) {
       return continueInit(run, report, ctx);
     case "create":
       return continueCreate(run, report, ctx);
+    case "design":
+      return continueDesign(run, report, ctx);
     case "expand-tools":
       return continueExpandTools(run, report, ctx);
     case "resume":
@@ -17674,9 +18104,9 @@ async function delegateAbort(opts, runId, stepIndex) {
 }
 
 // src/commands/doctor.ts
-var import_yaml5 = __toESM(require_dist(), 1);
-import { promises as fs19 } from "node:fs";
-import { join as join17 } from "node:path";
+var import_yaml6 = __toESM(require_dist(), 1);
+import { promises as fs21 } from "node:fs";
+import { join as join19 } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes as randomBytes3 } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -17726,7 +18156,7 @@ async function checkNodeVersion(pluginRoot) {
   let requiredMajor = null;
   try {
     const pkg = JSON.parse(
-      await fs19.readFile(join17(pluginRoot, "package.json"), "utf8")
+      await fs21.readFile(join19(pluginRoot, "package.json"), "utf8")
     );
     const spec = pkg.engines?.node;
     if (typeof spec === "string") {
@@ -17747,10 +18177,10 @@ async function checkNodeVersion(pluginRoot) {
   return { id: 1, label, status: "pass", detail: current };
 }
 async function checkBinaryPresent(pluginRoot) {
-  const path2 = join17(pluginRoot, "bin", "ewh.mjs");
+  const path2 = join19(pluginRoot, "bin", "ewh.mjs");
   const label = "binary present";
   try {
-    const st = await fs19.stat(path2);
+    const st = await fs21.stat(path2);
     if (!st.isFile()) {
       return { id: 2, label, status: "fail", issues: [`${path2}: not a regular file`] };
     }
@@ -17763,7 +18193,7 @@ async function checkBinaryPresent(pluginRoot) {
     };
   }
   try {
-    await fs19.access(path2, fs19.constants.X_OK);
+    await fs21.access(path2, fs21.constants.X_OK);
   } catch {
     return {
       id: 2,
@@ -17779,9 +18209,9 @@ async function checkPluginDirs(pluginRoot) {
   const required = ["workflows", "agents", "rules"];
   const issues = [];
   for (const name of required) {
-    const path2 = join17(pluginRoot, name);
+    const path2 = join19(pluginRoot, name);
     try {
-      const st = await fs19.stat(path2);
+      const st = await fs21.stat(path2);
       if (!st.isDirectory()) issues.push(`${name}/: not a directory`);
     } catch {
       issues.push(`${name}/: missing`);
@@ -17792,12 +18222,12 @@ async function checkPluginDirs(pluginRoot) {
 }
 async function checkArtifactsWritable(projectRoot) {
   const label = ".ewh-artifacts writable";
-  const dir = join17(projectRoot, ".ewh-artifacts");
-  const probe = join17(dir, `.doctor-probe-${randomBytes3(4).toString("hex")}`);
+  const dir = join19(projectRoot, ".ewh-artifacts");
+  const probe = join19(dir, `.doctor-probe-${randomBytes3(4).toString("hex")}`);
   try {
-    await fs19.mkdir(dir, { recursive: true });
-    await fs19.writeFile(probe, "doctor-probe\n", "utf8");
-    await fs19.unlink(probe);
+    await fs21.mkdir(dir, { recursive: true });
+    await fs21.writeFile(probe, "doctor-probe\n", "utf8");
+    await fs21.unlink(probe);
   } catch (err) {
     return { id: 4, label, status: "fail", issues: [errMsg(err)] };
   }
@@ -17805,10 +18235,10 @@ async function checkArtifactsWritable(projectRoot) {
 }
 async function checkEwhState(projectRoot) {
   const label = "ewh-state.json";
-  const path2 = join17(projectRoot, ".claude", "ewh-state.json");
+  const path2 = join19(projectRoot, ".claude", "ewh-state.json");
   let body;
   try {
-    body = await fs19.readFile(path2, "utf8");
+    body = await fs21.readFile(path2, "utf8");
   } catch (err) {
     if (errCode(err) === "ENOENT") {
       return { id: 5, label, status: "pass", detail: "not present" };
@@ -17824,9 +18254,9 @@ async function checkEwhState(projectRoot) {
 }
 async function checkHarnessConfig(projectRoot) {
   const label = "CLAUDE.md Harness Config";
-  const path2 = join17(projectRoot, "CLAUDE.md");
+  const path2 = join19(projectRoot, "CLAUDE.md");
   try {
-    const body = await fs19.readFile(path2, "utf8");
+    const body = await fs21.readFile(path2, "utf8");
     if (!/^##\s+Harness Config\b/m.test(body)) {
       return {
         id: 6,
@@ -17845,10 +18275,10 @@ async function checkHarnessConfig(projectRoot) {
 }
 async function checkHooksJson(pluginRoot) {
   const label = "hooks.json";
-  const path2 = join17(pluginRoot, "hooks", "hooks.json");
+  const path2 = join19(pluginRoot, "hooks", "hooks.json");
   let body;
   try {
-    body = await fs19.readFile(path2, "utf8");
+    body = await fs21.readFile(path2, "utf8");
   } catch (err) {
     if (errCode(err) === "ENOENT") {
       return { id: 7, label, status: "warn", issues: ["hooks/hooks.json missing"] };
@@ -17864,17 +18294,17 @@ async function checkHooksJson(pluginRoot) {
 }
 async function checkAgents(pluginRoot) {
   const label = "plugin agents";
-  const dir = join17(pluginRoot, "agents");
+  const dir = join19(pluginRoot, "agents");
   let entries;
   try {
-    entries = (await fs19.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs21.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 8, label, status: "fail", issues: ["agents/ directory missing"] };
   }
   const issues = [];
   for (const name of entries) {
-    const path2 = join17(dir, name);
-    const body = await fs19.readFile(path2, "utf8");
+    const path2 = join19(dir, name);
+    const body = await fs21.readFile(path2, "utf8");
     const fmErr = validateFrontmatter(body, ["name"]);
     if (fmErr) {
       issues.push(`agents/${name}: ${fmErr}`);
@@ -17889,17 +18319,17 @@ async function checkAgents(pluginRoot) {
 }
 async function checkRules(pluginRoot) {
   const label = "plugin rules";
-  const dir = join17(pluginRoot, "rules");
+  const dir = join19(pluginRoot, "rules");
   let entries;
   try {
-    entries = (await fs19.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs21.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 9, label, status: "fail", issues: ["rules/ directory missing"] };
   }
   const issues = [];
   for (const rel of entries) {
-    const path2 = join17(dir, rel);
-    const body = await fs19.readFile(path2, "utf8");
+    const path2 = join19(dir, rel);
+    const body = await fs21.readFile(path2, "utf8");
     const fmErr = validateFrontmatter(body, ["name"]);
     if (fmErr) issues.push(`rules/${rel}: ${fmErr}`);
   }
@@ -17908,21 +18338,21 @@ async function checkRules(pluginRoot) {
 }
 async function checkWorkflows(pluginRoot, projectRoot) {
   const label = "plugin workflows";
-  const dir = join17(pluginRoot, "workflows");
+  const dir = join19(pluginRoot, "workflows");
   let entries;
   try {
-    entries = (await fs19.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs21.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 10, label, status: "fail", issues: ["workflows/ directory missing"] };
   }
   const issues = [];
   for (const name of entries) {
-    const path2 = join17(dir, name);
+    const path2 = join19(dir, name);
     try {
       const wf = await loadWorkflow(path2);
       for (const step of wf.steps) {
         if (step.agent) {
-          const found = await fileExists2(join17(projectRoot, ".claude", "agents", `${step.agent}.md`)) || await fileExists2(join17(pluginRoot, "agents", `${step.agent}.md`));
+          const found = await fileExists2(join19(projectRoot, ".claude", "agents", `${step.agent}.md`)) || await fileExists2(join19(pluginRoot, "agents", `${step.agent}.md`));
           if (!found) {
             issues.push(
               `workflows/${name}: step '${step.name}' references missing agent '${step.agent}'`
@@ -17930,10 +18360,10 @@ async function checkWorkflows(pluginRoot, projectRoot) {
           }
         }
         for (const ruleName of step.rules ?? []) {
-          const pluginMatches = await findRuleFiles2(ruleName, join17(pluginRoot, "rules"));
+          const pluginMatches = await findRuleFiles2(ruleName, join19(pluginRoot, "rules"));
           const projectMatches = await findRuleFiles2(
             ruleName,
-            join17(projectRoot, ".claude", "rules")
+            join19(projectRoot, ".claude", "rules")
           );
           if (pluginMatches.length === 0 && projectMatches.length === 0) {
             issues.push(
@@ -17951,9 +18381,9 @@ async function checkWorkflows(pluginRoot, projectRoot) {
 }
 async function checkSmoke(pluginRoot) {
   const label = "smoke: ewh start list";
-  const bin = join17(pluginRoot, "bin", "ewh.mjs");
+  const bin = join19(pluginRoot, "bin", "ewh.mjs");
   try {
-    await fs19.access(bin, fs19.constants.R_OK);
+    await fs21.access(bin, fs21.constants.R_OK);
   } catch {
     return {
       id: 11,
@@ -17962,7 +18392,7 @@ async function checkSmoke(pluginRoot) {
       issues: [`${bin}: not readable (see check #2)`]
     };
   }
-  const projectDir = await fs19.mkdtemp(join17(tmpdir(), "ewh-smoke-"));
+  const projectDir = await fs21.mkdtemp(join19(tmpdir(), "ewh-smoke-"));
   try {
     const { stdout, stderr, exitCode } = await spawnCollect(
       process.execPath,
@@ -17992,7 +18422,7 @@ async function checkSmoke(pluginRoot) {
   } catch (err) {
     return { id: 11, label, status: "fail", issues: [errMsg(err)] };
   } finally {
-    await fs19.rm(projectDir, { recursive: true, force: true });
+    await fs21.rm(projectDir, { recursive: true, force: true });
   }
 }
 function spawnCollect(cmd, args, cwd, timeoutMs) {
@@ -18028,7 +18458,7 @@ function validateFrontmatter(raw, required) {
   if (end === -1) return "unterminated YAML frontmatter";
   let parsed;
   try {
-    parsed = import_yaml5.default.parse(raw.slice(4, end)) ?? {};
+    parsed = import_yaml6.default.parse(raw.slice(4, end)) ?? {};
   } catch (err) {
     return `invalid YAML frontmatter: ${errMsg(err)}`;
   }
@@ -18043,7 +18473,7 @@ function validateFrontmatter(raw, required) {
 async function findRuleFiles2(name, dir) {
   let entries;
   try {
-    entries = (await fs19.readdir(dir, { recursive: true })).map(String);
+    entries = (await fs21.readdir(dir, { recursive: true })).map(String);
   } catch {
     return [];
   }
@@ -18052,7 +18482,7 @@ async function findRuleFiles2(name, dir) {
 }
 async function fileExists2(path2) {
   try {
-    await fs19.access(path2);
+    await fs21.access(path2);
     return true;
   } catch {
     return false;
@@ -18071,6 +18501,7 @@ var BUILTIN_SUBCOMMANDS = [
   "init",
   "cleanup",
   "create",
+  "design",
   "expand-tools",
   "status",
   "resume",
@@ -18098,7 +18529,7 @@ async function runStart(opts) {
   const manageTasks = opts.manageTasks ?? inlineFlags.has("manage-tasks");
   const name = parsed.workflow;
   if (isBuiltinSubcommand(name)) {
-    const projectOverridePath = join18(
+    const projectOverridePath = join20(
       opts.projectRoot,
       ".claude",
       "workflows",
@@ -18236,7 +18667,7 @@ function isBuiltinSubcommand(name) {
 }
 async function fileExists3(path2) {
   try {
-    await fs20.access(path2);
+    await fs22.access(path2);
     return true;
   } catch {
     return false;
@@ -18328,6 +18759,17 @@ async function startSubcommandRun(name, positionalRest, opts, manageTasks) {
       instruction = r.instruction;
       break;
     }
+    case "design": {
+      const r = await startDesign({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        runId: run.run_id,
+        description: positionalRest.join(" ").trim()
+      });
+      state = r.state;
+      instruction = r.instruction;
+      break;
+    }
     case "expand-tools": {
       const r = await startExpandTools({
         projectRoot: opts.projectRoot,
@@ -18401,11 +18843,11 @@ async function main2(argv) {
 
 // src/commands/record-tool-use.ts
 import { parseArgs as parseArgs3 } from "node:util";
-import { promises as fs21 } from "node:fs";
-import { join as join19 } from "node:path";
+import { promises as fs23 } from "node:fs";
+import { join as join21 } from "node:path";
 import { glob as glob2 } from "node:fs/promises";
 async function findActiveRunDir(projectRoot) {
-  const artifactsDir = join19(projectRoot, ".ewh-artifacts");
+  const artifactsDir = join21(projectRoot, ".ewh-artifacts");
   let matches = [];
   try {
     const iter = glob2("*/ACTIVE", { cwd: artifactsDir });
@@ -18418,7 +18860,7 @@ async function findActiveRunDir(projectRoot) {
   if (matches.length === 0) return null;
   const first = matches[0];
   const runDirName = first.split("/")[0];
-  return join19(artifactsDir, runDirName);
+  return join21(artifactsDir, runDirName);
 }
 async function readStdin() {
   const chunks = [];
@@ -18471,9 +18913,9 @@ async function main3(argv) {
   } else {
     return;
   }
-  const logPath = join19(runDir2, "turn-log.jsonl");
+  const logPath = join21(runDir2, "turn-log.jsonl");
   const line = JSON.stringify(record) + "\n";
-  await fs21.appendFile(logPath, line, "utf8");
+  await fs23.appendFile(logPath, line, "utf8");
 }
 
 // src/index.ts

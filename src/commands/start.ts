@@ -31,6 +31,7 @@ import { buildListInstruction } from './list.js';
 import { startCleanup } from './cleanup.js';
 import { startInit } from './init.js';
 import { startCreate } from './create.js';
+import { startDesign } from './design.js';
 import { startExpandTools } from './expand-tools.js';
 import { buildStatusBody } from './status.js';
 import { runAbort } from './abort.js';
@@ -42,6 +43,7 @@ export const BUILTIN_SUBCOMMANDS = [
   'init',
   'cleanup',
   'create',
+  'design',
   'expand-tools',
   'status',
   'resume',
@@ -368,6 +370,17 @@ async function startSubcommandRun(
         projectRoot: opts.projectRoot,
         pluginRoot: opts.pluginRoot,
         type: positionalRest[0],
+      });
+      state = r.state;
+      instruction = r.instruction;
+      break;
+    }
+    case 'design': {
+      const r = await startDesign({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
+        runId: run.run_id,
+        description: positionalRest.join(' ').trim(),
       });
       state = r.state;
       instruction = r.instruction;
