@@ -2,6 +2,12 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [2.0.4] - 2026-04-21
+
+### Docs
+- `docs/subcommand-create.md` renamed to `docs/subcommand-design.md` and rewritten to cover the new conversational flow (facilitator interview → shape gate → per-file author + gate → atomic writes in dependency order) mirroring the structure of `docs/subcommand-init.md` / `docs/subcommand-cleanup.md`. The README's subcommands table has linked to `docs/subcommand-design.md` since 2.0.3, but the file itself was never renamed until now.
+- Fix stale `/ewh:doit create` references in the `init` onboarding summary (`src/commands/init.ts`), the top-level CLI help (`src/index.ts`), the `start.ts` name-resolution comment, `docs/local-testing.md`'s coverage matrix, and `.serena/memories/project_overview.md`. CHANGELOG entries from 1.0.3 / 1.0.5 / 2.0.0 referencing `create` are historical and left as-is.
+
 ## [2.0.3] - 2026-04-21
 
 ### Fixed
