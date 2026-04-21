@@ -173,7 +173,7 @@ Kill Claude mid-workflow (e.g., Ctrl-C during the code step). Re-run the same co
 | Feature | Where to verify |
 |---|---|
 | Binary dispatcher + SKILL.md shim | 3a, 3b |
-| Subcommand state machines | 3c (also try `/ewh:doit cleanup --manage-tasks`, `/ewh:doit create rule`) |
+| Subcommand state machines | 3c (also try `/ewh:doit cleanup --manage-tasks`, `/ewh:doit design "a new rule that forbids raw SQL"`) |
 | Workflow step machine (gate / agent / artifact / compliance) | 3d |
 | Structural / compliance / error gates | 3d — approve a gate, then re-run with `--trust` and `--yolo` |
 | Agent tool scoping (reviewer cannot edit source) | 3d — `git status` after the review step |

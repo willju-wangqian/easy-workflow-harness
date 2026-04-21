@@ -7,7 +7,7 @@
  *
  * Name resolution (per spec §Migration Path):
  *   1. project override  — `.claude/workflows/<name>.md`
- *   2. builtin subcommand — list / init / cleanup / create / expand-tools
+ *   2. builtin subcommand — list / init / cleanup / design / expand-tools
  *   3. plugin workflow    — `workflows/<name>.md`
  *
  * `--no-override` forces a builtin subcommand when a same-name project

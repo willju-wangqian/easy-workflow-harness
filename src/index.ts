@@ -73,7 +73,7 @@ const HELP = [
   '  ewh list                        Show the catalog of workflows and subcommands.',
   '  ewh init                        Bootstrap project with Harness Config + .gitignore.',
   '  ewh cleanup [--manage-tasks]    Run or configure cleanup tasks.',
-  '  ewh create [rule|agent|workflow]  Scaffold a new rule/agent/workflow.',
+  '  ewh design "<description>"      Design a rule/agent/workflow conversationally.',
   '  ewh expand-tools [description]  Discover and assign agent tools.',
   '  ewh status                      List in-flight and recent runs.',
   '  ewh resume [<run-id>]           Re-emit the pending instruction for a paused run.',

@@ -26,7 +26,7 @@ skills/doit/list.md    — static catalog printed by the `list` subcommand
 workflows/*.md         — workflow definitions (add-feature, refine-feature, check-fact, update-knowledge, hello, trivial)
 agents/*.md            — agent definitions (coder, reviewer, tester, scanner, compliance, hello)
 rules/*.md             — injectable rule files (coding, testing, review, knowledge)
-templates/             — scaffolding templates used by `ewh create`
+templates/             — scaffolding templates used by `ewh design`
 hooks/hooks.json       — plugin-bundled drift-detection hooks
 HARNESS.md             — paths/settings read by the binary at startup
 .claude-plugin/        — plugin.json and marketplace.json manifests

@@ -241,7 +241,7 @@ function buildOnboardingSummary(): string {
     '',
     'Subcommands (lightweight, interactive):',
     '  /ewh:doit cleanup                 — run project cleanup tasks',
-    '  /ewh:doit create [type]           — scaffold a rule, agent, or workflow',
+    '  /ewh:doit design "<desc>"         — design a rule, agent, or workflow conversationally',
     '  /ewh:doit expand-tools [desc]     — discover and assign agent tools',
     '  /ewh:doit init                    — (you just ran this)',
     '',
