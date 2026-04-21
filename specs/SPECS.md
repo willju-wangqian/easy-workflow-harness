@@ -51,7 +51,7 @@ Shipped per [status-resume-abort-doctor](status-resume-abort-doctor.md):
 ### Small cleanups
 
 - **`.gitattributes`**: mark `bin/ewh.mjs` as `linguist-generated=true` so GitHub collapses it in PRs and excludes it from language stats.
-- **Automatic `.ewh-artifacts/` pruning.** Run folders accumulate indefinitely — every `/ewh:doit <workflow>` invocation creates a `run-<id>/` that's never reclaimed (observed: 22 folders in one project, most containing only `state.json` from aborted starts). Proposed: on `ewh start`, prune non-`ACTIVE` runs beyond a cap (default `max_runs: 10`, configurable in `.claude/ewh-state.json` under `artifact_retention`; `"keep"` opts out). Touches `src/state/store.ts`. Worth a brainstorming pass before implementing.
+- ~~**Automatic `.ewh-artifacts/` pruning.**~~ Shipped. Non-`ACTIVE` runs are pruned on `ewh start` beyond the `artifact_retention.max_runs` cap (default 10; `"keep"` opts out). Stale `ACTIVE` markers (dead dispatcher PID, or live PID with state idle >48h) are auto-cleared by `scanRuns`/`pruneOldRuns` so abandoned runs don't block the cap; `ewh status` tags them `[stale]` with an `ewh abort <id>` hint. See CHANGELOG 2.0.3.
 
 ## Superseded
 

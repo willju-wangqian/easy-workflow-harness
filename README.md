@@ -186,6 +186,7 @@ Subcommands are lightweight, interactive operations handled directly by the disp
 | `cleanup` | Run user-configured cleanup tasks (tests, linting, formatting) | [docs](docs/subcommand-cleanup.md) |
 | `design "<desc>"` | Design a rule, agent, or workflow through a conversational interview | [docs](docs/subcommand-design.md) |
 | `expand-tools` | Discover MCP/plugin tools and persist per-agent expansions | [docs](docs/expand-agent-tools.md) |
+| `status` / `resume` / `abort` / `doctor` | Inspect active/stale runs, resume a crashed run, abort a stuck one, validate the plugin environment | [docs](docs/subcommand-run-control.md) |
 
 **Override control:** If you create a project workflow with the same name as a subcommand (e.g., `.claude/workflows/init.md`), the project workflow takes precedence. Use `--no-override` to force the built-in subcommand:
 
@@ -263,7 +264,7 @@ Three gate classes control where the workflow pauses for your input:
 
 You're never locked in — at any gate, you can abort the workflow. Completed work is preserved as-is.
 
-**Crash-resume.** If Claude Code exits mid-workflow, the `ACTIVE` marker in `.ewh-artifacts/<run-id>/` signals an in-flight run. The next `/ewh:doit <name>` invocation detects this and offers: resume from last checkpoint / abort / clear and start fresh.
+**Crash-resume.** If Claude Code exits mid-workflow, the `ACTIVE` marker in `.ewh-artifacts/<run-id>/` signals an in-flight run. The next `/ewh:doit <name>` invocation detects this and offers: resume from last checkpoint / abort / clear and start fresh. Abandoned runs whose dispatcher PID has died (or whose state hasn't moved in >48h) are flagged as **stale** by `ewh status` with a `[stale]` tag; run `ewh abort <run-id>` to clean them up, or `ewh abort` alone if there's only one.
 
 ### Gate Automation Flags
 

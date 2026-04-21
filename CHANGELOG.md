@@ -2,6 +2,17 @@
 
 All notable changes to Easy Workflow Harness are documented here.
 
+## [2.0.3] - 2026-04-21
+
+### Fixed
+- **Stale ACTIVE markers now auto-clear.** The `ACTIVE` marker (`.ewh-artifacts/<run-id>/ACTIVE`) now stores the dispatcher PID. `scanRuns` treats a run as **stale** (not active) when the PID is dead, or when the PID is live but the state hasn't moved in >48h (covers PID recycling where an unrelated process inherits the stored PID). Stale markers are deleted on sight so `pruneOldRuns` can reclaim the run directory under the `max_runs` cap. Previously an abandoned run left an orphan `ACTIVE` file forever, which blocked pruning and made `/ewh:doit <workflow>` prompt "resume/abort/clear" on a run that was already dead.
+- **`ewh status` surfaces stale runs with an abort hint.** Stale rows are tagged `[stale]` and include `— run \`ewh abort <id>\``. The empty case now prints a `(N completed runs retained for debug · max_runs=…)` footer so users understand why older `run-*` directories still exist.
+- **`ewh abort` (no `<run-id>`) targets stale runs too.** Previously it errored with "no active run to abort" when the only abandoned run had a dead PID — the canonical case where `abort` is useful.
+
+### Changed
+- `agents/design-facilitator.md`: add `Read,Write` to the tool list. The shape-proposal step needs to read the staged shape file and write the approved `shape.json` to `.ewh-artifacts/<run-id>/shape.json`; the previous `AskUserQuestion`-only tool list forced a workaround via the outer session.
+- `ewh status` phase labels for subcommand runs no longer have a `subcommand:` prefix (e.g., `cleanup` instead of `subcommand:cleanup`). Column width in the table-style active/stale listing adjusts automatically.
+
 ## [2.0.2] - 2026-04-19
 
 ### Fixed

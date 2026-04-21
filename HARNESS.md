@@ -51,11 +51,17 @@ Projects opt in at three levels:
 /ewh:doit init                                      # bootstrap project + onboarding guide
 /ewh:doit cleanup                                  # run configured cleanup tasks
 /ewh:doit cleanup --manage-tasks                   # configure cleanup tasks
-/ewh:doit create [rule|agent|workflow]               # scaffold a project artifact
+/ewh:doit design [description]                       # design a rule, agent, or workflow
 /ewh:doit expand-tools [description]                 # discover and persist agent tool expansions
+/ewh:doit list                                      # list available workflows and subcommands
+
+# Run lifecycle
+/ewh:doit status                                    # list active/stale runs with age + phase
+/ewh:doit resume [<run-id>]                          # re-emit the pending instruction for a run
+/ewh:doit abort  [<run-id>]                          # abort a run (auto-picks when only one is eligible)
+/ewh:doit doctor [--smoke]                          # validate plugin structure; --smoke runs a dry-run cycle
 
 # Workflows (multi-step, agent-driven)
-/ewh:doit list                                      # list available workflows and subcommands
 /ewh:doit <name> [description]                      # run a workflow
 /ewh:doit <name> --trust [description]              # auto-approve structural gates this run
 /ewh:doit <name> --trust --save [description]       # persist auto-approve structural gates for this workflow
@@ -64,6 +70,8 @@ Projects opt in at three levels:
 # Override control
 /ewh:doit <subcommand> --no-override                # force built-in subcommand when a same-name project workflow exists
 ```
+
+**Run lifecycle.** `status` scans `.ewh-artifacts/run-*/state.json` and lists active runs plus any **stale** runs (dead dispatcher PID, or live PID with state idle >48h — see CHANGELOG 2.0.3). Stale rows show `[stale] <run-id> … — run \`ewh abort <id>\``. The empty case prints `No active runs.` plus a footer like `(3 completed runs retained for debug · max_runs=10)`. `resume` re-emits the stored pending instruction idempotently (no state mutation, no drift-log advance); on >1 active runs it emits a disambiguation gate. `abort` without `<run-id>` targets the single active or stale run. `doctor` runs 10 structural checks (binary present, plugin layout, agent/rule/workflow frontmatter, `AGENT_COMPLETE` literal, etc.); `--smoke` adds an 11th: `mkdtemp` → `ewh start list` → assert `ACTION: done` → cleanup. Exit codes `0` pass, `1` warn-only, `2` any fail.
 
 The `--trust` flag auto-approves structural gates for a single run; pair it with `--save` to persist per-workflow settings to `.claude/ewh-state.json` under `workflow_settings.<workflow_name>`. Each workflow has its own settings — persisting on `add-feature` does NOT affect other workflows. Compliance, error, and stale-artifact cleanup gates are never skipped by `--trust`; `--yolo` auto-skips compliance for a single run but is never persisted.
 
