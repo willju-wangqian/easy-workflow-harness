@@ -35,7 +35,7 @@ export async function runAbort(opts: AbortOptions): Promise<string> {
     return delegateAbort(opts, match.run_id, match.current_step_index);
   }
 
-  const active = runs.filter((r) => r.is_active && r.status === 'running');
+  const active = runs.filter((r) => (r.is_active || r.is_stale) && r.status === 'running');
   if (active.length === 0) {
     throw new Error('no active run to abort');
   }

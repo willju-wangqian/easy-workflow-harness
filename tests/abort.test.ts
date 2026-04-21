@@ -131,6 +131,14 @@ describe('runAbort', () => {
     expect(await fileExists(activeMarker(projectRoot, 'runbbbb2'))).toBe(true);
   });
 
+  it('omitted <run-id>: PID-stale run (dead PID in ACTIVE marker) is abortable', async () => {
+    await writeRunState(projectRoot, fakeRun({ run_id: 'staleid2' }));
+    await fs.writeFile(activeMarker(projectRoot, 'staleid2'), '-1\n', 'utf8');
+    const out = await runAbort({ projectRoot, pluginRoot });
+    expect(out).toContain('Run staleid2 aborted.');
+    expect((await readRunState(projectRoot, 'staleid2')).status).toBe('aborted');
+  });
+
   it('stale ACTIVE marker on terminal run is ignored for disambiguation', async () => {
     // Stale: terminal status but ACTIVE marker still present.
     await writeRunState(

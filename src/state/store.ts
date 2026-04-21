@@ -96,17 +96,19 @@ export async function pruneOldRuns(
 
   const runDirs = entries.filter((e) => e.startsWith('run-'));
 
-  // Filter out ACTIVE runs
   const candidates: { name: string; updatedAt: string }[] = [];
   for (const name of runDirs) {
     const activeFile = join(artifactsDir, name, 'ACTIVE');
+    let trulyActive = false;
     try {
-      await fs.access(activeFile);
-      // ACTIVE marker exists — skip
-      continue;
+      const pidContent = await fs.readFile(activeFile, 'utf8');
+      const pid = Number(pidContent.trim());
+      trulyActive = isPidAlive(pid);
     } catch {
-      // no ACTIVE marker — candidate for pruning
+      // No ACTIVE file or unreadable → not active
     }
+    if (trulyActive) continue;
+
     let updatedAt = '1970-01-01T00:00:00.000Z';
     try {
       const stateFile = join(artifactsDir, name, 'state.json');
@@ -141,6 +143,7 @@ export type RunSummary = {
   total_steps: number;
   current_phase: string;
   is_active: boolean;
+  is_stale: boolean;
   updated_at: string;
 };
 
@@ -150,7 +153,20 @@ export type RunSummary = {
  *
  * Sort order: active+running first, then by `updated_at` descending.
  */
-export async function scanRuns(projectRoot: string): Promise<RunSummary[]> {
+const STALE_AGE_MS = 48 * 60 * 60 * 1000;
+
+function isPidAlive(pid: number): boolean {
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EPERM') return true;
+    return false;
+  }
+}
+
+export async function scanRuns(projectRoot: string, now: Date = new Date()): Promise<RunSummary[]> {
   const artifactsDir = resolve(projectRoot, ARTIFACTS_DIR);
   let entries: string[];
   try {
@@ -178,14 +194,31 @@ export async function scanRuns(projectRoot: string): Promise<RunSummary[]> {
       continue;
     }
     let isActive = false;
+    let isStale = false;
+    const markerPath = activeMarker(projectRoot, runId);
     try {
-      await fs.access(activeMarker(projectRoot, runId));
-      isActive = true;
+      const pidContent = await fs.readFile(markerPath, 'utf8');
+      const pid = Number(pidContent.trim());
+      if (isPidAlive(pid)) {
+        const ageMs = now.getTime() - Date.parse(state.updated_at);
+        if (state.status === 'running' && Number.isFinite(ageMs) && ageMs > STALE_AGE_MS) {
+          // PID recycled by OS — run is stuck and stale; auto-clear so pruning can reclaim it
+          isStale = true;
+          await fs.rm(markerPath, { force: true });
+        } else {
+          isActive = true;
+        }
+      } else if (state.status === 'running') {
+        // PID dead, run stuck in running state — auto-clear so pruning can reclaim it
+        isStale = true;
+        await fs.rm(markerPath, { force: true });
+      }
+      // PID dead + terminal status: isActive=false, isStale=false (treat as completed)
     } catch {
       /* no ACTIVE marker */
     }
     const step = state.steps?.[state.current_step_index];
-    const phase = step?.state?.phase ?? (state.subcommand ? `subcommand:${state.subcommand}` : 'unknown');
+    const phase = step?.state?.phase ?? state.subcommand ?? 'unknown';
     summaries.push({
       run_id: state.run_id,
       workflow: state.workflow,
@@ -194,14 +227,20 @@ export async function scanRuns(projectRoot: string): Promise<RunSummary[]> {
       total_steps: state.steps?.length ?? 0,
       current_phase: phase,
       is_active: isActive,
+      is_stale: isStale,
       updated_at: state.updated_at,
     });
   }
 
   summaries.sort((a, b) => {
-    const aActive = a.is_active && a.status === 'running' ? 1 : 0;
-    const bActive = b.is_active && b.status === 'running' ? 1 : 0;
-    if (aActive !== bActive) return bActive - aActive;
+    const priority = (r: RunSummary): number => {
+      if (r.is_active && r.status === 'running') return 2;
+      if (r.is_stale) return 1;
+      return 0;
+    };
+    const ap = priority(a);
+    const bp = priority(b);
+    if (ap !== bp) return bp - ap;
     return b.updated_at.localeCompare(a.updated_at);
   });
   return summaries;

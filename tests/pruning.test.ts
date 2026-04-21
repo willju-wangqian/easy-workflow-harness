@@ -129,6 +129,23 @@ describe('pruneOldRuns — ACTIVE runs skipped', () => {
     expect(remaining).not.toContain('run-newer1');
   });
 
+  it('prunes a PID-stale run (dead PID in ACTIVE marker) when count exceeds cap', async () => {
+    await makeRunDir(tmpDir, 'stale-old', '2020-01-01T00:00:00.000Z');
+    await fs.writeFile(
+      join(tmpDir, '.ewh-artifacts', 'run-stale-old', 'ACTIVE'),
+      '-1\n',
+      'utf8',
+    );
+    await makeRunDir(tmpDir, 'newer1', '2024-01-01T00:00:00.000Z');
+    await makeRunDir(tmpDir, 'newer2', '2025-01-01T00:00:00.000Z');
+
+    await pruneOldRuns(tmpDir, 1);
+
+    const remaining = await listRunDirs(tmpDir);
+    expect(remaining).toContain('run-newer2');
+    expect(remaining).not.toContain('run-stale-old');
+  });
+
   it('preserves all ACTIVE runs regardless of cap', async () => {
     await makeRunDir(tmpDir, 'a1', '2023-01-01T00:00:00.000Z', { active: true });
     await makeRunDir(tmpDir, 'a2', '2023-06-01T00:00:00.000Z', { active: true });

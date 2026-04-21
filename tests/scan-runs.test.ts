@@ -130,6 +130,57 @@ describe('scanRuns', () => {
     expect(errors.some((e) => e.includes('unreadable'))).toBe(true);
   });
 
+  it('PID-stale run: is_stale=true, is_active=false, ACTIVE marker auto-cleared', async () => {
+    await writeRunState(projectRoot, fakeRun({ run_id: 'staleid1', status: 'running' }));
+    const markerPath = join(runDir(projectRoot, 'staleid1'), 'ACTIVE');
+    await fs.writeFile(markerPath, '-1\n', 'utf8'); // -1 is always an invalid/dead PID
+    const runs = await scanRuns(projectRoot);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      run_id: 'staleid1',
+      is_active: false,
+      is_stale: true,
+      status: 'running',
+    });
+    await expect(fs.access(markerPath)).rejects.toThrow(); // auto-cleared
+  });
+
+  it('subcommand run: current_phase has no subcommand: prefix', async () => {
+    await writeRunState(projectRoot, fakeRun({ run_id: 'subcmd01', subcommand: 'cleanup', steps: [] }));
+    const runs = await scanRuns(projectRoot);
+    expect(runs[0]!.current_phase).toBe('cleanup');
+  });
+
+  it('age-stale run: live PID + running + updated_at > 48h → is_stale=true, ACTIVE cleared', async () => {
+    const now = new Date('2026-04-21T12:00:00Z');
+    const oldTs = '2026-04-19T11:59:00Z'; // 48h01m before now
+    await writeRunState(projectRoot, fakeRun({ run_id: 'agestat1', status: 'running' }));
+    const stPath = join(runDir(projectRoot, 'agestat1'), 'state.json');
+    const st = JSON.parse(await fs.readFile(stPath, 'utf8'));
+    st.updated_at = oldTs;
+    await fs.writeFile(stPath, JSON.stringify(st));
+    const markerPath = join(runDir(projectRoot, 'agestat1'), 'ACTIVE');
+    await fs.writeFile(markerPath, `${process.pid}\n`, 'utf8');
+    const runs = await scanRuns(projectRoot, now);
+    expect(runs[0]).toMatchObject({ run_id: 'agestat1', is_stale: true, is_active: false });
+    await expect(fs.access(markerPath)).rejects.toThrow();
+  });
+
+  it('age-fresh run: live PID + running + updated_at < 48h → is_active=true', async () => {
+    const now = new Date('2026-04-21T12:00:00Z');
+    const recentTs = '2026-04-20T13:00:00Z'; // 23h before now
+    await writeRunState(projectRoot, fakeRun({ run_id: 'agefr001', status: 'running' }));
+    const stPath = join(runDir(projectRoot, 'agefr001'), 'state.json');
+    const st = JSON.parse(await fs.readFile(stPath, 'utf8'));
+    st.updated_at = recentTs;
+    await fs.writeFile(stPath, JSON.stringify(st));
+    const markerPath = join(runDir(projectRoot, 'agefr001'), 'ACTIVE');
+    await fs.writeFile(markerPath, `${process.pid}\n`, 'utf8');
+    const runs = await scanRuns(projectRoot, now);
+    expect(runs[0]).toMatchObject({ run_id: 'agefr001', is_active: true, is_stale: false });
+    await expect(fs.access(markerPath)).resolves.toBeUndefined();
+  });
+
   it('ignores non-run-* entries in .ewh-artifacts', async () => {
     await fs.mkdir(join(projectRoot, '.ewh-artifacts'), { recursive: true });
     await fs.writeFile(join(projectRoot, '.ewh-artifacts', 'scratch.txt'), 'x');

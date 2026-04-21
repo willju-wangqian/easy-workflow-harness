@@ -7609,11 +7609,14 @@ async function pruneOldRuns(projectRoot, maxRuns) {
   const candidates = [];
   for (const name of runDirs) {
     const activeFile = join(artifactsDir, name, "ACTIVE");
+    let trulyActive = false;
     try {
-      await fs.access(activeFile);
-      continue;
+      const pidContent = await fs.readFile(activeFile, "utf8");
+      const pid = Number(pidContent.trim());
+      trulyActive = isPidAlive(pid);
     } catch {
     }
+    if (trulyActive) continue;
     let updatedAt = "1970-01-01T00:00:00.000Z";
     try {
       const stateFile = join(artifactsDir, name, "state.json");
@@ -7635,7 +7638,18 @@ async function pruneOldRuns(projectRoot, maxRuns) {
     await fs.rm(join(artifactsDir, name), { recursive: true, force: true });
   }
 }
-async function scanRuns(projectRoot) {
+var STALE_AGE_MS = 48 * 60 * 60 * 1e3;
+function isPidAlive(pid) {
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    if (err.code === "EPERM") return true;
+    return false;
+  }
+}
+async function scanRuns(projectRoot, now = /* @__PURE__ */ new Date()) {
   const artifactsDir = resolve(projectRoot, ARTIFACTS_DIR);
   let entries;
   try {
@@ -7663,13 +7677,27 @@ async function scanRuns(projectRoot) {
       continue;
     }
     let isActive = false;
+    let isStale = false;
+    const markerPath = activeMarker(projectRoot, runId);
     try {
-      await fs.access(activeMarker(projectRoot, runId));
-      isActive = true;
+      const pidContent = await fs.readFile(markerPath, "utf8");
+      const pid = Number(pidContent.trim());
+      if (isPidAlive(pid)) {
+        const ageMs = now.getTime() - Date.parse(state.updated_at);
+        if (state.status === "running" && Number.isFinite(ageMs) && ageMs > STALE_AGE_MS) {
+          isStale = true;
+          await fs.rm(markerPath, { force: true });
+        } else {
+          isActive = true;
+        }
+      } else if (state.status === "running") {
+        isStale = true;
+        await fs.rm(markerPath, { force: true });
+      }
     } catch {
     }
     const step = state.steps?.[state.current_step_index];
-    const phase = step?.state?.phase ?? (state.subcommand ? `subcommand:${state.subcommand}` : "unknown");
+    const phase = step?.state?.phase ?? state.subcommand ?? "unknown";
     summaries.push({
       run_id: state.run_id,
       workflow: state.workflow,
@@ -7678,13 +7706,19 @@ async function scanRuns(projectRoot) {
       total_steps: state.steps?.length ?? 0,
       current_phase: phase,
       is_active: isActive,
+      is_stale: isStale,
       updated_at: state.updated_at
     });
   }
   summaries.sort((a, b) => {
-    const aActive = a.is_active && a.status === "running" ? 1 : 0;
-    const bActive = b.is_active && b.status === "running" ? 1 : 0;
-    if (aActive !== bActive) return bActive - aActive;
+    const priority = (r) => {
+      if (r.is_active && r.status === "running") return 2;
+      if (r.is_stale) return 1;
+      return 0;
+    };
+    const ap = priority(a);
+    const bp = priority(b);
+    if (ap !== bp) return bp - ap;
     return b.updated_at.localeCompare(a.updated_at);
   });
   return summaries;
@@ -17755,21 +17789,51 @@ function buildOverrideFile(agent, tools) {
 
 // src/commands/status.ts
 async function buildStatusBody(projectRoot, now) {
-  const runs = await scanRuns(projectRoot);
+  const [runs, { maxRuns }] = await Promise.all([
+    scanRuns(projectRoot, now),
+    readArtifactRetention(projectRoot)
+  ]);
   const active = runs.filter((r) => r.is_active && r.status === "running");
-  if (active.length > 0) {
-    return active.map((r) => formatActiveLine(r, now)).join("\n");
+  const stale = runs.filter((r) => r.is_stale);
+  const retained = runs.filter((r) => !r.is_stale && r.status !== "running");
+  const lines = [];
+  const activeRows = active.map((r) => toStatusRow(r, now, false));
+  const staleRows = stale.map((r) => toStatusRow(r, now, true));
+  const allRows = [...activeRows, ...staleRows];
+  if (allRows.length > 0) {
+    lines.push(...renderStatusRows(allRows));
+  } else {
+    lines.push("No active runs.");
+    if (retained.length > 0) {
+      const last = retained[0];
+      lines.push(
+        `Last: ${last.run_id}  ${last.workflow}  ${last.status}  ${formatAge(last.updated_at, now)}`
+      );
+    }
   }
-  const terminal = runs.find((r) => r.status !== "running");
-  if (!terminal) {
-    return "No active runs.";
+  if (retained.length > 0) {
+    const maxLabel = maxRuns === "keep" ? "keep" : String(maxRuns);
+    lines.push(
+      `(${retained.length} completed run${retained.length === 1 ? "" : "s"} retained for debug \xB7 max_runs=${maxLabel})`
+    );
   }
-  return `No active runs.
-Last: ${terminal.run_id}  ${terminal.workflow}  ${terminal.status}  ${formatAge(terminal.updated_at, now)}`;
+  return lines.join("\n");
 }
-function formatActiveLine(r, now) {
-  const stepFrag = r.total_steps > 0 ? `step-${r.current_step_index + 1}/${r.total_steps}` : `subcommand`;
-  return `${r.run_id}  ${r.workflow}  ${stepFrag}  ${r.current_phase}  ${formatAge(r.updated_at, now)}`;
+function toStatusRow(r, now, stale) {
+  const stepFrag = r.total_steps > 0 ? `step-${r.current_step_index + 1}/${r.total_steps}` : "subcommand";
+  return { run_id: r.run_id, workflow: r.workflow, stepFrag, phase: r.current_phase, age: formatAge(r.updated_at, now), stale };
+}
+function renderStatusRows(rows) {
+  const hasStale = rows.some((r) => r.stale);
+  const wW = Math.max(...rows.map((r) => r.workflow.length));
+  const wS = Math.max(...rows.map((r) => r.stepFrag.length));
+  const wP = Math.max(...rows.map((r) => r.phase.length));
+  return rows.map((r) => {
+    const tag = hasStale ? r.stale ? "[stale] " : "        " : "";
+    const core = [r.run_id, r.workflow.padEnd(wW), r.stepFrag.padEnd(wS), r.phase.padEnd(wP), r.age].join("  ");
+    const suffix = r.stale ? `  \u2014 run \`ewh abort ${r.run_id}\`` : "";
+    return `${tag}${core}${suffix}`;
+  });
 }
 function formatAge(iso, now) {
   const then = Date.parse(iso);
@@ -18274,7 +18338,7 @@ async function runAbort(opts) {
     }
     return delegateAbort(opts, match2.run_id, match2.current_step_index);
   }
-  const active = runs.filter((r) => r.is_active && r.status === "running");
+  const active = runs.filter((r) => (r.is_active || r.is_stale) && r.status === "running");
   if (active.length === 0) {
     throw new Error("no active run to abort");
   }

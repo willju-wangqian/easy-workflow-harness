@@ -81,10 +81,20 @@ describe('buildStatusBody', () => {
     expect(lines[1]).toContain('step-3/3');
   });
 
-  it('no active runs + terminal run exists → "No active runs." + Last: line', async () => {
+  it('no active runs + terminal run exists → "No active runs." + Last: line + retention footer', async () => {
     await writeWithTs(projectRoot, fakeRun({ run_id: 'doneaaaa', status: 'complete' }), '2026-04-19T11:00:00Z');
     const body = await buildStatusBody(projectRoot, now);
-    expect(body).toBe('No active runs.\nLast: doneaaaa  add-feature  complete  1h ago');
+    expect(body).toBe(
+      'No active runs.\nLast: doneaaaa  add-feature  complete  1h ago\n(1 completed run retained for debug · max_runs=10)',
+    );
+  });
+
+  it('PID-stale run (dead PID in ACTIVE marker) → [stale] label with ewh abort hint', async () => {
+    await writeWithTs(projectRoot, fakeRun({ run_id: 'staleid0' }), '2026-04-19T11:50:00Z');
+    await fs.writeFile(join(runDir(projectRoot, 'staleid0'), 'ACTIVE'), '-1\n', 'utf8');
+    const body = await buildStatusBody(projectRoot, now);
+    expect(body).toContain('[stale] staleid0');
+    expect(body).toContain('ewh abort staleid0');
   });
 
   it('terminal + stale ACTIVE marker → ignored in active count; shows in Last', async () => {

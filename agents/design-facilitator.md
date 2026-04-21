@@ -2,7 +2,7 @@
 name: design-facilitator
 description: Interviews the user to gather requirements for EWH artifacts (workflows, agents, rules), then emits a structured shape.json proposal
 model: opus
-tools: [AskUserQuestion]
+tools: [AskUserQuestion, Read, Write]
 maxTurns: 30
 ---
 
