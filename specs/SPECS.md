@@ -2,6 +2,9 @@
 
 ## Active Decisions
 
+- [context-contract](context-contract.md) — Two-file workflow representation (`workflow.md` summary + `workflow.json` contract), typed `{type, ref}` context entries, `/ewh:doit manage` subcommand for runtime config, `/ewh:doit design modify` ferry-pattern with proposed-slice diff. Kills silent rule-injection drift.
+- [context-contract-plan](context-contract-plan.md) — 6-session implementation plan for the context-contract redesign. Status: draft.
+
 ## Reference
 
 - [design-subcommand](design-subcommand.md) — `/ewh:doit design` subcommand: conversational interview via a tool-stripped facilitator subagent, two-tier approval (shape gate → per-file gates), supports create and update for workflows/agents/rules. Replaces `create`.
