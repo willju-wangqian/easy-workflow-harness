@@ -254,7 +254,36 @@ export type SubcommandState =
   | { kind: 'design'; phase: 'author'; proposal_path: string; author_index: number }
   | { kind: 'design'; phase: 'file_gate'; proposal_path: string; file_index: number }
   | { kind: 'design'; phase: 'refine'; proposal_path: string; file_index: number; instruction: string }
-  | { kind: 'design'; phase: 'write'; proposal_path: string; written?: string[] };
+  | { kind: 'design'; phase: 'write'; proposal_path: string; written?: string[] }
+  // `design <workflow-name>` — workflow-creation interview that outputs the
+  // two-file pair (workflow.md + workflow.json) plus any agent stubs.
+  | {
+      kind: 'design';
+      phase: 'design_workflow_interview';
+      workflow_name: string;
+      catalog_path: string;
+      shape_path: string;
+    }
+  | {
+      kind: 'design';
+      phase: 'design_workflow_template_gate';
+      workflow_name: string;
+      shape_path: string;
+      template_path: string;
+    }
+  | {
+      kind: 'design';
+      phase: 'design_workflow_gate';
+      workflow_name: string;
+      shape_path: string;
+    }
+  | {
+      kind: 'design';
+      phase: 'design_workflow_write';
+      workflow_name: string;
+      shape_path: string;
+      written?: string[];
+    };
 
 /**
  * Instruction emitted back to the LLM at every turn.

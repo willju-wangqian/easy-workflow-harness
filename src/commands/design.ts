@@ -15,6 +15,9 @@ import type {
 } from '../state/types.js';
 import { runDir, writeRunState } from '../state/store.js';
 import { buildCatalog, type CatalogEntry } from './design-catalog.js';
+import type { WorkflowContract } from '../workflow/contract.js';
+import { renderWorkflowMd } from '../workflow/render-md.js';
+import { loadWorkflow } from '../workflow/parse.js';
 
 export type DesignStartOptions = {
   projectRoot: string;
@@ -71,6 +74,26 @@ export async function startDesign(opts: DesignStartOptions): Promise<DesignResul
   await fs.writeFile(paths.catalog, JSON.stringify(catalog, null, 2), 'utf8');
   await fs.writeFile(paths.description, description + '\n', 'utf8');
 
+  if (isWorkflowName(description)) {
+    const state: SubcommandState = {
+      kind: 'design',
+      phase: 'design_workflow_interview',
+      workflow_name: description,
+      catalog_path: paths.catalog,
+      shape_path: paths.workflowShape,
+    };
+    return {
+      state,
+      instruction: buildWorkflowFacilitatorInstruction({
+        runId: opts.runId,
+        workflowName: description,
+        catalogPath: paths.catalog,
+        descriptionPath: paths.description,
+        outputPath: paths.workflowShape,
+      }),
+    };
+  }
+
   const state: SubcommandState = {
     kind: 'design',
     phase: 'interview',
@@ -86,6 +109,15 @@ export async function startDesign(opts: DesignStartOptions): Promise<DesignResul
       outputPath: paths.shape,
     }),
   };
+}
+
+/**
+ * Bare kebab/snake-case identifier => "design a workflow named <x>" mode.
+ * Anything with whitespace or punctuation falls through to the generic
+ * facilitator which designs rules, agents, or workflows from prose.
+ */
+export function isWorkflowName(description: string): boolean {
+  return /^[a-z][a-z0-9_-]{1,62}$/.test(description);
 }
 
 // ── continue ─────────────────────────────────────────────────────────────
@@ -117,6 +149,14 @@ export async function continueDesign(
       return continueRefine(run, sub, report, opts);
     case 'write':
       return continueWrite(run, sub, opts);
+    case 'design_workflow_interview':
+      return continueWorkflowInterview(run, sub, report, opts);
+    case 'design_workflow_template_gate':
+      return continueWorkflowTemplateGate(run, sub, report, opts);
+    case 'design_workflow_gate':
+      return continueWorkflowGate(run, sub, report, opts);
+    case 'design_workflow_write':
+      return continueWorkflowWrite(run, sub, opts);
   }
 }
 
@@ -538,6 +578,8 @@ type DesignPaths = {
   description: string;
   shape: string;
   edit: string;
+  workflowShape: string;
+  workflowEdit: string;
 };
 
 export function designPaths(projectRoot: string, runId: string): DesignPaths {
@@ -550,6 +592,8 @@ export function designPaths(projectRoot: string, runId: string): DesignPaths {
     description: join(runRoot, 'description.txt'),
     shape: join(proposedDir, 'shape.json'),
     edit: join(runRoot, 'shape-edit.txt'),
+    workflowShape: join(proposedDir, 'workflow-shape.json'),
+    workflowEdit: join(runRoot, 'workflow-edit.txt'),
   };
 }
 
@@ -965,4 +1009,595 @@ async function continueRefine(
   };
   const paths = designPaths(opts.projectRoot, run.run_id);
   return renderFileGate(run, proposal, sub.file_index, paths);
+}
+
+// ── Workflow-creation flow ────────────────────────────────────────────────
+
+/**
+ * Shape produced by the workflow-design facilitator. Narrower than
+ * `ShapeProposal`: one workflow + its ordered list of steps, each with
+ * `name`, `agent`, `description`. Runtime fields stay at safe defaults until
+ * the user runs `manage`.
+ */
+export type WorkflowDraftStep = { name: string; agent: string; description: string };
+export type WorkflowDraft = {
+  name: string;
+  description: string;
+  steps: WorkflowDraftStep[];
+};
+
+type WorkflowShapeReadOk = { ok: true; draft: WorkflowDraft };
+type WorkflowShapeReadErr = { ok: false; error: string };
+
+export async function readWorkflowShape(
+  path: string,
+): Promise<WorkflowShapeReadOk | WorkflowShapeReadErr> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(path, 'utf8');
+  } catch (e: unknown) {
+    return {
+      ok: false,
+      error: `failed to read workflow-shape.json at ${path}: ${(e as Error).message}`,
+    };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e: unknown) {
+    return {
+      ok: false,
+      error: `workflow-shape.json is not valid JSON: ${(e as Error).message}`,
+    };
+  }
+  return validateWorkflowDraft(parsed);
+}
+
+export function validateWorkflowDraft(
+  input: unknown,
+): WorkflowShapeReadOk | WorkflowShapeReadErr {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return { ok: false, error: 'workflow-shape.json must be a JSON object' };
+  }
+  const obj = input as Record<string, unknown>;
+  if (typeof obj.name !== 'string' || obj.name.length === 0) {
+    return { ok: false, error: "workflow-shape.json 'name' must be a non-empty string" };
+  }
+  if (typeof obj.description !== 'string') {
+    return { ok: false, error: "workflow-shape.json 'description' must be a string" };
+  }
+  if (!Array.isArray(obj.steps) || obj.steps.length === 0) {
+    return {
+      ok: false,
+      error: "workflow-shape.json 'steps' must be a non-empty array",
+    };
+  }
+  const steps: WorkflowDraftStep[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < obj.steps.length; i++) {
+    const s = obj.steps[i];
+    if (!s || typeof s !== 'object' || Array.isArray(s)) {
+      return { ok: false, error: `steps[${i}] must be an object` };
+    }
+    const st = s as Record<string, unknown>;
+    if (typeof st.name !== 'string' || st.name.length === 0) {
+      return { ok: false, error: `steps[${i}].name must be a non-empty string` };
+    }
+    if (seen.has(st.name)) {
+      return { ok: false, error: `steps[${i}].name '${st.name}' duplicates an earlier step` };
+    }
+    seen.add(st.name);
+    if (typeof st.agent !== 'string' || st.agent.length === 0) {
+      return {
+        ok: false,
+        error: `steps[${i}].agent must be a non-empty string (step '${st.name}')`,
+      };
+    }
+    if (typeof st.description !== 'string') {
+      return {
+        ok: false,
+        error: `steps[${i}].description must be a string (step '${st.name}')`,
+      };
+    }
+    steps.push({ name: st.name, agent: st.agent, description: st.description });
+  }
+  return { ok: true, draft: { name: obj.name, description: obj.description, steps } };
+}
+
+/**
+ * Convert a validated `WorkflowDraft` into a `WorkflowContract` skeleton with
+ * runtime fields at safe defaults. `manage` fills them in later.
+ */
+export function draftToContract(draft: WorkflowDraft): WorkflowContract {
+  return {
+    name: draft.name,
+    description: draft.description,
+    steps: draft.steps.map((s) => ({
+      name: s.name,
+      agent: s.agent,
+      description: s.description,
+      gate: 'structural',
+      produces: [],
+      context: [],
+      requires: [],
+      chunked: false,
+      script: null,
+      script_fallback: 'gate',
+    })),
+  };
+}
+
+function buildWorkflowFacilitatorInstruction(args: {
+  runId: string;
+  workflowName: string;
+  catalogPath: string;
+  descriptionPath: string;
+  outputPath: string;
+}): Instruction {
+  const body = [
+    'Tool: Agent',
+    'Args:',
+    '  subagent_type: ewh:design-facilitator',
+    '  prompt: |',
+    '    You are the EWH design-facilitator in workflow-creation mode. Your job',
+    '    is to interview the user step-by-step (via AskUserQuestion) and output',
+    '    a workflow-shape.json describing one workflow and its ordered list of',
+    '    steps. Every question MUST include a "propose now" option so the user',
+    '    can signal readiness at any turn.',
+    '',
+    `    workflow_name:    ${args.workflowName}`,
+    `    catalog_path:     ${args.catalogPath}`,
+    `    description_path: ${args.descriptionPath}`,
+    `    output_path:      ${args.outputPath}`,
+    '',
+    '    Read catalog_path and description_path first. For each step, collect:',
+    '      - name (short identifier, e.g. plan, code, review)',
+    '      - agent (agent name; can be existing or new — a stub will be created)',
+    '      - description (what this step does)',
+    '',
+    '    When done, write a JSON document to output_path with this exact shape:',
+    '      {',
+    `        "name": "${args.workflowName}",`,
+    '        "description": "<what this workflow accomplishes>",',
+    '        "steps": [',
+    '          { "name": "...", "agent": "...", "description": "..." }',
+    '        ]',
+    '      }',
+    '',
+    '    List output_path under `files_modified:`, then emit AGENT_COMPLETE.',
+    `  description: "design: workflow interview for '${args.workflowName}'"`,
+    '',
+    `After the Agent tool returns, report: ewh report --run ${args.runId} --step 0 --result ${args.outputPath}`,
+  ].join('\n');
+  return {
+    kind: 'tool-call',
+    body,
+    report_with: `ewh report --run ${args.runId} --step 0 --result ${args.outputPath}`,
+  };
+}
+
+async function continueWorkflowInterview(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'design_workflow_interview' }>,
+  report: Report,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  if (report.kind === 'error') {
+    throw new Error(`design workflow interview: facilitator error: ${report.message}`);
+  }
+  if (report.kind !== 'result' || !report.result_path) {
+    throw new Error('design workflow interview: expected --result <workflow-shape.json path>');
+  }
+
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  const parsed = await readWorkflowShape(report.result_path);
+  if (!parsed.ok) {
+    return bounceWorkflowInterview(run, sub, paths, [parsed.error]);
+  }
+  if (parsed.draft.name !== sub.workflow_name) {
+    return bounceWorkflowInterview(run, sub, paths, [
+      `workflow-shape.json 'name' is '${parsed.draft.name}' but the user asked for '${sub.workflow_name}'`,
+    ]);
+  }
+
+  // Persist the canonical shape path (facilitator may have written a different one).
+  if (report.result_path !== sub.shape_path) {
+    await fs.mkdir(dirname(sub.shape_path), { recursive: true });
+    await fs.copyFile(report.result_path, sub.shape_path);
+  }
+
+  // Template match: plugin workflow with same name.
+  const template = await findPluginTemplate(opts.pluginRoot, sub.workflow_name);
+  if (template) {
+    run.subcommand_state = {
+      kind: 'design',
+      phase: 'design_workflow_template_gate',
+      workflow_name: sub.workflow_name,
+      shape_path: sub.shape_path,
+      template_path: template,
+    };
+    return renderWorkflowTemplateGate(run, sub.workflow_name, template, parsed.draft);
+  }
+
+  run.subcommand_state = {
+    kind: 'design',
+    phase: 'design_workflow_gate',
+    workflow_name: sub.workflow_name,
+    shape_path: sub.shape_path,
+  };
+  return renderWorkflowGate(run, parsed.draft, paths);
+}
+
+async function bounceWorkflowInterview(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'design_workflow_interview' }>,
+  paths: DesignPaths,
+  errors: string[],
+): Promise<Instruction> {
+  const note = [
+    '',
+    '--- validation errors from previous workflow-shape.json ---',
+    ...errors.map((e) => `  • ${e}`),
+    'Please re-interview and re-emit workflow-shape.json addressing these issues.',
+    '',
+  ].join('\n');
+  await fs.appendFile(paths.description, note, 'utf8');
+  run.subcommand_state = { ...sub };
+  return buildWorkflowFacilitatorInstruction({
+    runId: run.run_id,
+    workflowName: sub.workflow_name,
+    catalogPath: paths.catalog,
+    descriptionPath: paths.description,
+    outputPath: paths.workflowShape,
+  });
+}
+
+async function findPluginTemplate(
+  pluginRoot: string,
+  workflowName: string,
+): Promise<string | null> {
+  const candidate = join(pluginRoot, 'workflows', `${workflowName}.md`);
+  try {
+    await fs.access(candidate);
+    return candidate;
+  } catch {
+    return null;
+  }
+}
+
+function renderWorkflowTemplateGate(
+  run: RunState,
+  workflowName: string,
+  templatePath: string,
+  draft: WorkflowDraft,
+): Instruction {
+  const lines: string[] = [];
+  lines.push(`EWH design — workflow template gate ('${workflowName}')`);
+  lines.push('');
+  lines.push(`A plugin template exists at: ${templatePath}`);
+  lines.push('');
+  lines.push(`Your draft has ${draft.steps.length} step(s):`);
+  draft.steps.forEach((s, i) => {
+    lines.push(`  ${i + 1}. ${s.name} — agent: ${s.agent}`);
+  });
+  lines.push('');
+  lines.push('Use the plugin template as the starting point instead?');
+  lines.push(`  yes: ewh report --run ${run.run_id} --step 0 --decision yes   (replace draft with template steps)`);
+  lines.push(`  no:  ewh report --run ${run.run_id} --step 0 --decision no    (keep draft)`);
+  return {
+    kind: 'user-prompt',
+    body: lines.join('\n'),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision no`,
+  };
+}
+
+async function continueWorkflowTemplateGate(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'design_workflow_template_gate' }>,
+  report: Report,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  if (report.kind !== 'decision') {
+    throw new Error(
+      `design workflow template gate: unexpected report kind '${report.kind}'`,
+    );
+  }
+  const paths = designPaths(opts.projectRoot, run.run_id);
+
+  if (report.decision === 'yes') {
+    // Replace the user's draft with a draft derived from the plugin template.
+    const templateDraft = await draftFromTemplate(sub.template_path);
+    templateDraft.name = sub.workflow_name; // user's target name wins
+    await fs.mkdir(dirname(sub.shape_path), { recursive: true });
+    await fs.writeFile(sub.shape_path, JSON.stringify(templateDraft, null, 2), 'utf8');
+  }
+  // Either way, advance to the final gate with whatever's in shape_path.
+  const parsed = await readWorkflowShape(sub.shape_path);
+  if (!parsed.ok) {
+    run.subcommand_state = undefined;
+    return {
+      kind: 'done',
+      body: `ewh design: could not read workflow shape: ${parsed.error}`,
+    };
+  }
+  run.subcommand_state = {
+    kind: 'design',
+    phase: 'design_workflow_gate',
+    workflow_name: sub.workflow_name,
+    shape_path: sub.shape_path,
+  };
+  return renderWorkflowGate(run, parsed.draft, paths);
+}
+
+async function draftFromTemplate(templatePath: string): Promise<WorkflowDraft> {
+  const def = await loadWorkflow(templatePath);
+  return {
+    name: def.name,
+    description: def.description ?? '',
+    steps: def.steps.map((s) => ({
+      name: s.name,
+      agent: s.agent ?? '',
+      description: (s.description ?? '').trim(),
+    })),
+  };
+}
+
+function renderWorkflowGate(
+  run: RunState,
+  draft: WorkflowDraft,
+  paths: DesignPaths,
+): Instruction {
+  const editPath = paths.workflowEdit;
+  const lines: string[] = [];
+  lines.push(`EWH design — workflow gate ('${draft.name}')`);
+  lines.push('');
+  lines.push(`Description: ${draft.description || '(none)'}`);
+  lines.push('');
+  lines.push(`Proposed ${draft.steps.length} step(s):`);
+  draft.steps.forEach((s, i) => {
+    lines.push(`  ${i + 1}. ${s.name} — agent: ${s.agent}`);
+    if (s.description) lines.push(`       ${s.description}`);
+  });
+  lines.push('');
+  lines.push('On approval, EWH will atomically write:');
+  lines.push(`  - .claude/ewh-workflows/${draft.name}.json (contract skeleton)`);
+  lines.push(`  - .claude/ewh-workflows/${draft.name}.md   (summary rendered from JSON)`);
+  lines.push(`  - .claude/agents/<name>.md stubs for any agent not already present`);
+  lines.push('');
+  lines.push('Choose:');
+  lines.push(`  approve: ewh report --run ${run.run_id} --step 0 --decision yes`);
+  lines.push(`  reject:  ewh report --run ${run.run_id} --step 0 --decision no`);
+  lines.push(`  edit:    write your instruction to ${editPath},`);
+  lines.push(`           then ewh report --run ${run.run_id} --step 0 --result ${editPath}`);
+  return {
+    kind: 'user-prompt',
+    body: lines.join('\n'),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`,
+  };
+}
+
+async function continueWorkflowGate(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'design_workflow_gate' }>,
+  report: Report,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  const paths = designPaths(opts.projectRoot, run.run_id);
+
+  if (report.kind === 'decision') {
+    if (report.decision === 'yes') {
+      const writeState = {
+        kind: 'design' as const,
+        phase: 'design_workflow_write' as const,
+        workflow_name: sub.workflow_name,
+        shape_path: sub.shape_path,
+      };
+      run.subcommand_state = writeState;
+      return continueWorkflowWrite(run, writeState, opts);
+    }
+    run.subcommand_state = undefined;
+    return { kind: 'done', body: 'Workflow proposal rejected. No files written.' };
+  }
+
+  if (report.kind === 'result') {
+    if (!report.result_path) {
+      throw new Error('design workflow gate edit: expected --result <instruction path>');
+    }
+    const instruction = (await fs.readFile(report.result_path, 'utf8')).trim();
+    const note = [
+      '',
+      '--- user edit instruction after workflow gate ---',
+      instruction,
+      '',
+    ].join('\n');
+    await fs.appendFile(paths.description, note, 'utf8');
+    run.subcommand_state = {
+      kind: 'design',
+      phase: 'design_workflow_interview',
+      workflow_name: sub.workflow_name,
+      catalog_path: paths.catalog,
+      shape_path: sub.shape_path,
+    };
+    return buildWorkflowFacilitatorInstruction({
+      runId: run.run_id,
+      workflowName: sub.workflow_name,
+      catalogPath: paths.catalog,
+      descriptionPath: paths.description,
+      outputPath: paths.workflowShape,
+    });
+  }
+
+  throw new Error(`design workflow gate: unexpected report kind '${report.kind}'`);
+}
+
+/**
+ * Atomic write of the workflow-creation outputs.
+ *
+ * Order: agent stubs (only for agents not already on disk) → workflow.json →
+ * workflow.md. If any write fails, files this run created are rolled back;
+ * pre-existing files are untouched.
+ *
+ * `sub.written` preserves crash-resume: already-written targets are skipped.
+ * The workflow pair is always rewritten (the contract may have changed across
+ * a re-run), agent stubs are never overwritten.
+ */
+async function continueWorkflowWrite(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'design_workflow_write' }>,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  const parsed = await readWorkflowShape(sub.shape_path);
+  if (!parsed.ok) {
+    run.subcommand_state = undefined;
+    return {
+      kind: 'done',
+      body: `ewh design: could not read workflow shape: ${parsed.error}`,
+    };
+  }
+  const draft = parsed.draft;
+  const contract = draftToContract(draft);
+  const mdBody = renderWorkflowMd(contract);
+
+  const workflowsDir = join(opts.projectRoot, '.claude', 'ewh-workflows');
+  const agentsDir = join(opts.projectRoot, '.claude', 'agents');
+  const jsonPath = join(workflowsDir, `${draft.name}.json`);
+  const mdPath = join(workflowsDir, `${draft.name}.md`);
+
+  const uniqueAgents = Array.from(new Set(draft.steps.map((s) => s.agent)));
+  const stubTargets: Array<{ agent: string; path: string }> = [];
+  for (const agent of uniqueAgents) {
+    const pluginPath = join(opts.pluginRoot, 'agents', `${agent}.md`);
+    const projectPath = join(opts.projectRoot, '.claude', 'agents', `${agent}.md`);
+    const existsPlugin = await pathExists(pluginPath);
+    const existsProject = await pathExists(projectPath);
+    if (!existsPlugin && !existsProject) {
+      stubTargets.push({ agent, path: projectPath });
+    }
+  }
+
+  const written = [...(sub.written ?? [])];
+  const newlyWritten: string[] = [];
+  const summaryLines: string[] = [];
+
+  try {
+    // 1. agent stubs (only missing ones)
+    for (const { agent, path } of stubTargets) {
+      if (written.includes(path)) {
+        summaryLines.push(`  + .claude/agents/${agent}.md  (stub, already written)`);
+        continue;
+      }
+      const step = draft.steps.find((s) => s.agent === agent)!;
+      const body = renderAgentStub(agent, step.description);
+      await atomicWrite(path, body);
+      written.push(path);
+      newlyWritten.push(path);
+      run.subcommand_state = { ...sub, written };
+      await writeRunState(opts.projectRoot, run);
+      summaryLines.push(`  + .claude/agents/${agent}.md  (stub)`);
+    }
+
+    // 2. workflow.json
+    if (!written.includes(jsonPath)) {
+      await atomicWrite(jsonPath, JSON.stringify(contract, null, 2) + '\n');
+      written.push(jsonPath);
+      newlyWritten.push(jsonPath);
+      run.subcommand_state = { ...sub, written };
+      await writeRunState(opts.projectRoot, run);
+    }
+    summaryLines.push(`  + .claude/ewh-workflows/${draft.name}.json`);
+
+    // 3. workflow.md
+    if (!written.includes(mdPath)) {
+      await atomicWrite(mdPath, mdBody);
+      written.push(mdPath);
+      newlyWritten.push(mdPath);
+      run.subcommand_state = { ...sub, written };
+      await writeRunState(opts.projectRoot, run);
+    }
+    summaryLines.push(`  + .claude/ewh-workflows/${draft.name}.md`);
+  } catch (err) {
+    // Rollback: remove every file we newly created this run.
+    for (const path of newlyWritten.reverse()) {
+      try {
+        await fs.unlink(path);
+      } catch {
+        // best-effort rollback
+      }
+    }
+    run.subcommand_state = undefined;
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      kind: 'done',
+      body: `ewh design: write failed and rolled back: ${msg}`,
+    };
+  }
+
+  run.subcommand_state = undefined;
+  const body = [
+    `Wrote workflow '${draft.name}':`,
+    ...summaryLines,
+    '',
+    `Next: /ewh:doit manage ${draft.name}   to fill runtime fields (context, produces, etc.)`,
+  ].join('\n');
+  return { kind: 'done', body };
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await fs.access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function atomicWrite(dst: string, body: string): Promise<void> {
+  await fs.mkdir(dirname(dst), { recursive: true });
+  const tmp = `${dst}.tmp-${randomBytes(4).toString('hex')}`;
+  const fh = await fs.open(tmp, 'w');
+  try {
+    await fh.writeFile(body, 'utf8');
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await fs.rename(tmp, dst);
+}
+
+/**
+ * Minimal agent stub body. Marked clearly as a starting point. The
+ * AGENT_COMPLETE sentinel is mandatory per the EWH contract.
+ */
+export function renderAgentStub(agentName: string, stepDescription: string): string {
+  const fm = [
+    '---',
+    `name: ${agentName}`,
+    `description: Generated stub for '${agentName}' — edit this file to describe what the agent should do.`,
+    'model: sonnet',
+    'tools: [Read, Write]',
+    'default_rules: []',
+    '---',
+    '',
+  ].join('\n');
+  const trimmed = stepDescription.trim();
+  const body = [
+    `# ${agentName} (stub)`,
+    '',
+    'This agent was auto-generated by `/ewh:doit design` as a starting point.',
+    'Replace this body with the agent\'s actual instructions.',
+    '',
+    '## Task',
+    '',
+    trimmed.length > 0 ? trimmed : '(describe what this agent does here)',
+    '',
+    '## Before You Start',
+    '',
+    '- Verify the required context is present; if not, bail out by emitting `AGENT_COMPLETE` early.',
+    '',
+    '## Output format',
+    '',
+    'After completing your task, emit exactly `AGENT_COMPLETE` as the last line.',
+    '',
+  ].join('\n');
+  return fm + body;
 }

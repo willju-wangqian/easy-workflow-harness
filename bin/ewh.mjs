@@ -17042,6 +17042,37 @@ async function buildCatalog(projectRoot, pluginRoot) {
   return [...workflows, ...agents, ...rules];
 }
 
+// src/workflow/render-md.ts
+var import_yaml5 = __toESM(require_dist(), 1);
+function renderWorkflowMd(contract) {
+  const frontmatter = import_yaml5.default.stringify(
+    {
+      name: contract.name,
+      description: contract.description
+    },
+    { sortMapEntries: false }
+  ).trimEnd();
+  const stepsYaml = import_yaml5.default.stringify(
+    contract.steps.map((s) => ({
+      name: s.name,
+      agent: s.agent,
+      description: s.description
+    })),
+    { sortMapEntries: false }
+  ).trimEnd();
+  const lines = [
+    "---",
+    frontmatter,
+    "---",
+    "",
+    "## Steps",
+    "",
+    stepsYaml,
+    ""
+  ];
+  return lines.join("\n");
+}
+
 // src/commands/design.ts
 async function startDesign(opts) {
   const description = opts.description.trim();
@@ -17063,6 +17094,25 @@ async function startDesign(opts) {
   const catalog = await buildCatalog(opts.projectRoot, opts.pluginRoot);
   await fs17.writeFile(paths.catalog, JSON.stringify(catalog, null, 2), "utf8");
   await fs17.writeFile(paths.description, description + "\n", "utf8");
+  if (isWorkflowName(description)) {
+    const state2 = {
+      kind: "design",
+      phase: "design_workflow_interview",
+      workflow_name: description,
+      catalog_path: paths.catalog,
+      shape_path: paths.workflowShape
+    };
+    return {
+      state: state2,
+      instruction: buildWorkflowFacilitatorInstruction({
+        runId: opts.runId,
+        workflowName: description,
+        catalogPath: paths.catalog,
+        descriptionPath: paths.description,
+        outputPath: paths.workflowShape
+      })
+    };
+  }
   const state = {
     kind: "design",
     phase: "interview",
@@ -17078,6 +17128,9 @@ async function startDesign(opts) {
       outputPath: paths.shape
     })
   };
+}
+function isWorkflowName(description) {
+  return /^[a-z][a-z0-9_-]{1,62}$/.test(description);
 }
 async function continueDesign(run, report, opts) {
   const sub = run.subcommand_state;
@@ -17097,6 +17150,14 @@ async function continueDesign(run, report, opts) {
       return continueRefine(run, sub, report, opts);
     case "write":
       return continueWrite(run, sub, opts);
+    case "design_workflow_interview":
+      return continueWorkflowInterview(run, sub, report, opts);
+    case "design_workflow_template_gate":
+      return continueWorkflowTemplateGate(run, sub, report, opts);
+    case "design_workflow_gate":
+      return continueWorkflowGate(run, sub, report, opts);
+    case "design_workflow_write":
+      return continueWorkflowWrite(run, sub, opts);
   }
 }
 async function continueInterview(run, sub, report, opts) {
@@ -17439,7 +17500,9 @@ function designPaths(projectRoot, runId) {
     catalog: join15(runRoot, "catalog.json"),
     description: join15(runRoot, "description.txt"),
     shape: join15(proposedDir, "shape.json"),
-    edit: join15(runRoot, "shape-edit.txt")
+    edit: join15(runRoot, "shape-edit.txt"),
+    workflowShape: join15(proposedDir, "workflow-shape.json"),
+    workflowEdit: join15(runRoot, "workflow-edit.txt")
   };
 }
 function safeFilename(artifactPath) {
@@ -17760,6 +17823,474 @@ async function continueRefine(run, sub, report, opts) {
   };
   const paths = designPaths(opts.projectRoot, run.run_id);
   return renderFileGate(run, proposal, sub.file_index, paths);
+}
+async function readWorkflowShape(path2) {
+  let raw;
+  try {
+    raw = await fs17.readFile(path2, "utf8");
+  } catch (e) {
+    return {
+      ok: false,
+      error: `failed to read workflow-shape.json at ${path2}: ${e.message}`
+    };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    return {
+      ok: false,
+      error: `workflow-shape.json is not valid JSON: ${e.message}`
+    };
+  }
+  return validateWorkflowDraft(parsed);
+}
+function validateWorkflowDraft(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return { ok: false, error: "workflow-shape.json must be a JSON object" };
+  }
+  const obj = input;
+  if (typeof obj.name !== "string" || obj.name.length === 0) {
+    return { ok: false, error: "workflow-shape.json 'name' must be a non-empty string" };
+  }
+  if (typeof obj.description !== "string") {
+    return { ok: false, error: "workflow-shape.json 'description' must be a string" };
+  }
+  if (!Array.isArray(obj.steps) || obj.steps.length === 0) {
+    return {
+      ok: false,
+      error: "workflow-shape.json 'steps' must be a non-empty array"
+    };
+  }
+  const steps = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (let i = 0; i < obj.steps.length; i++) {
+    const s = obj.steps[i];
+    if (!s || typeof s !== "object" || Array.isArray(s)) {
+      return { ok: false, error: `steps[${i}] must be an object` };
+    }
+    const st = s;
+    if (typeof st.name !== "string" || st.name.length === 0) {
+      return { ok: false, error: `steps[${i}].name must be a non-empty string` };
+    }
+    if (seen.has(st.name)) {
+      return { ok: false, error: `steps[${i}].name '${st.name}' duplicates an earlier step` };
+    }
+    seen.add(st.name);
+    if (typeof st.agent !== "string" || st.agent.length === 0) {
+      return {
+        ok: false,
+        error: `steps[${i}].agent must be a non-empty string (step '${st.name}')`
+      };
+    }
+    if (typeof st.description !== "string") {
+      return {
+        ok: false,
+        error: `steps[${i}].description must be a string (step '${st.name}')`
+      };
+    }
+    steps.push({ name: st.name, agent: st.agent, description: st.description });
+  }
+  return { ok: true, draft: { name: obj.name, description: obj.description, steps } };
+}
+function draftToContract(draft) {
+  return {
+    name: draft.name,
+    description: draft.description,
+    steps: draft.steps.map((s) => ({
+      name: s.name,
+      agent: s.agent,
+      description: s.description,
+      gate: "structural",
+      produces: [],
+      context: [],
+      requires: [],
+      chunked: false,
+      script: null,
+      script_fallback: "gate"
+    }))
+  };
+}
+function buildWorkflowFacilitatorInstruction(args) {
+  const body = [
+    "Tool: Agent",
+    "Args:",
+    "  subagent_type: ewh:design-facilitator",
+    "  prompt: |",
+    "    You are the EWH design-facilitator in workflow-creation mode. Your job",
+    "    is to interview the user step-by-step (via AskUserQuestion) and output",
+    "    a workflow-shape.json describing one workflow and its ordered list of",
+    '    steps. Every question MUST include a "propose now" option so the user',
+    "    can signal readiness at any turn.",
+    "",
+    `    workflow_name:    ${args.workflowName}`,
+    `    catalog_path:     ${args.catalogPath}`,
+    `    description_path: ${args.descriptionPath}`,
+    `    output_path:      ${args.outputPath}`,
+    "",
+    "    Read catalog_path and description_path first. For each step, collect:",
+    "      - name (short identifier, e.g. plan, code, review)",
+    "      - agent (agent name; can be existing or new \u2014 a stub will be created)",
+    "      - description (what this step does)",
+    "",
+    "    When done, write a JSON document to output_path with this exact shape:",
+    "      {",
+    `        "name": "${args.workflowName}",`,
+    '        "description": "<what this workflow accomplishes>",',
+    '        "steps": [',
+    '          { "name": "...", "agent": "...", "description": "..." }',
+    "        ]",
+    "      }",
+    "",
+    "    List output_path under `files_modified:`, then emit AGENT_COMPLETE.",
+    `  description: "design: workflow interview for '${args.workflowName}'"`,
+    "",
+    `After the Agent tool returns, report: ewh report --run ${args.runId} --step 0 --result ${args.outputPath}`
+  ].join("\n");
+  return {
+    kind: "tool-call",
+    body,
+    report_with: `ewh report --run ${args.runId} --step 0 --result ${args.outputPath}`
+  };
+}
+async function continueWorkflowInterview(run, sub, report, opts) {
+  if (report.kind === "error") {
+    throw new Error(`design workflow interview: facilitator error: ${report.message}`);
+  }
+  if (report.kind !== "result" || !report.result_path) {
+    throw new Error("design workflow interview: expected --result <workflow-shape.json path>");
+  }
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  const parsed = await readWorkflowShape(report.result_path);
+  if (!parsed.ok) {
+    return bounceWorkflowInterview(run, sub, paths, [parsed.error]);
+  }
+  if (parsed.draft.name !== sub.workflow_name) {
+    return bounceWorkflowInterview(run, sub, paths, [
+      `workflow-shape.json 'name' is '${parsed.draft.name}' but the user asked for '${sub.workflow_name}'`
+    ]);
+  }
+  if (report.result_path !== sub.shape_path) {
+    await fs17.mkdir(dirname6(sub.shape_path), { recursive: true });
+    await fs17.copyFile(report.result_path, sub.shape_path);
+  }
+  const template = await findPluginTemplate(opts.pluginRoot, sub.workflow_name);
+  if (template) {
+    run.subcommand_state = {
+      kind: "design",
+      phase: "design_workflow_template_gate",
+      workflow_name: sub.workflow_name,
+      shape_path: sub.shape_path,
+      template_path: template
+    };
+    return renderWorkflowTemplateGate(run, sub.workflow_name, template, parsed.draft);
+  }
+  run.subcommand_state = {
+    kind: "design",
+    phase: "design_workflow_gate",
+    workflow_name: sub.workflow_name,
+    shape_path: sub.shape_path
+  };
+  return renderWorkflowGate(run, parsed.draft, paths);
+}
+async function bounceWorkflowInterview(run, sub, paths, errors) {
+  const note = [
+    "",
+    "--- validation errors from previous workflow-shape.json ---",
+    ...errors.map((e) => `  \u2022 ${e}`),
+    "Please re-interview and re-emit workflow-shape.json addressing these issues.",
+    ""
+  ].join("\n");
+  await fs17.appendFile(paths.description, note, "utf8");
+  run.subcommand_state = { ...sub };
+  return buildWorkflowFacilitatorInstruction({
+    runId: run.run_id,
+    workflowName: sub.workflow_name,
+    catalogPath: paths.catalog,
+    descriptionPath: paths.description,
+    outputPath: paths.workflowShape
+  });
+}
+async function findPluginTemplate(pluginRoot, workflowName) {
+  const candidate = join15(pluginRoot, "workflows", `${workflowName}.md`);
+  try {
+    await fs17.access(candidate);
+    return candidate;
+  } catch {
+    return null;
+  }
+}
+function renderWorkflowTemplateGate(run, workflowName, templatePath, draft) {
+  const lines = [];
+  lines.push(`EWH design \u2014 workflow template gate ('${workflowName}')`);
+  lines.push("");
+  lines.push(`A plugin template exists at: ${templatePath}`);
+  lines.push("");
+  lines.push(`Your draft has ${draft.steps.length} step(s):`);
+  draft.steps.forEach((s, i) => {
+    lines.push(`  ${i + 1}. ${s.name} \u2014 agent: ${s.agent}`);
+  });
+  lines.push("");
+  lines.push("Use the plugin template as the starting point instead?");
+  lines.push(`  yes: ewh report --run ${run.run_id} --step 0 --decision yes   (replace draft with template steps)`);
+  lines.push(`  no:  ewh report --run ${run.run_id} --step 0 --decision no    (keep draft)`);
+  return {
+    kind: "user-prompt",
+    body: lines.join("\n"),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision no`
+  };
+}
+async function continueWorkflowTemplateGate(run, sub, report, opts) {
+  if (report.kind !== "decision") {
+    throw new Error(
+      `design workflow template gate: unexpected report kind '${report.kind}'`
+    );
+  }
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  if (report.decision === "yes") {
+    const templateDraft = await draftFromTemplate(sub.template_path);
+    templateDraft.name = sub.workflow_name;
+    await fs17.mkdir(dirname6(sub.shape_path), { recursive: true });
+    await fs17.writeFile(sub.shape_path, JSON.stringify(templateDraft, null, 2), "utf8");
+  }
+  const parsed = await readWorkflowShape(sub.shape_path);
+  if (!parsed.ok) {
+    run.subcommand_state = void 0;
+    return {
+      kind: "done",
+      body: `ewh design: could not read workflow shape: ${parsed.error}`
+    };
+  }
+  run.subcommand_state = {
+    kind: "design",
+    phase: "design_workflow_gate",
+    workflow_name: sub.workflow_name,
+    shape_path: sub.shape_path
+  };
+  return renderWorkflowGate(run, parsed.draft, paths);
+}
+async function draftFromTemplate(templatePath) {
+  const def = await loadWorkflow(templatePath);
+  return {
+    name: def.name,
+    description: def.description ?? "",
+    steps: def.steps.map((s) => ({
+      name: s.name,
+      agent: s.agent ?? "",
+      description: (s.description ?? "").trim()
+    }))
+  };
+}
+function renderWorkflowGate(run, draft, paths) {
+  const editPath = paths.workflowEdit;
+  const lines = [];
+  lines.push(`EWH design \u2014 workflow gate ('${draft.name}')`);
+  lines.push("");
+  lines.push(`Description: ${draft.description || "(none)"}`);
+  lines.push("");
+  lines.push(`Proposed ${draft.steps.length} step(s):`);
+  draft.steps.forEach((s, i) => {
+    lines.push(`  ${i + 1}. ${s.name} \u2014 agent: ${s.agent}`);
+    if (s.description) lines.push(`       ${s.description}`);
+  });
+  lines.push("");
+  lines.push("On approval, EWH will atomically write:");
+  lines.push(`  - .claude/ewh-workflows/${draft.name}.json (contract skeleton)`);
+  lines.push(`  - .claude/ewh-workflows/${draft.name}.md   (summary rendered from JSON)`);
+  lines.push(`  - .claude/agents/<name>.md stubs for any agent not already present`);
+  lines.push("");
+  lines.push("Choose:");
+  lines.push(`  approve: ewh report --run ${run.run_id} --step 0 --decision yes`);
+  lines.push(`  reject:  ewh report --run ${run.run_id} --step 0 --decision no`);
+  lines.push(`  edit:    write your instruction to ${editPath},`);
+  lines.push(`           then ewh report --run ${run.run_id} --step 0 --result ${editPath}`);
+  return {
+    kind: "user-prompt",
+    body: lines.join("\n"),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`
+  };
+}
+async function continueWorkflowGate(run, sub, report, opts) {
+  const paths = designPaths(opts.projectRoot, run.run_id);
+  if (report.kind === "decision") {
+    if (report.decision === "yes") {
+      const writeState = {
+        kind: "design",
+        phase: "design_workflow_write",
+        workflow_name: sub.workflow_name,
+        shape_path: sub.shape_path
+      };
+      run.subcommand_state = writeState;
+      return continueWorkflowWrite(run, writeState, opts);
+    }
+    run.subcommand_state = void 0;
+    return { kind: "done", body: "Workflow proposal rejected. No files written." };
+  }
+  if (report.kind === "result") {
+    if (!report.result_path) {
+      throw new Error("design workflow gate edit: expected --result <instruction path>");
+    }
+    const instruction = (await fs17.readFile(report.result_path, "utf8")).trim();
+    const note = [
+      "",
+      "--- user edit instruction after workflow gate ---",
+      instruction,
+      ""
+    ].join("\n");
+    await fs17.appendFile(paths.description, note, "utf8");
+    run.subcommand_state = {
+      kind: "design",
+      phase: "design_workflow_interview",
+      workflow_name: sub.workflow_name,
+      catalog_path: paths.catalog,
+      shape_path: sub.shape_path
+    };
+    return buildWorkflowFacilitatorInstruction({
+      runId: run.run_id,
+      workflowName: sub.workflow_name,
+      catalogPath: paths.catalog,
+      descriptionPath: paths.description,
+      outputPath: paths.workflowShape
+    });
+  }
+  throw new Error(`design workflow gate: unexpected report kind '${report.kind}'`);
+}
+async function continueWorkflowWrite(run, sub, opts) {
+  const parsed = await readWorkflowShape(sub.shape_path);
+  if (!parsed.ok) {
+    run.subcommand_state = void 0;
+    return {
+      kind: "done",
+      body: `ewh design: could not read workflow shape: ${parsed.error}`
+    };
+  }
+  const draft = parsed.draft;
+  const contract = draftToContract(draft);
+  const mdBody = renderWorkflowMd(contract);
+  const workflowsDir = join15(opts.projectRoot, ".claude", "ewh-workflows");
+  const agentsDir = join15(opts.projectRoot, ".claude", "agents");
+  const jsonPath = join15(workflowsDir, `${draft.name}.json`);
+  const mdPath = join15(workflowsDir, `${draft.name}.md`);
+  const uniqueAgents = Array.from(new Set(draft.steps.map((s) => s.agent)));
+  const stubTargets = [];
+  for (const agent of uniqueAgents) {
+    const pluginPath = join15(opts.pluginRoot, "agents", `${agent}.md`);
+    const projectPath = join15(opts.projectRoot, ".claude", "agents", `${agent}.md`);
+    const existsPlugin = await pathExists(pluginPath);
+    const existsProject = await pathExists(projectPath);
+    if (!existsPlugin && !existsProject) {
+      stubTargets.push({ agent, path: projectPath });
+    }
+  }
+  const written = [...sub.written ?? []];
+  const newlyWritten = [];
+  const summaryLines = [];
+  try {
+    for (const { agent, path: path2 } of stubTargets) {
+      if (written.includes(path2)) {
+        summaryLines.push(`  + .claude/agents/${agent}.md  (stub, already written)`);
+        continue;
+      }
+      const step = draft.steps.find((s) => s.agent === agent);
+      const body2 = renderAgentStub(agent, step.description);
+      await atomicWrite2(path2, body2);
+      written.push(path2);
+      newlyWritten.push(path2);
+      run.subcommand_state = { ...sub, written };
+      await writeRunState(opts.projectRoot, run);
+      summaryLines.push(`  + .claude/agents/${agent}.md  (stub)`);
+    }
+    if (!written.includes(jsonPath)) {
+      await atomicWrite2(jsonPath, JSON.stringify(contract, null, 2) + "\n");
+      written.push(jsonPath);
+      newlyWritten.push(jsonPath);
+      run.subcommand_state = { ...sub, written };
+      await writeRunState(opts.projectRoot, run);
+    }
+    summaryLines.push(`  + .claude/ewh-workflows/${draft.name}.json`);
+    if (!written.includes(mdPath)) {
+      await atomicWrite2(mdPath, mdBody);
+      written.push(mdPath);
+      newlyWritten.push(mdPath);
+      run.subcommand_state = { ...sub, written };
+      await writeRunState(opts.projectRoot, run);
+    }
+    summaryLines.push(`  + .claude/ewh-workflows/${draft.name}.md`);
+  } catch (err) {
+    for (const path2 of newlyWritten.reverse()) {
+      try {
+        await fs17.unlink(path2);
+      } catch {
+      }
+    }
+    run.subcommand_state = void 0;
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      kind: "done",
+      body: `ewh design: write failed and rolled back: ${msg}`
+    };
+  }
+  run.subcommand_state = void 0;
+  const body = [
+    `Wrote workflow '${draft.name}':`,
+    ...summaryLines,
+    "",
+    `Next: /ewh:doit manage ${draft.name}   to fill runtime fields (context, produces, etc.)`
+  ].join("\n");
+  return { kind: "done", body };
+}
+async function pathExists(path2) {
+  try {
+    await fs17.access(path2);
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function atomicWrite2(dst, body) {
+  await fs17.mkdir(dirname6(dst), { recursive: true });
+  const tmp = `${dst}.tmp-${randomBytes3(4).toString("hex")}`;
+  const fh = await fs17.open(tmp, "w");
+  try {
+    await fh.writeFile(body, "utf8");
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await fs17.rename(tmp, dst);
+}
+function renderAgentStub(agentName, stepDescription) {
+  const fm = [
+    "---",
+    `name: ${agentName}`,
+    `description: Generated stub for '${agentName}' \u2014 edit this file to describe what the agent should do.`,
+    "model: sonnet",
+    "tools: [Read, Write]",
+    "default_rules: []",
+    "---",
+    ""
+  ].join("\n");
+  const trimmed = stepDescription.trim();
+  const body = [
+    `# ${agentName} (stub)`,
+    "",
+    "This agent was auto-generated by `/ewh:doit design` as a starting point.",
+    "Replace this body with the agent's actual instructions.",
+    "",
+    "## Task",
+    "",
+    trimmed.length > 0 ? trimmed : "(describe what this agent does here)",
+    "",
+    "## Before You Start",
+    "",
+    "- Verify the required context is present; if not, bail out by emitting `AGENT_COMPLETE` early.",
+    "",
+    "## Output format",
+    "",
+    "After completing your task, emit exactly `AGENT_COMPLETE` as the last line.",
+    ""
+  ].join("\n");
+  return fm + body;
 }
 
 // src/commands/expand-tools.ts
@@ -18562,7 +19093,7 @@ async function delegateAbort(opts, runId, stepIndex) {
 }
 
 // src/commands/doctor.ts
-var import_yaml5 = __toESM(require_dist(), 1);
+var import_yaml6 = __toESM(require_dist(), 1);
 import { promises as fs21 } from "node:fs";
 import { join as join19 } from "node:path";
 import { tmpdir } from "node:os";
@@ -19054,7 +19585,7 @@ function validateFrontmatter(raw, required) {
   if (end === -1) return "unterminated YAML frontmatter";
   let parsed;
   try {
-    parsed = import_yaml5.default.parse(raw.slice(4, end)) ?? {};
+    parsed = import_yaml6.default.parse(raw.slice(4, end)) ?? {};
   } catch (err) {
     return `invalid YAML frontmatter: ${errMsg(err)}`;
   }
