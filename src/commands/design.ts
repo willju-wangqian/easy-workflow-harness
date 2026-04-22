@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import type {
   Instruction,
+  ModifyTarget,
   Report,
   RunState,
   SubcommandState,
@@ -16,6 +17,14 @@ import type {
 import { runDir, writeRunState } from '../state/store.js';
 import { buildCatalog, type CatalogEntry } from './design-catalog.js';
 import type { WorkflowContract } from '../workflow/contract.js';
+import { loadContract, resolveContractPath } from '../workflow/contract-loader.js';
+import {
+  checkIntegrity,
+  diffContract,
+  parseProposedInput,
+  renderDiffSummary,
+  type DiffResult,
+} from '../workflow/contract-diff.js';
 import { renderWorkflowMd } from '../workflow/render-md.js';
 import { loadWorkflow } from '../workflow/parse.js';
 
@@ -73,6 +82,17 @@ export async function startDesign(opts: DesignStartOptions): Promise<DesignResul
   const catalog = await buildCatalog(opts.projectRoot, opts.pluginRoot);
   await fs.writeFile(paths.catalog, JSON.stringify(catalog, null, 2), 'utf8');
   await fs.writeFile(paths.description, description + '\n', 'utf8');
+
+  const modifyMatch = description.match(/^modify\s+(.+)$/);
+  if (modifyMatch) {
+    return startDesignModify({
+      runId: opts.runId,
+      projectRoot: opts.projectRoot,
+      pluginRoot: opts.pluginRoot,
+      spec: modifyMatch[1]!.trim(),
+      catalog,
+    });
+  }
 
   if (isWorkflowName(description)) {
     const state: SubcommandState = {
@@ -157,6 +177,10 @@ export async function continueDesign(
       return continueWorkflowGate(run, sub, report, opts);
     case 'design_workflow_write':
       return continueWorkflowWrite(run, sub, opts);
+    case 'modify_ferry':
+      return continueModifyFerry(run, sub, report, opts);
+    case 'modify_review':
+      return continueModifyReview(run, sub, report, opts);
   }
 }
 
@@ -1549,6 +1573,507 @@ async function pathExists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+
+// ── design modify ─────────────────────────────────────────────────────────
+
+type StartDesignModifyOptions = {
+  runId: string;
+  projectRoot: string;
+  pluginRoot: string;
+  spec: string;
+  catalog: CatalogEntry[];
+};
+
+async function startDesignModify(
+  opts: StartDesignModifyOptions,
+): Promise<DesignResult> {
+  const parsed = parseModifyTarget(opts.spec);
+  if (!parsed.ok) {
+    return {
+      state: undefined,
+      instruction: {
+        kind: 'done',
+        body: [
+          `ewh design modify: ${parsed.error}`,
+          '',
+          'Usage: /ewh:doit design modify <workflow>:<step>',
+          '       /ewh:doit design modify <workflow>',
+          '       /ewh:doit design modify agent:<name>',
+          '       /ewh:doit design modify rule:<name>',
+        ].join('\n'),
+      },
+    };
+  }
+  const target = parsed.target;
+
+  let contractPath: string | null = null;
+  let workflowName: string | null = null;
+  if (target.kind === 'workflow-step' || target.kind === 'workflow') {
+    workflowName = target.workflow;
+    contractPath = await resolveContractPath(opts.projectRoot, workflowName);
+    if (!contractPath) {
+      return {
+        state: undefined,
+        instruction: {
+          kind: 'done',
+          body: [
+            `ewh design modify: no contract at .claude/ewh-workflows/${workflowName}.json.`,
+            '',
+            `Run /ewh:doit design ${workflowName} first to create one.`,
+          ].join('\n'),
+        },
+      };
+    }
+  }
+
+  const runRoot = runDir(opts.projectRoot, opts.runId);
+  const modifyDir = join(runRoot, `modify-${opts.runId}`);
+  await fs.mkdir(modifyDir, { recursive: true });
+  const contextPath = join(modifyDir, 'context.md');
+  const proposedPath = join(modifyDir, 'proposed.json');
+
+  await writeModifyContext({
+    target,
+    contractPath,
+    contextPath,
+    catalog: opts.catalog,
+    projectRoot: opts.projectRoot,
+    pluginRoot: opts.pluginRoot,
+  });
+
+  const state: SubcommandState = {
+    kind: 'design',
+    phase: 'modify_ferry',
+    target,
+    run_root: runRoot,
+    context_path: contextPath,
+    proposed_path: proposedPath,
+    contract_path: contractPath,
+    workflow_name: workflowName,
+  };
+  return {
+    state,
+    instruction: buildModifyFerryInstruction({
+      runId: opts.runId,
+      target,
+      contextPath,
+      proposedPath,
+    }),
+  };
+}
+
+type ParseModifyTargetResult =
+  | { ok: true; target: ModifyTarget }
+  | { ok: false; error: string };
+
+export function parseModifyTarget(spec: string): ParseModifyTargetResult {
+  const trimmed = spec.trim();
+  if (!trimmed) return { ok: false, error: 'missing target (got empty string)' };
+  if (trimmed.startsWith('agent:')) {
+    const name = trimmed.slice('agent:'.length).trim();
+    if (!name) return { ok: false, error: `missing agent name in '${spec}'` };
+    return { ok: true, target: { kind: 'agent', name } };
+  }
+  if (trimmed.startsWith('rule:')) {
+    const name = trimmed.slice('rule:'.length).trim();
+    if (!name) return { ok: false, error: `missing rule name in '${spec}'` };
+    return { ok: true, target: { kind: 'rule', name } };
+  }
+  const colonIdx = trimmed.indexOf(':');
+  if (colonIdx >= 0) {
+    const workflow = trimmed.slice(0, colonIdx).trim();
+    const step = trimmed.slice(colonIdx + 1).trim();
+    if (!workflow) return { ok: false, error: `missing workflow name in '${spec}'` };
+    if (!step) return { ok: false, error: `missing step name in '${spec}'` };
+    return { ok: true, target: { kind: 'workflow-step', workflow, step } };
+  }
+  return { ok: true, target: { kind: 'workflow', workflow: trimmed } };
+}
+
+type WriteModifyContextArgs = {
+  target: ModifyTarget;
+  contractPath: string | null;
+  contextPath: string;
+  catalog: CatalogEntry[];
+  projectRoot: string;
+  pluginRoot: string;
+};
+
+async function writeModifyContext(args: WriteModifyContextArgs): Promise<void> {
+  const sections: string[] = [];
+  sections.push(`# EWH design modify — context package`);
+  sections.push('');
+  sections.push(`Target: ${describeTarget(args.target)}`);
+  sections.push('');
+
+  if (args.contractPath) {
+    const raw = await fs.readFile(args.contractPath, 'utf8');
+    sections.push('## Current workflow contract (JSON)');
+    sections.push('```json');
+    sections.push(raw.trimEnd());
+    sections.push('```');
+    sections.push('');
+  }
+
+  if (args.target.kind === 'workflow-step') {
+    const target = args.target;
+    // Include the target step's agent body for reference.
+    const contract = await loadContract(args.contractPath!);
+    const step = contract.steps.find((s) => s.name === target.step);
+    if (step) {
+      const agentBody = await tryLoadAssetBody([
+        join(args.projectRoot, '.claude', 'agents', `${step.agent}.md`),
+        join(args.pluginRoot, 'agents', `${step.agent}.md`),
+      ]);
+      if (agentBody) {
+        sections.push(`## Target agent: \`${step.agent}\``);
+        sections.push('```markdown');
+        sections.push(agentBody.trimEnd());
+        sections.push('```');
+        sections.push('');
+      } else {
+        sections.push(`## Target agent: \`${step.agent}\` — (no .md found)`);
+        sections.push('');
+      }
+    } else {
+      sections.push(
+        `> Note: step '${target.step}' not found in current contract. Proposing an add.`,
+      );
+      sections.push('');
+    }
+  } else if (args.target.kind === 'agent') {
+    const body = await tryLoadAssetBody([
+      join(args.projectRoot, '.claude', 'agents', `${args.target.name}.md`),
+      join(args.pluginRoot, 'agents', `${args.target.name}.md`),
+    ]);
+    sections.push(`## Target agent: \`${args.target.name}\``);
+    sections.push('```markdown');
+    sections.push((body ?? '(not found)').trimEnd());
+    sections.push('```');
+    sections.push('');
+  } else if (args.target.kind === 'rule') {
+    const body = await tryLoadAssetBody([
+      join(args.projectRoot, '.claude', 'rules', `${args.target.name}.md`),
+      join(args.pluginRoot, 'rules', `${args.target.name}.md`),
+    ]);
+    sections.push(`## Target rule: \`${args.target.name}\``);
+    sections.push('```markdown');
+    sections.push((body ?? '(not found)').trimEnd());
+    sections.push('```');
+    sections.push('');
+  }
+
+  // Catalog: names of all rules + declared-artifact paths across all workflows.
+  const rules = args.catalog
+    .filter((e) => e.type === 'rule')
+    .map((e) => e.name)
+    .sort();
+  const artifacts = await collectDeclaredArtifacts(args.projectRoot);
+  sections.push('## Catalog');
+  sections.push('');
+  sections.push('### Rules (by name)');
+  if (rules.length) {
+    for (const r of rules) sections.push(`- ${r}`);
+  } else {
+    sections.push('(none)');
+  }
+  sections.push('');
+  sections.push('### Declared artifacts (produces paths, project-wide)');
+  if (artifacts.length) {
+    for (const a of artifacts) sections.push(`- ${a}`);
+  } else {
+    sections.push('(none)');
+  }
+  sections.push('');
+
+  sections.push('## Protocol');
+  sections.push('');
+  sections.push(
+    [
+      'Converse with the user via AskUserQuestion. When ready, write an',
+      'array of self-contained step slices as JSON to the output path. Each',
+      'slice MUST include a `name`. For structural ops:',
+      '',
+      '- `"_delete": true` removes an existing step.',
+      '- `"_rename_from": "<old>"` renames (cross-step refs are rewritten).',
+      '',
+      'Optional top-level reorder: wrap in an object and add `"_order": [...]`.',
+      '',
+      'Slice schema matches `ContractStep`: name, agent, description, gate,',
+      'produces (string[]), context ({type: rule|artifact|file, ref}[]),',
+      'requires, chunked, script, script_fallback. Missing fields are',
+      'preserved from the current step (for updates/renames).',
+    ].join('\n'),
+  );
+  sections.push('');
+
+  await fs.writeFile(args.contextPath, sections.join('\n'), 'utf8');
+}
+
+function describeTarget(t: ModifyTarget): string {
+  switch (t.kind) {
+    case 'workflow-step':
+      return `workflow '${t.workflow}', step '${t.step}'`;
+    case 'workflow':
+      return `workflow '${t.workflow}' (whole)`;
+    case 'agent':
+      return `agent '${t.name}'`;
+    case 'rule':
+      return `rule '${t.name}'`;
+  }
+}
+
+async function tryLoadAssetBody(candidates: string[]): Promise<string | null> {
+  for (const p of candidates) {
+    try {
+      return await fs.readFile(p, 'utf8');
+    } catch {
+      // next
+    }
+  }
+  return null;
+}
+
+async function collectDeclaredArtifacts(projectRoot: string): Promise<string[]> {
+  const dir = join(projectRoot, '.claude', 'ewh-workflows');
+  let entries: string[];
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return [];
+  }
+  const out = new Set<string>();
+  for (const name of entries) {
+    if (!name.endsWith('.json')) continue;
+    try {
+      const contract = await loadContract(join(dir, name));
+      for (const step of contract.steps) {
+        for (const p of step.produces) out.add(p);
+      }
+    } catch {
+      // skip unparseable
+    }
+  }
+  return [...out].sort();
+}
+
+function buildModifyFerryInstruction(args: {
+  runId: string;
+  target: ModifyTarget;
+  contextPath: string;
+  proposedPath: string;
+}): Instruction {
+  const body = [
+    'Tool: Agent',
+    'Args:',
+    '  subagent_type: ewh:design-facilitator',
+    '  prompt: |',
+    '    You are the EWH design-facilitator in modify mode. Your job is to',
+    '    converse with the user (via AskUserQuestion) about the target',
+    '    asset, then write an array of self-contained step slices to',
+    '    output_path.',
+    '',
+    `    target:           ${describeTarget(args.target)}`,
+    `    context_path:     ${args.contextPath}`,
+    `    output_path:      ${args.proposedPath}`,
+    '',
+    '    Read context_path first. It contains the current contract JSON,',
+    '    the target asset\'s body, and a catalog of available rules and',
+    '    declared artifacts. Follow the Protocol section verbatim.',
+    '',
+    '    Every AskUserQuestion MUST include a "propose now" option so the',
+    '    user can signal readiness at any turn.',
+    '',
+    '    When writing output_path, emit either:',
+    '      - a JSON array of slice objects, or',
+    '      - a JSON object `{ "steps": [...], "_order": [...] }`.',
+    '    Then list output_path under `files_modified:` and emit',
+    '    AGENT_COMPLETE.',
+    `  description: "design modify: ${describeTarget(args.target)}"`,
+    '',
+    `After the Agent tool returns, report: ewh report --run ${args.runId} --step 0 --result ${args.proposedPath}`,
+  ].join('\n');
+  return {
+    kind: 'tool-call',
+    body,
+    report_with: `ewh report --run ${args.runId} --step 0 --result ${args.proposedPath}`,
+  };
+}
+
+async function continueModifyFerry(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'modify_ferry' }>,
+  report: Report,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  if (report.kind !== 'result') {
+    throw new Error(
+      `design modify ferry: unexpected report kind '${report.kind}' (expected 'result')`,
+    );
+  }
+  if (!report.result_path) {
+    throw new Error(`design modify ferry: expected --result <proposed.json>`);
+  }
+  // For non-workflow targets (agent/rule edits), skip diff and go straight
+  // to an approval gate showing the proposed body. MVP for this session:
+  // only workflow-step / workflow targets run through the structural diff.
+  if (!sub.contract_path || !sub.workflow_name) {
+    run.subcommand_state = undefined;
+    return {
+      kind: 'done',
+      body: [
+        `ewh design modify: wrote proposed.json to ${sub.proposed_path}.`,
+        '',
+        'Agent/rule modifications are not yet auto-applied by the binary —',
+        'inspect the proposed file and apply edits manually, or re-run',
+        'through `design` if the asset must change shape.',
+      ].join('\n'),
+    };
+  }
+
+  const current = await loadContract(sub.contract_path);
+  let diff: DiffResult;
+  let integrity: string[];
+  try {
+    const raw = await fs.readFile(sub.proposed_path, 'utf8');
+    const parsed = parseProposedInput(JSON.parse(raw));
+    diff = diffContract(current, parsed);
+    integrity = await checkIntegrity(diff.merged, {
+      projectRoot: opts.projectRoot,
+      pluginRoot: opts.pluginRoot,
+    });
+  } catch (err) {
+    run.subcommand_state = undefined;
+    return {
+      kind: 'done',
+      body: `ewh design modify: proposed.json invalid: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    };
+  }
+
+  const summary = renderDiffSummary(diff, integrity);
+  const hasErrors = diff.errors.length > 0 || integrity.length > 0;
+
+  const lines: string[] = [];
+  lines.push(`EWH design modify — review (${describeTarget(sub.target)})`);
+  lines.push('');
+  lines.push(summary);
+  lines.push('');
+  if (hasErrors) {
+    lines.push('The proposal has issues listed above.');
+    lines.push('Approving will write the merged JSON even with these gaps.');
+    lines.push('Consider rejecting so the outer-session LLM can iterate.');
+    lines.push('');
+  }
+  lines.push('On approve: atomically update');
+  lines.push(`  - ${sub.contract_path}`);
+  lines.push(
+    `  - ${join('.claude', 'ewh-workflows', `${sub.workflow_name}.md`)}`,
+  );
+  lines.push('On reject: discard proposed.json and re-run the ferry.');
+  lines.push('');
+  lines.push('Choose:');
+  lines.push(`  approve: ewh report --run ${run.run_id} --step 0 --decision yes`);
+  lines.push(`  reject:  ewh report --run ${run.run_id} --step 0 --decision no`);
+
+  const reviewState: SubcommandState = {
+    kind: 'design',
+    phase: 'modify_review',
+    target: sub.target,
+    run_root: sub.run_root,
+    context_path: sub.context_path,
+    proposed_path: sub.proposed_path,
+    contract_path: sub.contract_path,
+    workflow_name: sub.workflow_name,
+  };
+  run.subcommand_state = reviewState;
+  return {
+    kind: 'user-prompt',
+    body: lines.join('\n'),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`,
+  };
+}
+
+async function continueModifyReview(
+  run: RunState,
+  sub: Extract<SubcommandState, { kind: 'design'; phase: 'modify_review' }>,
+  report: Report,
+  opts: DesignContinueOptions,
+): Promise<Instruction> {
+  if (report.kind !== 'decision') {
+    throw new Error(
+      `design modify review: unexpected report kind '${report.kind}'`,
+    );
+  }
+  if (report.decision === 'no') {
+    // Discard proposed.json and re-ferry. Context package stays — it was
+    // built once up front and doesn't depend on the previous proposal.
+    try {
+      await fs.unlink(sub.proposed_path);
+    } catch {
+      // already gone
+    }
+    const ferryState: SubcommandState = {
+      kind: 'design',
+      phase: 'modify_ferry',
+      target: sub.target,
+      run_root: sub.run_root,
+      context_path: sub.context_path,
+      proposed_path: sub.proposed_path,
+      contract_path: sub.contract_path,
+      workflow_name: sub.workflow_name,
+    };
+    run.subcommand_state = ferryState;
+    return buildModifyFerryInstruction({
+      runId: run.run_id,
+      target: sub.target,
+      contextPath: sub.context_path,
+      proposedPath: sub.proposed_path,
+    });
+  }
+
+  // approve → atomic commit.
+  if (!sub.contract_path || !sub.workflow_name) {
+    throw new Error(
+      'design modify review: approve path requires contract_path and workflow_name',
+    );
+  }
+  const current = await loadContract(sub.contract_path);
+  const raw = await fs.readFile(sub.proposed_path, 'utf8');
+  const parsed = parseProposedInput(JSON.parse(raw));
+  const diff = diffContract(current, parsed);
+
+  const mdPath = join(
+    opts.projectRoot,
+    '.claude',
+    'ewh-workflows',
+    `${sub.workflow_name}.md`,
+  );
+  const mdBody = renderWorkflowMd(diff.merged);
+
+  // Atomic JSON write first — if it crashes, the old contract is untouched
+  // (atomicWrite is tmp+fsync+rename). The md re-render is a derived
+  // artifact; even if the process crashes between the two writes, rerunning
+  // `design modify` or `manage` will regenerate md from JSON.
+  await atomicWrite(
+    sub.contract_path,
+    JSON.stringify(diff.merged, null, 2) + '\n',
+  );
+  await atomicWrite(mdPath, mdBody);
+
+  run.subcommand_state = undefined;
+  const body = [
+    `Applied design modify to '${sub.workflow_name}':`,
+    renderDiffSummary(diff, []),
+    '',
+    `Wrote:`,
+    `  ~ ${sub.contract_path}`,
+    `  ~ ${mdPath}`,
+  ].join('\n');
+  return { kind: 'done', body };
 }
 
 async function atomicWrite(dst: string, body: string): Promise<void> {

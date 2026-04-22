@@ -204,6 +204,16 @@ export type AgentToolEntry = {
 };
 
 /** State for a multi-turn subcommand run. Discriminated by `kind` + `phase`. */
+/**
+ * Target of a `design modify` session. Parsed from the CLI spelling —
+ * e.g., `add-feature:code` → workflow-step; `agent:coder` → agent.
+ */
+export type ModifyTarget =
+  | { kind: 'workflow-step'; workflow: string; step: string }
+  | { kind: 'workflow'; workflow: string }
+  | { kind: 'agent'; name: string }
+  | { kind: 'rule'; name: string };
+
 export type SubcommandState =
   // `list` has no continuation — emits `done` on start. No persisted state.
   | { kind: 'list'; phase: 'done' }
@@ -283,6 +293,31 @@ export type SubcommandState =
       workflow_name: string;
       shape_path: string;
       written?: string[];
+    }
+  // `design modify <something>` — ferry pattern. The state machine builds a
+  // context package, hands it to an outer-session subagent, then runs a
+  // structural diff + integrity check on the LLM-written proposed.json.
+  | {
+      kind: 'design';
+      phase: 'modify_ferry';
+      target: ModifyTarget;
+      run_root: string;
+      context_path: string;
+      proposed_path: string;
+      /** Workflow contract path (only when target touches a workflow). */
+      contract_path: string | null;
+      /** Workflow name (only when target touches a workflow). */
+      workflow_name: string | null;
+    }
+  | {
+      kind: 'design';
+      phase: 'modify_review';
+      target: ModifyTarget;
+      run_root: string;
+      context_path: string;
+      proposed_path: string;
+      contract_path: string | null;
+      workflow_name: string | null;
     }
   // `manage <workflow>` — walk each step, asking about every runtime field.
   // Ordering: context → produces → gate → requires → chunked → script →

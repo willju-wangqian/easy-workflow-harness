@@ -6886,14 +6886,14 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs25 = this.flowScalar(this.type);
+              const fs26 = this.flowScalar(this.type);
               if (atNextItem || it.value) {
-                map.items.push({ start, key: fs25, sep: [] });
+                map.items.push({ start, key: fs26, sep: [] });
                 this.onKeyLine = true;
               } else if (it.sep) {
-                this.stack.push(fs25);
+                this.stack.push(fs26);
               } else {
-                Object.assign(it, { key: fs25, sep: [] });
+                Object.assign(it, { key: fs26, sep: [] });
                 this.onKeyLine = true;
               }
               return;
@@ -7021,13 +7021,13 @@ var require_parser = __commonJS({
             case "scalar":
             case "single-quoted-scalar":
             case "double-quoted-scalar": {
-              const fs25 = this.flowScalar(this.type);
+              const fs26 = this.flowScalar(this.type);
               if (!it || it.value)
-                fc.items.push({ start: [], key: fs25, sep: [] });
+                fc.items.push({ start: [], key: fs26, sep: [] });
               else if (it.sep)
-                this.stack.push(fs25);
+                this.stack.push(fs26);
               else
-                Object.assign(it, { key: fs25, sep: [] });
+                Object.assign(it, { key: fs26, sep: [] });
               return;
             }
             case "flow-map-end":
@@ -7546,8 +7546,8 @@ var require_brace_expansion = __commonJS({
 });
 
 // src/commands/start.ts
-import { promises as fs23 } from "node:fs";
-import { join as join21 } from "node:path";
+import { promises as fs24 } from "node:fs";
+import { join as join22 } from "node:path";
 import { parseArgs as parseArgs2 } from "node:util";
 
 // src/state/store.ts
@@ -13327,8 +13327,8 @@ var PathScurryBase = class {
    *
    * @internal
    */
-  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs25 = defaultFS } = {}) {
-    this.#fs = fsFromOption(fs25);
+  constructor(cwd = process.cwd(), pathImpl, sep2, { nocase, childrenCacheSize = 16 * 1024, fs: fs26 = defaultFS } = {}) {
+    this.#fs = fsFromOption(fs26);
     if (cwd instanceof URL || cwd.startsWith("file://")) {
       cwd = fileURLToPath(cwd);
     }
@@ -13886,8 +13886,8 @@ var PathScurryWin32 = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs25) {
-    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs25 });
+  newRoot(fs26) {
+    return new PathWin32(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs26 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -13915,8 +13915,8 @@ var PathScurryPosix = class extends PathScurryBase {
   /**
    * @internal
    */
-  newRoot(fs25) {
-    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs25 });
+  newRoot(fs26) {
+    return new PathPosix(this.rootPath, IFDIR, void 0, this.roots, this.nocase, this.childrenCache(), { fs: fs26 });
   }
   /**
    * Return true if the provided path string is an absolute path
@@ -16951,9 +16951,9 @@ function buildOnboardingSummary() {
 }
 
 // src/commands/design.ts
-import { promises as fs17 } from "node:fs";
+import { promises as fs18 } from "node:fs";
 import { randomBytes as randomBytes3 } from "node:crypto";
-import { dirname as dirname6, join as join15 } from "node:path";
+import { dirname as dirname6, join as join16 } from "node:path";
 
 // src/commands/design-catalog.ts
 var import_yaml4 = __toESM(require_dist(), 1);
@@ -17043,6 +17043,446 @@ async function buildCatalog(projectRoot, pluginRoot) {
   return [...workflows, ...agents, ...rules];
 }
 
+// src/workflow/contract-diff.ts
+import { promises as fs17 } from "node:fs";
+import { join as join15 } from "node:path";
+function parseProposedInput(raw) {
+  let steps;
+  let order;
+  if (Array.isArray(raw)) {
+    steps = raw;
+    order = void 0;
+  } else if (raw !== null && typeof raw === "object") {
+    const obj = raw;
+    if (!Array.isArray(obj.steps)) {
+      throw new Error(`proposed.json: 'steps' must be an array`);
+    }
+    steps = obj.steps;
+    order = obj._order;
+  } else {
+    throw new Error(
+      `proposed.json: top level must be an array of slices or an object with a 'steps' array`
+    );
+  }
+  const slices = steps.map((raw2, i) => validateSlice(raw2, i));
+  let parsedOrder;
+  if (order !== void 0) {
+    if (!Array.isArray(order) || order.some((v) => typeof v !== "string")) {
+      throw new Error(`proposed.json: '_order' must be an array of strings`);
+    }
+    parsedOrder = order;
+  }
+  return { steps: slices, _order: parsedOrder };
+}
+function validateSlice(raw, i) {
+  const ctx = `proposed.json: slice #${i + 1}`;
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(`${ctx}: must be a JSON object`);
+  }
+  const s = raw;
+  if (typeof s.name !== "string" || s.name.length === 0) {
+    throw new Error(`${ctx}: 'name' must be a non-empty string`);
+  }
+  const where = `proposed.json: slice '${s.name}'`;
+  const slice = { name: s.name };
+  if (s._delete !== void 0) {
+    if (s._delete !== true) {
+      throw new Error(`${where}: '_delete' must be literal true if present`);
+    }
+    slice._delete = true;
+    return slice;
+  }
+  if (s._rename_from !== void 0) {
+    if (typeof s._rename_from !== "string" || s._rename_from.length === 0) {
+      throw new Error(`${where}: '_rename_from' must be a non-empty string`);
+    }
+    slice._rename_from = s._rename_from;
+  }
+  if (s.agent !== void 0) {
+    if (typeof s.agent !== "string" || s.agent.length === 0) {
+      throw new Error(`${where}: 'agent' must be a non-empty string`);
+    }
+    slice.agent = s.agent;
+  }
+  if (s.description !== void 0) {
+    if (typeof s.description !== "string") {
+      throw new Error(`${where}: 'description' must be a string`);
+    }
+    slice.description = s.description;
+  }
+  if (s.gate !== void 0) {
+    if (s.gate !== "structural" && s.gate !== "auto") {
+      throw new Error(`${where}: 'gate' must be 'structural' or 'auto'`);
+    }
+    slice.gate = s.gate;
+  }
+  if (s.produces !== void 0) {
+    if (!Array.isArray(s.produces) || s.produces.some((v) => typeof v !== "string")) {
+      throw new Error(`${where}: 'produces' must be an array of strings`);
+    }
+    slice.produces = s.produces;
+  }
+  if (s.context !== void 0) {
+    slice.context = validateContextArray(s.context, where);
+  }
+  if (s.requires !== void 0) {
+    slice.requires = validateRequiresArray(s.requires, where);
+  }
+  if (s.chunked !== void 0) {
+    if (typeof s.chunked !== "boolean") {
+      throw new Error(`${where}: 'chunked' must be a boolean`);
+    }
+    slice.chunked = s.chunked;
+  }
+  if (s.script !== void 0) {
+    if (s.script !== null && typeof s.script !== "string") {
+      throw new Error(`${where}: 'script' must be a string or null`);
+    }
+    slice.script = s.script;
+  }
+  if (s.script_fallback !== void 0) {
+    if (s.script_fallback !== "gate" && s.script_fallback !== "auto") {
+      throw new Error(`${where}: 'script_fallback' must be 'gate' or 'auto'`);
+    }
+    slice.script_fallback = s.script_fallback;
+  }
+  return slice;
+}
+function validateContextArray(v, where) {
+  if (!Array.isArray(v)) {
+    throw new Error(`${where}: 'context' must be an array`);
+  }
+  return v.map((raw, i) => {
+    const c = `${where}: context[${i}]`;
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error(`${c}: must be a JSON object`);
+    }
+    const e = raw;
+    if (e.type !== "rule" && e.type !== "artifact" && e.type !== "file") {
+      throw new Error(`${c}: 'type' must be 'rule', 'artifact', or 'file'`);
+    }
+    if (typeof e.ref !== "string" || e.ref.length === 0) {
+      throw new Error(`${c}: 'ref' must be a non-empty string`);
+    }
+    return { type: e.type, ref: e.ref };
+  });
+}
+function validateRequiresArray(v, where) {
+  if (!Array.isArray(v)) {
+    throw new Error(`${where}: 'requires' must be an array`);
+  }
+  return v.map((raw, i) => {
+    const c = `${where}: requires[${i}]`;
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error(`${c}: must be a JSON object`);
+    }
+    const r = raw;
+    if (typeof r.file_exists === "string") return { file_exists: r.file_exists };
+    if (typeof r.prior_step === "string" && typeof r.has === "string") {
+      return { prior_step: r.prior_step, has: r.has };
+    }
+    throw new Error(
+      `${c}: must be {file_exists: string} or {prior_step: string, has: string}`
+    );
+  });
+}
+function diffContract(current, proposed) {
+  const errors = [];
+  const updated = [];
+  const added = [];
+  const deleted = [];
+  const renamed = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const s of proposed.steps) {
+    if (seen.has(s.name)) {
+      errors.push(`duplicate slice name '${s.name}' in proposed.json`);
+    }
+    seen.add(s.name);
+  }
+  const byName = new Map(
+    current.steps.map((s) => [s.name, cloneStep(s)])
+  );
+  const startingOrder = current.steps.map((s) => s.name);
+  const pathRewrites = /* @__PURE__ */ new Map();
+  const nameRewrites = /* @__PURE__ */ new Map();
+  const deletes = proposed.steps.filter((s) => s._delete === true);
+  const renames = proposed.steps.filter((s) => s._rename_from !== void 0);
+  const rest = proposed.steps.filter(
+    (s) => s._delete !== true && s._rename_from === void 0
+  );
+  for (const s of deletes) {
+    if (!byName.has(s.name)) {
+      errors.push(`_delete: step '${s.name}' not found in current contract`);
+      continue;
+    }
+    byName.delete(s.name);
+    deleted.push(s.name);
+  }
+  for (const s of renames) {
+    const from = s._rename_from;
+    const to = s.name;
+    const src = byName.get(from);
+    if (!src) {
+      errors.push(
+        `_rename_from: source step '${from}' not found (rename \u2192 '${to}')`
+      );
+      continue;
+    }
+    if (byName.has(to) && from !== to) {
+      errors.push(
+        `_rename_from: target name '${to}' collides with an existing step`
+      );
+      continue;
+    }
+    const merged = applyFields(src, s);
+    merged.name = to;
+    const oldProduces = src.produces;
+    const newProduces = merged.produces;
+    for (let i = 0; i < oldProduces.length; i++) {
+      const oldP = oldProduces[i];
+      const newP = newProduces[i];
+      if (newP !== void 0 && newP !== oldP) {
+        pathRewrites.set(oldP, newP);
+      }
+    }
+    nameRewrites.set(from, to);
+    byName.delete(from);
+    byName.set(to, merged);
+    renamed.push({ from, to });
+  }
+  for (const s of rest) {
+    const existing = byName.get(s.name);
+    if (existing) {
+      const merged = applyFields(existing, s);
+      for (let i = 0; i < existing.produces.length; i++) {
+        const oldP = existing.produces[i];
+        const newP = merged.produces[i];
+        if (newP !== void 0 && newP !== oldP) {
+          pathRewrites.set(oldP, newP);
+        }
+      }
+      byName.set(s.name, merged);
+      updated.push(s.name);
+    } else {
+      byName.set(s.name, sliceToStep(s));
+      added.push(s.name);
+    }
+  }
+  let finalOrder;
+  let reordered = false;
+  if (proposed._order !== void 0) {
+    const requested = proposed._order;
+    const requestedSet = new Set(requested);
+    const mergedSet = new Set(byName.keys());
+    if (requested.length !== mergedSet.size || [...mergedSet].some((n) => !requestedSet.has(n)) || requested.some((n) => !mergedSet.has(n))) {
+      errors.push(
+        `_order mismatch: expected a permutation of {${[...mergedSet].join(", ")}} but got {${requested.join(", ")}}`
+      );
+      finalOrder = inferOrder(startingOrder, byName, nameRewrites);
+    } else {
+      finalOrder = requested;
+      const inferred = inferOrder(startingOrder, byName, nameRewrites);
+      reordered = !arrayEqual(inferred, requested);
+    }
+  } else {
+    finalOrder = inferOrder(startingOrder, byName, nameRewrites);
+  }
+  const finalSteps = [];
+  for (const name of finalOrder) {
+    const step = byName.get(name);
+    finalSteps.push(applyRewrites(step, nameRewrites, pathRewrites));
+  }
+  return {
+    updated,
+    added,
+    deleted,
+    renamed,
+    reordered,
+    errors,
+    merged: {
+      name: current.name,
+      description: current.description,
+      steps: finalSteps
+    }
+  };
+}
+function arrayEqual(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+function inferOrder(startingOrder, byName, nameRewrites) {
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const n of startingOrder) {
+    const mapped = nameRewrites.get(n) ?? n;
+    if (byName.has(mapped) && !seen.has(mapped)) {
+      out.push(mapped);
+      seen.add(mapped);
+    }
+  }
+  for (const n of byName.keys()) {
+    if (!seen.has(n)) {
+      out.push(n);
+      seen.add(n);
+    }
+  }
+  return out;
+}
+function cloneStep(s) {
+  return {
+    name: s.name,
+    agent: s.agent,
+    description: s.description,
+    gate: s.gate,
+    produces: [...s.produces],
+    context: s.context.map((c) => ({ ...c })),
+    requires: s.requires.map((r) => ({ ...r })),
+    chunked: s.chunked,
+    script: s.script,
+    script_fallback: s.script_fallback
+  };
+}
+function applyFields(base, slice) {
+  return {
+    name: base.name,
+    // caller sets `name` explicitly for renames
+    agent: slice.agent ?? base.agent,
+    description: slice.description ?? base.description,
+    gate: slice.gate ?? base.gate,
+    produces: slice.produces ? [...slice.produces] : [...base.produces],
+    context: slice.context ? slice.context.map((c) => ({ ...c })) : base.context.map((c) => ({ ...c })),
+    requires: slice.requires ? slice.requires.map((r) => ({ ...r })) : base.requires.map((r) => ({ ...r })),
+    chunked: slice.chunked ?? base.chunked,
+    script: slice.script === void 0 ? base.script : slice.script,
+    script_fallback: slice.script_fallback ?? base.script_fallback
+  };
+}
+function sliceToStep(slice) {
+  return {
+    name: slice.name,
+    agent: slice.agent ?? "",
+    description: slice.description ?? "",
+    gate: slice.gate ?? "structural",
+    produces: slice.produces ? [...slice.produces] : [],
+    context: slice.context ? slice.context.map((c) => ({ ...c })) : [],
+    requires: slice.requires ? slice.requires.map((r) => ({ ...r })) : [],
+    chunked: slice.chunked ?? false,
+    script: slice.script === void 0 ? null : slice.script,
+    script_fallback: slice.script_fallback ?? "gate"
+  };
+}
+function applyRewrites(step, nameRewrites, pathRewrites) {
+  const context = step.context.map((c) => {
+    if (c.type === "artifact" && pathRewrites.has(c.ref)) {
+      return { type: "artifact", ref: pathRewrites.get(c.ref) };
+    }
+    return { ...c };
+  });
+  const requires = step.requires.map((r) => {
+    if ("prior_step" in r && nameRewrites.has(r.prior_step)) {
+      return { prior_step: nameRewrites.get(r.prior_step), has: r.has };
+    }
+    return { ...r };
+  });
+  return { ...step, context, requires };
+}
+async function checkIntegrity(merged, opts) {
+  const issues = [];
+  const producedSoFar = /* @__PURE__ */ new Set();
+  for (const step of merged.steps) {
+    if (step.agent.length === 0) {
+      issues.push(`step '${step.name}': missing agent`);
+    } else if (!await agentExists(step.agent, opts)) {
+      issues.push(
+        `step '${step.name}': agent '${step.agent}' not found in .claude/agents/ or agents/`
+      );
+    }
+    for (const c of step.context) {
+      if (c.type === "rule") {
+        if (!await ruleExists(c.ref, opts)) {
+          issues.push(
+            `step '${step.name}': rule '${c.ref}' not found in rules/ or .claude/rules/`
+          );
+        }
+      } else if (c.type === "artifact") {
+        if (!producedSoFar.has(c.ref)) {
+          issues.push(
+            `step '${step.name}': artifact '${c.ref}' not produced by any earlier step`
+          );
+        }
+      }
+    }
+    for (const p of step.produces) producedSoFar.add(p);
+  }
+  return issues;
+}
+async function agentExists(name, opts) {
+  const candidates = [
+    join15(opts.projectRoot, ".claude", "agents", `${name}.md`),
+    join15(opts.pluginRoot, "agents", `${name}.md`)
+  ];
+  for (const p of candidates) {
+    if (await pathExists(p)) return true;
+  }
+  return false;
+}
+async function ruleExists(name, opts) {
+  const roots = [
+    join15(opts.projectRoot, ".claude", "rules"),
+    join15(opts.pluginRoot, "rules")
+  ];
+  for (const root of roots) {
+    if (await findRuleIn(root, `${name}.md`)) return true;
+  }
+  return false;
+}
+async function findRuleIn(dir, target) {
+  let entries;
+  try {
+    const raw = await fs17.readdir(dir, { recursive: true });
+    entries = raw.map(String);
+  } catch {
+    return false;
+  }
+  return entries.some((e) => e === target || e.endsWith(`/${target}`));
+}
+async function pathExists(p) {
+  try {
+    await fs17.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function renderDiffSummary(diff, integrity) {
+  const lines = [];
+  lines.push("Proposed changes:");
+  if (diff.added.length) lines.push(`  + added:   ${diff.added.join(", ")}`);
+  if (diff.updated.length) lines.push(`  ~ updated: ${diff.updated.join(", ")}`);
+  if (diff.renamed.length) {
+    lines.push(
+      `  \u2192 renamed: ${diff.renamed.map((r) => `${r.from} \u2192 ${r.to}`).join(", ")}`
+    );
+  }
+  if (diff.deleted.length) lines.push(`  \u2212 deleted: ${diff.deleted.join(", ")}`);
+  if (diff.reordered) lines.push(`  \u2195 reordered`);
+  if (!diff.added.length && !diff.updated.length && !diff.renamed.length && !diff.deleted.length && !diff.reordered) {
+    lines.push("  (no structural changes)");
+  }
+  if (diff.errors.length) {
+    lines.push("");
+    lines.push("Structural errors:");
+    for (const e of diff.errors) lines.push(`  \u2717 ${e}`);
+  }
+  if (integrity.length) {
+    lines.push("");
+    lines.push("Referential-integrity issues:");
+    for (const i of integrity) lines.push(`  \u2717 ${i}`);
+  }
+  return lines.join("\n");
+}
+
 // src/workflow/render-md.ts
 var import_yaml5 = __toESM(require_dist(), 1);
 function renderWorkflowMd(contract) {
@@ -17091,10 +17531,20 @@ async function startDesign(opts) {
     };
   }
   const paths = designPaths(opts.projectRoot, opts.runId);
-  await fs17.mkdir(paths.proposedDir, { recursive: true });
+  await fs18.mkdir(paths.proposedDir, { recursive: true });
   const catalog = await buildCatalog(opts.projectRoot, opts.pluginRoot);
-  await fs17.writeFile(paths.catalog, JSON.stringify(catalog, null, 2), "utf8");
-  await fs17.writeFile(paths.description, description + "\n", "utf8");
+  await fs18.writeFile(paths.catalog, JSON.stringify(catalog, null, 2), "utf8");
+  await fs18.writeFile(paths.description, description + "\n", "utf8");
+  const modifyMatch = description.match(/^modify\s+(.+)$/);
+  if (modifyMatch) {
+    return startDesignModify({
+      runId: opts.runId,
+      projectRoot: opts.projectRoot,
+      pluginRoot: opts.pluginRoot,
+      spec: modifyMatch[1].trim(),
+      catalog
+    });
+  }
   if (isWorkflowName(description)) {
     const state2 = {
       kind: "design",
@@ -17159,6 +17609,10 @@ async function continueDesign(run, report, opts) {
       return continueWorkflowGate(run, sub, report, opts);
     case "design_workflow_write":
       return continueWorkflowWrite(run, sub, opts);
+    case "modify_ferry":
+      return continueModifyFerry(run, sub, report, opts);
+    case "modify_review":
+      return continueModifyReview(run, sub, report, opts);
   }
 }
 async function continueInterview(run, sub, report, opts) {
@@ -17227,7 +17681,7 @@ async function bounceToInterview(run, sub, paths, errors) {
     "Please re-interview and re-emit shape.json addressing these issues.",
     ""
   ].join("\n");
-  await fs17.appendFile(paths.description, note, "utf8");
+  await fs18.appendFile(paths.description, note, "utf8");
   run.subcommand_state = { ...sub };
   return buildFacilitatorInstruction({
     runId: run.run_id,
@@ -17288,7 +17742,7 @@ async function continueShapeGate(run, sub, report, opts) {
     if (!report.result_path) {
       throw new Error("design shape_gate edit: expected --result <instruction path>");
     }
-    const instruction = (await fs17.readFile(report.result_path, "utf8")).trim();
+    const instruction = (await fs18.readFile(report.result_path, "utf8")).trim();
     const paths = designPaths(opts.projectRoot, run.run_id);
     const note = [
       "",
@@ -17296,7 +17750,7 @@ async function continueShapeGate(run, sub, report, opts) {
       instruction,
       ""
     ].join("\n");
-    await fs17.appendFile(paths.description, note, "utf8");
+    await fs18.appendFile(paths.description, note, "utf8");
     run.subcommand_state = {
       kind: "design",
       phase: "interview",
@@ -17377,7 +17831,7 @@ function renderShapeGate(run, proposal, paths, notes) {
 async function readShape(path2) {
   let raw;
   try {
-    raw = await fs17.readFile(path2, "utf8");
+    raw = await fs18.readFile(path2, "utf8");
   } catch (e) {
     return { ok: false, error: `failed to read shape.json at ${path2}: ${e.message}` };
   }
@@ -17485,7 +17939,7 @@ function validateShape(proposal, catalog) {
   return errors;
 }
 async function readCatalog(path2) {
-  const raw = await fs17.readFile(path2, "utf8");
+  const raw = await fs18.readFile(path2, "utf8");
   const parsed = JSON.parse(raw);
   if (!Array.isArray(parsed)) {
     throw new Error(`catalog file ${path2} is not a JSON array`);
@@ -17494,33 +17948,33 @@ async function readCatalog(path2) {
 }
 function designPaths(projectRoot, runId) {
   const runRoot = runDir(projectRoot, runId);
-  const proposedDir = join15(runRoot, "proposed");
+  const proposedDir = join16(runRoot, "proposed");
   return {
     runRoot,
     proposedDir,
-    catalog: join15(runRoot, "catalog.json"),
-    description: join15(runRoot, "description.txt"),
-    shape: join15(proposedDir, "shape.json"),
-    edit: join15(runRoot, "shape-edit.txt"),
-    workflowShape: join15(proposedDir, "workflow-shape.json"),
-    workflowEdit: join15(runRoot, "workflow-edit.txt")
+    catalog: join16(runRoot, "catalog.json"),
+    description: join16(runRoot, "description.txt"),
+    shape: join16(proposedDir, "shape.json"),
+    edit: join16(runRoot, "shape-edit.txt"),
+    workflowShape: join16(proposedDir, "workflow-shape.json"),
+    workflowEdit: join16(runRoot, "workflow-edit.txt")
   };
 }
 function safeFilename(artifactPath) {
   return artifactPath.replace(/[/\\]/g, "_");
 }
 function stagedPathForArtifact(proposedDir, artifact) {
-  return join15(proposedDir, safeFilename(artifact.path));
+  return join16(proposedDir, safeFilename(artifact.path));
 }
 function existingPathForArtifact(artifact, opts) {
   if (artifact.scope === "plugin") {
-    return join15(opts.pluginRoot, artifact.path);
+    return join16(opts.pluginRoot, artifact.path);
   }
-  return join15(opts.projectRoot, ".claude", artifact.path);
+  return join16(opts.projectRoot, ".claude", artifact.path);
 }
 async function isInsidePluginRepo(projectRoot) {
   try {
-    const body = await fs17.readFile(join15(projectRoot, "package.json"), "utf8");
+    const body = await fs18.readFile(join16(projectRoot, "package.json"), "utf8");
     const pkg = JSON.parse(body);
     return pkg.name === "easy-workflow-harness";
   } catch {
@@ -17536,22 +17990,22 @@ async function applyScopeRewrites(proposalPath, proposal) {
     }
   }
   if (count > 0) {
-    await fs17.writeFile(proposalPath, JSON.stringify(proposal, null, 2), "utf8");
+    await fs18.writeFile(proposalPath, JSON.stringify(proposal, null, 2), "utf8");
   }
   return count;
 }
 async function atomicCopy(src, dst) {
-  await fs17.mkdir(dirname6(dst), { recursive: true });
-  const body = await fs17.readFile(src, "utf8");
+  await fs18.mkdir(dirname6(dst), { recursive: true });
+  const body = await fs18.readFile(src, "utf8");
   const tmp = `${dst}.tmp-${randomBytes3(4).toString("hex")}`;
-  const fh = await fs17.open(tmp, "w");
+  const fh = await fs18.open(tmp, "w");
   try {
     await fh.writeFile(body, "utf8");
     await fh.sync();
   } finally {
     await fh.close();
   }
-  await fs17.rename(tmp, dst);
+  await fs18.rename(tmp, dst);
 }
 async function continueWrite(run, sub, opts) {
   const parsed = await readShape(sub.proposal_path);
@@ -17568,7 +18022,7 @@ async function continueWrite(run, sub, opts) {
   const written = [...sub.written ?? []];
   const summaryLines = [];
   for (const artifact of sorted) {
-    const targetPath = artifact.scope === "plugin" ? join15(opts.pluginRoot, artifact.path) : join15(opts.projectRoot, ".claude", artifact.path);
+    const targetPath = artifact.scope === "plugin" ? join16(opts.pluginRoot, artifact.path) : join16(opts.projectRoot, ".claude", artifact.path);
     const displayPath = artifact.scope === "plugin" ? artifact.path : `.claude/${artifact.path}`;
     const sigil = artifact.op === "create" ? "+" : "~";
     const suffix = artifact.op === "update" ? "  (updated)" : "";
@@ -17579,7 +18033,7 @@ async function continueWrite(run, sub, opts) {
     if (artifact.op === "create") {
       let exists = false;
       try {
-        await fs17.access(targetPath);
+        await fs18.access(targetPath);
         exists = true;
       } catch {
       }
@@ -17592,7 +18046,7 @@ async function continueWrite(run, sub, opts) {
       }
     } else {
       try {
-        await fs17.access(targetPath);
+        await fs18.access(targetPath);
       } catch {
         run.subcommand_state = void 0;
         return {
@@ -17674,20 +18128,20 @@ async function renderFileGate(run, proposal, fileIndex, paths) {
   const artifact = proposal.artifacts[fileIndex];
   const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
   const total = proposal.artifacts.length;
-  const editInstructionPath = join15(paths.runRoot, `file-gate-${fileIndex}-edit.txt`);
+  const editInstructionPath = join16(paths.runRoot, `file-gate-${fileIndex}-edit.txt`);
   const lines = [];
   lines.push(`EWH design \u2014 file gate (${fileIndex + 1}/${total})`);
   lines.push("");
   lines.push(`[${artifact.op}] ${artifact.type} '${artifact.name}' \u2192 ${artifact.path}`);
   lines.push("");
   if (artifact.op === "create") {
-    const body = await fs17.readFile(stagedPath, "utf8");
+    const body = await fs18.readFile(stagedPath, "utf8");
     lines.push("--- staged file body ---");
     lines.push(body.trimEnd());
   } else {
     const diffPath = stagedPath + ".diff";
     try {
-      const diff = await fs17.readFile(diffPath, "utf8");
+      const diff = await fs18.readFile(diffPath, "utf8");
       lines.push("--- unified diff ---");
       lines.push(diff.trimEnd());
     } catch {
@@ -17785,7 +18239,7 @@ async function continueFileGate(run, sub, report, opts) {
     if (!report.result_path) {
       throw new Error("design file_gate edit: expected --result <instruction path>");
     }
-    const instruction = (await fs17.readFile(report.result_path, "utf8")).trim();
+    const instruction = (await fs18.readFile(report.result_path, "utf8")).trim();
     const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
     run.subcommand_state = {
       kind: "design",
@@ -17828,7 +18282,7 @@ async function continueRefine(run, sub, report, opts) {
 async function readWorkflowShape(path2) {
   let raw;
   try {
-    raw = await fs17.readFile(path2, "utf8");
+    raw = await fs18.readFile(path2, "utf8");
   } catch (e) {
     return {
       ok: false,
@@ -17972,8 +18426,8 @@ async function continueWorkflowInterview(run, sub, report, opts) {
     ]);
   }
   if (report.result_path !== sub.shape_path) {
-    await fs17.mkdir(dirname6(sub.shape_path), { recursive: true });
-    await fs17.copyFile(report.result_path, sub.shape_path);
+    await fs18.mkdir(dirname6(sub.shape_path), { recursive: true });
+    await fs18.copyFile(report.result_path, sub.shape_path);
   }
   const template = await findPluginTemplate(opts.pluginRoot, sub.workflow_name);
   if (template) {
@@ -18002,7 +18456,7 @@ async function bounceWorkflowInterview(run, sub, paths, errors) {
     "Please re-interview and re-emit workflow-shape.json addressing these issues.",
     ""
   ].join("\n");
-  await fs17.appendFile(paths.description, note, "utf8");
+  await fs18.appendFile(paths.description, note, "utf8");
   run.subcommand_state = { ...sub };
   return buildWorkflowFacilitatorInstruction({
     runId: run.run_id,
@@ -18013,9 +18467,9 @@ async function bounceWorkflowInterview(run, sub, paths, errors) {
   });
 }
 async function findPluginTemplate(pluginRoot, workflowName) {
-  const candidate = join15(pluginRoot, "workflows", `${workflowName}.md`);
+  const candidate = join16(pluginRoot, "workflows", `${workflowName}.md`);
   try {
-    await fs17.access(candidate);
+    await fs18.access(candidate);
     return candidate;
   } catch {
     return null;
@@ -18051,8 +18505,8 @@ async function continueWorkflowTemplateGate(run, sub, report, opts) {
   if (report.decision === "yes") {
     const templateDraft = await draftFromTemplate(sub.template_path);
     templateDraft.name = sub.workflow_name;
-    await fs17.mkdir(dirname6(sub.shape_path), { recursive: true });
-    await fs17.writeFile(sub.shape_path, JSON.stringify(templateDraft, null, 2), "utf8");
+    await fs18.mkdir(dirname6(sub.shape_path), { recursive: true });
+    await fs18.writeFile(sub.shape_path, JSON.stringify(templateDraft, null, 2), "utf8");
   }
   const parsed = await readWorkflowShape(sub.shape_path);
   if (!parsed.ok) {
@@ -18131,14 +18585,14 @@ async function continueWorkflowGate(run, sub, report, opts) {
     if (!report.result_path) {
       throw new Error("design workflow gate edit: expected --result <instruction path>");
     }
-    const instruction = (await fs17.readFile(report.result_path, "utf8")).trim();
+    const instruction = (await fs18.readFile(report.result_path, "utf8")).trim();
     const note = [
       "",
       "--- user edit instruction after workflow gate ---",
       instruction,
       ""
     ].join("\n");
-    await fs17.appendFile(paths.description, note, "utf8");
+    await fs18.appendFile(paths.description, note, "utf8");
     run.subcommand_state = {
       kind: "design",
       phase: "design_workflow_interview",
@@ -18168,17 +18622,17 @@ async function continueWorkflowWrite(run, sub, opts) {
   const draft = parsed.draft;
   const contract = draftToContract(draft);
   const mdBody = renderWorkflowMd(contract);
-  const workflowsDir = join15(opts.projectRoot, ".claude", "ewh-workflows");
-  const agentsDir = join15(opts.projectRoot, ".claude", "agents");
-  const jsonPath = join15(workflowsDir, `${draft.name}.json`);
-  const mdPath = join15(workflowsDir, `${draft.name}.md`);
+  const workflowsDir = join16(opts.projectRoot, ".claude", "ewh-workflows");
+  const agentsDir = join16(opts.projectRoot, ".claude", "agents");
+  const jsonPath = join16(workflowsDir, `${draft.name}.json`);
+  const mdPath = join16(workflowsDir, `${draft.name}.md`);
   const uniqueAgents = Array.from(new Set(draft.steps.map((s) => s.agent)));
   const stubTargets = [];
   for (const agent of uniqueAgents) {
-    const pluginPath = join15(opts.pluginRoot, "agents", `${agent}.md`);
-    const projectPath = join15(opts.projectRoot, ".claude", "agents", `${agent}.md`);
-    const existsPlugin = await pathExists(pluginPath);
-    const existsProject = await pathExists(projectPath);
+    const pluginPath = join16(opts.pluginRoot, "agents", `${agent}.md`);
+    const projectPath = join16(opts.projectRoot, ".claude", "agents", `${agent}.md`);
+    const existsPlugin = await pathExists2(pluginPath);
+    const existsProject = await pathExists2(projectPath);
     if (!existsPlugin && !existsProject) {
       stubTargets.push({ agent, path: projectPath });
     }
@@ -18220,7 +18674,7 @@ async function continueWorkflowWrite(run, sub, opts) {
   } catch (err) {
     for (const path2 of newlyWritten.reverse()) {
       try {
-        await fs17.unlink(path2);
+        await fs18.unlink(path2);
       } catch {
       }
     }
@@ -18240,25 +18694,439 @@ async function continueWorkflowWrite(run, sub, opts) {
   ].join("\n");
   return { kind: "done", body };
 }
-async function pathExists(path2) {
+async function pathExists2(path2) {
   try {
-    await fs17.access(path2);
+    await fs18.access(path2);
     return true;
   } catch {
     return false;
   }
 }
+async function startDesignModify(opts) {
+  const parsed = parseModifyTarget(opts.spec);
+  if (!parsed.ok) {
+    return {
+      state: void 0,
+      instruction: {
+        kind: "done",
+        body: [
+          `ewh design modify: ${parsed.error}`,
+          "",
+          "Usage: /ewh:doit design modify <workflow>:<step>",
+          "       /ewh:doit design modify <workflow>",
+          "       /ewh:doit design modify agent:<name>",
+          "       /ewh:doit design modify rule:<name>"
+        ].join("\n")
+      }
+    };
+  }
+  const target = parsed.target;
+  let contractPath = null;
+  let workflowName = null;
+  if (target.kind === "workflow-step" || target.kind === "workflow") {
+    workflowName = target.workflow;
+    contractPath = await resolveContractPath(opts.projectRoot, workflowName);
+    if (!contractPath) {
+      return {
+        state: void 0,
+        instruction: {
+          kind: "done",
+          body: [
+            `ewh design modify: no contract at .claude/ewh-workflows/${workflowName}.json.`,
+            "",
+            `Run /ewh:doit design ${workflowName} first to create one.`
+          ].join("\n")
+        }
+      };
+    }
+  }
+  const runRoot = runDir(opts.projectRoot, opts.runId);
+  const modifyDir = join16(runRoot, `modify-${opts.runId}`);
+  await fs18.mkdir(modifyDir, { recursive: true });
+  const contextPath = join16(modifyDir, "context.md");
+  const proposedPath = join16(modifyDir, "proposed.json");
+  await writeModifyContext({
+    target,
+    contractPath,
+    contextPath,
+    catalog: opts.catalog,
+    projectRoot: opts.projectRoot,
+    pluginRoot: opts.pluginRoot
+  });
+  const state = {
+    kind: "design",
+    phase: "modify_ferry",
+    target,
+    run_root: runRoot,
+    context_path: contextPath,
+    proposed_path: proposedPath,
+    contract_path: contractPath,
+    workflow_name: workflowName
+  };
+  return {
+    state,
+    instruction: buildModifyFerryInstruction({
+      runId: opts.runId,
+      target,
+      contextPath,
+      proposedPath
+    })
+  };
+}
+function parseModifyTarget(spec) {
+  const trimmed = spec.trim();
+  if (!trimmed) return { ok: false, error: "missing target (got empty string)" };
+  if (trimmed.startsWith("agent:")) {
+    const name = trimmed.slice("agent:".length).trim();
+    if (!name) return { ok: false, error: `missing agent name in '${spec}'` };
+    return { ok: true, target: { kind: "agent", name } };
+  }
+  if (trimmed.startsWith("rule:")) {
+    const name = trimmed.slice("rule:".length).trim();
+    if (!name) return { ok: false, error: `missing rule name in '${spec}'` };
+    return { ok: true, target: { kind: "rule", name } };
+  }
+  const colonIdx = trimmed.indexOf(":");
+  if (colonIdx >= 0) {
+    const workflow = trimmed.slice(0, colonIdx).trim();
+    const step = trimmed.slice(colonIdx + 1).trim();
+    if (!workflow) return { ok: false, error: `missing workflow name in '${spec}'` };
+    if (!step) return { ok: false, error: `missing step name in '${spec}'` };
+    return { ok: true, target: { kind: "workflow-step", workflow, step } };
+  }
+  return { ok: true, target: { kind: "workflow", workflow: trimmed } };
+}
+async function writeModifyContext(args) {
+  const sections = [];
+  sections.push(`# EWH design modify \u2014 context package`);
+  sections.push("");
+  sections.push(`Target: ${describeTarget(args.target)}`);
+  sections.push("");
+  if (args.contractPath) {
+    const raw = await fs18.readFile(args.contractPath, "utf8");
+    sections.push("## Current workflow contract (JSON)");
+    sections.push("```json");
+    sections.push(raw.trimEnd());
+    sections.push("```");
+    sections.push("");
+  }
+  if (args.target.kind === "workflow-step") {
+    const target = args.target;
+    const contract = await loadContract(args.contractPath);
+    const step = contract.steps.find((s) => s.name === target.step);
+    if (step) {
+      const agentBody = await tryLoadAssetBody([
+        join16(args.projectRoot, ".claude", "agents", `${step.agent}.md`),
+        join16(args.pluginRoot, "agents", `${step.agent}.md`)
+      ]);
+      if (agentBody) {
+        sections.push(`## Target agent: \`${step.agent}\``);
+        sections.push("```markdown");
+        sections.push(agentBody.trimEnd());
+        sections.push("```");
+        sections.push("");
+      } else {
+        sections.push(`## Target agent: \`${step.agent}\` \u2014 (no .md found)`);
+        sections.push("");
+      }
+    } else {
+      sections.push(
+        `> Note: step '${target.step}' not found in current contract. Proposing an add.`
+      );
+      sections.push("");
+    }
+  } else if (args.target.kind === "agent") {
+    const body = await tryLoadAssetBody([
+      join16(args.projectRoot, ".claude", "agents", `${args.target.name}.md`),
+      join16(args.pluginRoot, "agents", `${args.target.name}.md`)
+    ]);
+    sections.push(`## Target agent: \`${args.target.name}\``);
+    sections.push("```markdown");
+    sections.push((body ?? "(not found)").trimEnd());
+    sections.push("```");
+    sections.push("");
+  } else if (args.target.kind === "rule") {
+    const body = await tryLoadAssetBody([
+      join16(args.projectRoot, ".claude", "rules", `${args.target.name}.md`),
+      join16(args.pluginRoot, "rules", `${args.target.name}.md`)
+    ]);
+    sections.push(`## Target rule: \`${args.target.name}\``);
+    sections.push("```markdown");
+    sections.push((body ?? "(not found)").trimEnd());
+    sections.push("```");
+    sections.push("");
+  }
+  const rules = args.catalog.filter((e) => e.type === "rule").map((e) => e.name).sort();
+  const artifacts = await collectDeclaredArtifacts(args.projectRoot);
+  sections.push("## Catalog");
+  sections.push("");
+  sections.push("### Rules (by name)");
+  if (rules.length) {
+    for (const r of rules) sections.push(`- ${r}`);
+  } else {
+    sections.push("(none)");
+  }
+  sections.push("");
+  sections.push("### Declared artifacts (produces paths, project-wide)");
+  if (artifacts.length) {
+    for (const a of artifacts) sections.push(`- ${a}`);
+  } else {
+    sections.push("(none)");
+  }
+  sections.push("");
+  sections.push("## Protocol");
+  sections.push("");
+  sections.push(
+    [
+      "Converse with the user via AskUserQuestion. When ready, write an",
+      "array of self-contained step slices as JSON to the output path. Each",
+      "slice MUST include a `name`. For structural ops:",
+      "",
+      '- `"_delete": true` removes an existing step.',
+      '- `"_rename_from": "<old>"` renames (cross-step refs are rewritten).',
+      "",
+      'Optional top-level reorder: wrap in an object and add `"_order": [...]`.',
+      "",
+      "Slice schema matches `ContractStep`: name, agent, description, gate,",
+      "produces (string[]), context ({type: rule|artifact|file, ref}[]),",
+      "requires, chunked, script, script_fallback. Missing fields are",
+      "preserved from the current step (for updates/renames)."
+    ].join("\n")
+  );
+  sections.push("");
+  await fs18.writeFile(args.contextPath, sections.join("\n"), "utf8");
+}
+function describeTarget(t) {
+  switch (t.kind) {
+    case "workflow-step":
+      return `workflow '${t.workflow}', step '${t.step}'`;
+    case "workflow":
+      return `workflow '${t.workflow}' (whole)`;
+    case "agent":
+      return `agent '${t.name}'`;
+    case "rule":
+      return `rule '${t.name}'`;
+  }
+}
+async function tryLoadAssetBody(candidates) {
+  for (const p of candidates) {
+    try {
+      return await fs18.readFile(p, "utf8");
+    } catch {
+    }
+  }
+  return null;
+}
+async function collectDeclaredArtifacts(projectRoot) {
+  const dir = join16(projectRoot, ".claude", "ewh-workflows");
+  let entries;
+  try {
+    entries = await fs18.readdir(dir);
+  } catch {
+    return [];
+  }
+  const out = /* @__PURE__ */ new Set();
+  for (const name of entries) {
+    if (!name.endsWith(".json")) continue;
+    try {
+      const contract = await loadContract(join16(dir, name));
+      for (const step of contract.steps) {
+        for (const p of step.produces) out.add(p);
+      }
+    } catch {
+    }
+  }
+  return [...out].sort();
+}
+function buildModifyFerryInstruction(args) {
+  const body = [
+    "Tool: Agent",
+    "Args:",
+    "  subagent_type: ewh:design-facilitator",
+    "  prompt: |",
+    "    You are the EWH design-facilitator in modify mode. Your job is to",
+    "    converse with the user (via AskUserQuestion) about the target",
+    "    asset, then write an array of self-contained step slices to",
+    "    output_path.",
+    "",
+    `    target:           ${describeTarget(args.target)}`,
+    `    context_path:     ${args.contextPath}`,
+    `    output_path:      ${args.proposedPath}`,
+    "",
+    "    Read context_path first. It contains the current contract JSON,",
+    "    the target asset's body, and a catalog of available rules and",
+    "    declared artifacts. Follow the Protocol section verbatim.",
+    "",
+    '    Every AskUserQuestion MUST include a "propose now" option so the',
+    "    user can signal readiness at any turn.",
+    "",
+    "    When writing output_path, emit either:",
+    "      - a JSON array of slice objects, or",
+    '      - a JSON object `{ "steps": [...], "_order": [...] }`.',
+    "    Then list output_path under `files_modified:` and emit",
+    "    AGENT_COMPLETE.",
+    `  description: "design modify: ${describeTarget(args.target)}"`,
+    "",
+    `After the Agent tool returns, report: ewh report --run ${args.runId} --step 0 --result ${args.proposedPath}`
+  ].join("\n");
+  return {
+    kind: "tool-call",
+    body,
+    report_with: `ewh report --run ${args.runId} --step 0 --result ${args.proposedPath}`
+  };
+}
+async function continueModifyFerry(run, sub, report, opts) {
+  if (report.kind !== "result") {
+    throw new Error(
+      `design modify ferry: unexpected report kind '${report.kind}' (expected 'result')`
+    );
+  }
+  if (!report.result_path) {
+    throw new Error(`design modify ferry: expected --result <proposed.json>`);
+  }
+  if (!sub.contract_path || !sub.workflow_name) {
+    run.subcommand_state = void 0;
+    return {
+      kind: "done",
+      body: [
+        `ewh design modify: wrote proposed.json to ${sub.proposed_path}.`,
+        "",
+        "Agent/rule modifications are not yet auto-applied by the binary \u2014",
+        "inspect the proposed file and apply edits manually, or re-run",
+        "through `design` if the asset must change shape."
+      ].join("\n")
+    };
+  }
+  const current = await loadContract(sub.contract_path);
+  let diff;
+  let integrity;
+  try {
+    const raw = await fs18.readFile(sub.proposed_path, "utf8");
+    const parsed = parseProposedInput(JSON.parse(raw));
+    diff = diffContract(current, parsed);
+    integrity = await checkIntegrity(diff.merged, {
+      projectRoot: opts.projectRoot,
+      pluginRoot: opts.pluginRoot
+    });
+  } catch (err) {
+    run.subcommand_state = void 0;
+    return {
+      kind: "done",
+      body: `ewh design modify: proposed.json invalid: ${err instanceof Error ? err.message : String(err)}`
+    };
+  }
+  const summary = renderDiffSummary(diff, integrity);
+  const hasErrors = diff.errors.length > 0 || integrity.length > 0;
+  const lines = [];
+  lines.push(`EWH design modify \u2014 review (${describeTarget(sub.target)})`);
+  lines.push("");
+  lines.push(summary);
+  lines.push("");
+  if (hasErrors) {
+    lines.push("The proposal has issues listed above.");
+    lines.push("Approving will write the merged JSON even with these gaps.");
+    lines.push("Consider rejecting so the outer-session LLM can iterate.");
+    lines.push("");
+  }
+  lines.push("On approve: atomically update");
+  lines.push(`  - ${sub.contract_path}`);
+  lines.push(
+    `  - ${join16(".claude", "ewh-workflows", `${sub.workflow_name}.md`)}`
+  );
+  lines.push("On reject: discard proposed.json and re-run the ferry.");
+  lines.push("");
+  lines.push("Choose:");
+  lines.push(`  approve: ewh report --run ${run.run_id} --step 0 --decision yes`);
+  lines.push(`  reject:  ewh report --run ${run.run_id} --step 0 --decision no`);
+  const reviewState = {
+    kind: "design",
+    phase: "modify_review",
+    target: sub.target,
+    run_root: sub.run_root,
+    context_path: sub.context_path,
+    proposed_path: sub.proposed_path,
+    contract_path: sub.contract_path,
+    workflow_name: sub.workflow_name
+  };
+  run.subcommand_state = reviewState;
+  return {
+    kind: "user-prompt",
+    body: lines.join("\n"),
+    report_with: `ewh report --run ${run.run_id} --step 0 --decision yes`
+  };
+}
+async function continueModifyReview(run, sub, report, opts) {
+  if (report.kind !== "decision") {
+    throw new Error(
+      `design modify review: unexpected report kind '${report.kind}'`
+    );
+  }
+  if (report.decision === "no") {
+    try {
+      await fs18.unlink(sub.proposed_path);
+    } catch {
+    }
+    const ferryState = {
+      kind: "design",
+      phase: "modify_ferry",
+      target: sub.target,
+      run_root: sub.run_root,
+      context_path: sub.context_path,
+      proposed_path: sub.proposed_path,
+      contract_path: sub.contract_path,
+      workflow_name: sub.workflow_name
+    };
+    run.subcommand_state = ferryState;
+    return buildModifyFerryInstruction({
+      runId: run.run_id,
+      target: sub.target,
+      contextPath: sub.context_path,
+      proposedPath: sub.proposed_path
+    });
+  }
+  if (!sub.contract_path || !sub.workflow_name) {
+    throw new Error(
+      "design modify review: approve path requires contract_path and workflow_name"
+    );
+  }
+  const current = await loadContract(sub.contract_path);
+  const raw = await fs18.readFile(sub.proposed_path, "utf8");
+  const parsed = parseProposedInput(JSON.parse(raw));
+  const diff = diffContract(current, parsed);
+  const mdPath = join16(
+    opts.projectRoot,
+    ".claude",
+    "ewh-workflows",
+    `${sub.workflow_name}.md`
+  );
+  const mdBody = renderWorkflowMd(diff.merged);
+  await atomicWrite2(
+    sub.contract_path,
+    JSON.stringify(diff.merged, null, 2) + "\n"
+  );
+  await atomicWrite2(mdPath, mdBody);
+  run.subcommand_state = void 0;
+  const body = [
+    `Applied design modify to '${sub.workflow_name}':`,
+    renderDiffSummary(diff, []),
+    "",
+    `Wrote:`,
+    `  ~ ${sub.contract_path}`,
+    `  ~ ${mdPath}`
+  ].join("\n");
+  return { kind: "done", body };
+}
 async function atomicWrite2(dst, body) {
-  await fs17.mkdir(dirname6(dst), { recursive: true });
+  await fs18.mkdir(dirname6(dst), { recursive: true });
   const tmp = `${dst}.tmp-${randomBytes3(4).toString("hex")}`;
-  const fh = await fs17.open(tmp, "w");
+  const fh = await fs18.open(tmp, "w");
   try {
     await fh.writeFile(body, "utf8");
     await fh.sync();
   } finally {
     await fh.close();
   }
-  await fs17.rename(tmp, dst);
+  await fs18.rename(tmp, dst);
 }
 function renderAgentStub(agentName, stepDescription) {
   const fm = [
@@ -18295,9 +19163,9 @@ function renderAgentStub(agentName, stepDescription) {
 }
 
 // src/commands/manage.ts
-import { promises as fs18 } from "node:fs";
+import { promises as fs19 } from "node:fs";
 import { randomBytes as randomBytes4 } from "node:crypto";
-import { dirname as dirname7, join as join16 } from "node:path";
+import { dirname as dirname7, join as join17 } from "node:path";
 var FIELD_ORDER = [
   "context",
   "produces",
@@ -18358,7 +19226,7 @@ async function startManage(opts) {
     };
   }
   const draftPath = managePaths(opts.projectRoot, opts.runId).draft;
-  await fs18.mkdir(dirname7(draftPath), { recursive: true });
+  await fs19.mkdir(dirname7(draftPath), { recursive: true });
   await atomicWriteJson(draftPath, contract);
   const state = {
     kind: "manage",
@@ -18422,7 +19290,7 @@ async function continueManage(run, report, opts) {
   }
   const finalContract = await readDraft(sub.draft_path);
   await atomicWriteJson(sub.contract_path, finalContract);
-  const mdPath = join16(
+  const mdPath = join17(
     opts.projectRoot,
     ".claude",
     "ewh-workflows",
@@ -18471,7 +19339,7 @@ async function applyListOrEditReport(field, step, report) {
   }
   let raw;
   try {
-    raw = await fs18.readFile(report.result_path, "utf8");
+    raw = await fs19.readFile(report.result_path, "utf8");
   } catch (err) {
     return {
       ok: false,
@@ -18493,7 +19361,7 @@ async function applyListOrEditReport(field, step, report) {
     };
   }
   if (field === "context") {
-    const v2 = validateContextArray(parsed);
+    const v2 = validateContextArray2(parsed);
     if (!v2.ok) return { ok: false, errorNote: v2.error };
     step.context = v2.value;
     return { ok: true };
@@ -18504,7 +19372,7 @@ async function applyListOrEditReport(field, step, report) {
     step.produces = v2.value;
     return { ok: true };
   }
-  const v = validateRequiresArray(parsed);
+  const v = validateRequiresArray2(parsed);
   if (!v.ok) return { ok: false, errorNote: v.error };
   step.requires = v.value;
   return { ok: true };
@@ -18728,40 +19596,40 @@ function renderScriptFallbackPrompt(_sub, step, header, ctx) {
   };
 }
 async function readDraft(path2) {
-  const raw = await fs18.readFile(path2, "utf8");
+  const raw = await fs19.readFile(path2, "utf8");
   return JSON.parse(raw);
 }
 async function atomicWriteJson(path2, value) {
   await atomicWriteText(path2, JSON.stringify(value, null, 2) + "\n");
 }
 async function atomicWriteText(path2, body) {
-  await fs18.mkdir(dirname7(path2), { recursive: true });
+  await fs19.mkdir(dirname7(path2), { recursive: true });
   const tmp = `${path2}.tmp-${randomBytes4(4).toString("hex")}`;
-  const fh = await fs18.open(tmp, "w");
+  const fh = await fs19.open(tmp, "w");
   try {
     await fh.writeFile(body, "utf8");
     await fh.sync();
   } finally {
     await fh.close();
   }
-  await fs18.rename(tmp, path2);
+  await fs19.rename(tmp, path2);
 }
 function managePaths(projectRoot, runId) {
   const runRoot = runDir(projectRoot, runId);
-  return { runRoot, draft: join16(runRoot, "manage-draft.json") };
+  return { runRoot, draft: join17(runRoot, "manage-draft.json") };
 }
 function fieldEditPath(runRoot, stepIndex, field) {
-  return join16(runRoot, `manage-step-${stepIndex}-${field}.json`);
+  return join17(runRoot, `manage-step-${stepIndex}-${field}.json`);
 }
 async function listAvailableRules(projectRoot, pluginRoot) {
   const dirs = [
-    join16(pluginRoot, "rules"),
-    join16(projectRoot, ".claude", "rules")
+    join17(pluginRoot, "rules"),
+    join17(projectRoot, ".claude", "rules")
   ];
   const names = /* @__PURE__ */ new Set();
   for (const dir of dirs) {
     try {
-      await fs18.access(dir);
+      await fs19.access(dir);
     } catch {
       continue;
     }
@@ -18789,7 +19657,7 @@ function relativeToProject(projectRoot, path2) {
   if (path2.startsWith(projectRoot + "/")) return path2.slice(projectRoot.length + 1);
   return path2;
 }
-function validateContextArray(input) {
+function validateContextArray2(input) {
   if (!Array.isArray(input)) return { ok: false, error: "must be a JSON array" };
   const out = [];
   for (let i = 0; i < input.length; i++) {
@@ -18820,7 +19688,7 @@ function validateStringArray2(input, name) {
   }
   return { ok: true, value: out };
 }
-function validateRequiresArray(input) {
+function validateRequiresArray2(input) {
   if (!Array.isArray(input)) return { ok: false, error: "requires must be a JSON array" };
   const out = [];
   for (let i = 0; i < input.length; i++) {
@@ -18846,8 +19714,8 @@ function validateRequiresArray(input) {
 }
 
 // src/commands/expand-tools.ts
-import { promises as fs19 } from "node:fs";
-import { dirname as dirname8, join as join17 } from "node:path";
+import { promises as fs20 } from "node:fs";
+import { dirname as dirname8, join as join18 } from "node:path";
 async function startExpandTools(opts) {
   const toolsPath = toolsScratchPath(opts.projectRoot);
   const existing = await readExistingAgentTools(opts.projectRoot);
@@ -18982,13 +19850,13 @@ async function continueExpandTools(run, report, opts) {
   throw new Error(`expand-tools: unhandled phase ${sub.phase}`);
 }
 function toolsScratchPath(projectRoot) {
-  return join17(projectRoot, ".ewh-artifacts", "expand-tools-available.txt");
+  return join18(projectRoot, ".ewh-artifacts", "expand-tools-available.txt");
 }
 function proposalScratchPath(projectRoot) {
-  return join17(projectRoot, ".ewh-artifacts", "expand-tools-proposal.json");
+  return join18(projectRoot, ".ewh-artifacts", "expand-tools-proposal.json");
 }
 async function readProposal(path2) {
-  const content = await fs19.readFile(path2, "utf8");
+  const content = await fs20.readFile(path2, "utf8");
   const parsed = JSON.parse(content);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(`expand-tools proposal ${path2} is not a JSON object`);
@@ -19038,10 +19906,10 @@ async function generateAgentOverrides(projectRoot, pluginRoot, agents, merged) {
     if (!entry) continue;
     const baseTools = await readPluginAgentTools(pluginRoot, agent);
     const allTools = Array.from(/* @__PURE__ */ new Set([...baseTools, ...entry.add]));
-    const path2 = join17(projectRoot, ".claude", "agents", `${agent}.md`);
-    await fs19.mkdir(dirname8(path2), { recursive: true });
+    const path2 = join18(projectRoot, ".claude", "agents", `${agent}.md`);
+    await fs20.mkdir(dirname8(path2), { recursive: true });
     const content = buildOverrideFile(agent, allTools);
-    await fs19.writeFile(path2, content, "utf8");
+    await fs20.writeFile(path2, content, "utf8");
     out.push({ agent, path: path2, toolsAdded: entry.add.length });
   }
   return out;
@@ -19130,14 +19998,14 @@ function formatAge(iso, now) {
 
 // src/commands/report.ts
 import { parseArgs } from "node:util";
-import { join as join19 } from "node:path";
+import { join as join20 } from "node:path";
 
 // src/hooks/tool-use-log.ts
-import { promises as fs20 } from "node:fs";
+import { promises as fs21 } from "node:fs";
 async function readTurnLogSince(logPath, offset) {
   let buf;
   try {
-    const fh = await fs20.open(logPath, "r");
+    const fh = await fs21.open(logPath, "r");
     try {
       const stat = await fh.stat();
       const size = stat.size;
@@ -19193,8 +20061,8 @@ function compareDrift(expectedTool, entries) {
 }
 
 // src/commands/resume.ts
-import { promises as fs21 } from "node:fs";
-import { join as join18 } from "node:path";
+import { promises as fs22 } from "node:fs";
+import { join as join19 } from "node:path";
 var RESUMABLE_PHASES = /* @__PURE__ */ new Set([
   "pending",
   "gate_pending",
@@ -19281,8 +20149,8 @@ async function buildResumeInstruction(projectRoot, pluginRoot, runId) {
 async function emitResumePickGate(projectRoot, active, now) {
   const resumeRunId = newRunId();
   const rd = runDir(projectRoot, resumeRunId);
-  await fs21.mkdir(rd, { recursive: true });
-  const pickPath = join18(rd, "pick.txt");
+  await fs22.mkdir(rd, { recursive: true });
+  const pickPath = join19(rd, "pick.txt");
   const subState = {
     kind: "resume",
     phase: "resume_pick",
@@ -19338,7 +20206,7 @@ async function continueResume(run, report, ctx) {
   if (report.kind !== "result" || !report.result_path) {
     throw new Error("resume_pick: expected --result <path>");
   }
-  const raw = (await fs21.readFile(report.result_path, "utf8")).trim();
+  const raw = (await fs22.readFile(report.result_path, "utf8")).trim();
   if (!sub.active_ids.includes(raw)) {
     throw new Error(
       `'${raw}' is not in the active run list; expected one of: ${sub.active_ids.join(", ")}`
@@ -19407,7 +20275,7 @@ async function runReport(opts) {
       body: `Run ${run.run_id} aborted.`
     });
   }
-  const turnLogPath = join19(runDir(opts.projectRoot, run.run_id), "turn-log.jsonl");
+  const turnLogPath = join20(runDir(opts.projectRoot, run.run_id), "turn-log.jsonl");
   const { entries: logEntries, newOffset } = await readTurnLogSince(turnLogPath, run.turn_log_offset ?? 0);
   run.turn_log_offset = newOffset;
   if (run.last_instructed_tool) {
@@ -19648,8 +20516,8 @@ async function delegateAbort(opts, runId, stepIndex) {
 
 // src/commands/doctor.ts
 var import_yaml6 = __toESM(require_dist(), 1);
-import { promises as fs22 } from "node:fs";
-import { join as join20 } from "node:path";
+import { promises as fs23 } from "node:fs";
+import { join as join21 } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes as randomBytes5 } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -19700,7 +20568,7 @@ async function checkNodeVersion(pluginRoot) {
   let requiredMajor = null;
   try {
     const pkg = JSON.parse(
-      await fs22.readFile(join20(pluginRoot, "package.json"), "utf8")
+      await fs23.readFile(join21(pluginRoot, "package.json"), "utf8")
     );
     const spec = pkg.engines?.node;
     if (typeof spec === "string") {
@@ -19721,10 +20589,10 @@ async function checkNodeVersion(pluginRoot) {
   return { id: 1, label, status: "pass", detail: current };
 }
 async function checkBinaryPresent(pluginRoot) {
-  const path2 = join20(pluginRoot, "bin", "ewh.mjs");
+  const path2 = join21(pluginRoot, "bin", "ewh.mjs");
   const label = "binary present";
   try {
-    const st = await fs22.stat(path2);
+    const st = await fs23.stat(path2);
     if (!st.isFile()) {
       return { id: 2, label, status: "fail", issues: [`${path2}: not a regular file`] };
     }
@@ -19737,7 +20605,7 @@ async function checkBinaryPresent(pluginRoot) {
     };
   }
   try {
-    await fs22.access(path2, fs22.constants.X_OK);
+    await fs23.access(path2, fs23.constants.X_OK);
   } catch {
     return {
       id: 2,
@@ -19753,9 +20621,9 @@ async function checkPluginDirs(pluginRoot) {
   const required = ["workflows", "agents", "rules"];
   const issues = [];
   for (const name of required) {
-    const path2 = join20(pluginRoot, name);
+    const path2 = join21(pluginRoot, name);
     try {
-      const st = await fs22.stat(path2);
+      const st = await fs23.stat(path2);
       if (!st.isDirectory()) issues.push(`${name}/: not a directory`);
     } catch {
       issues.push(`${name}/: missing`);
@@ -19766,12 +20634,12 @@ async function checkPluginDirs(pluginRoot) {
 }
 async function checkArtifactsWritable(projectRoot) {
   const label = ".ewh-artifacts writable";
-  const dir = join20(projectRoot, ".ewh-artifacts");
-  const probe = join20(dir, `.doctor-probe-${randomBytes5(4).toString("hex")}`);
+  const dir = join21(projectRoot, ".ewh-artifacts");
+  const probe = join21(dir, `.doctor-probe-${randomBytes5(4).toString("hex")}`);
   try {
-    await fs22.mkdir(dir, { recursive: true });
-    await fs22.writeFile(probe, "doctor-probe\n", "utf8");
-    await fs22.unlink(probe);
+    await fs23.mkdir(dir, { recursive: true });
+    await fs23.writeFile(probe, "doctor-probe\n", "utf8");
+    await fs23.unlink(probe);
   } catch (err) {
     return { id: 4, label, status: "fail", issues: [errMsg(err)] };
   }
@@ -19779,10 +20647,10 @@ async function checkArtifactsWritable(projectRoot) {
 }
 async function checkEwhState(projectRoot) {
   const label = "ewh-state.json";
-  const path2 = join20(projectRoot, ".claude", "ewh-state.json");
+  const path2 = join21(projectRoot, ".claude", "ewh-state.json");
   let body;
   try {
-    body = await fs22.readFile(path2, "utf8");
+    body = await fs23.readFile(path2, "utf8");
   } catch (err) {
     if (errCode(err) === "ENOENT") {
       return { id: 5, label, status: "pass", detail: "not present" };
@@ -19798,9 +20666,9 @@ async function checkEwhState(projectRoot) {
 }
 async function checkHarnessConfig(projectRoot) {
   const label = "CLAUDE.md Harness Config";
-  const path2 = join20(projectRoot, "CLAUDE.md");
+  const path2 = join21(projectRoot, "CLAUDE.md");
   try {
-    const body = await fs22.readFile(path2, "utf8");
+    const body = await fs23.readFile(path2, "utf8");
     if (!/^##\s+Harness Config\b/m.test(body)) {
       return {
         id: 6,
@@ -19819,10 +20687,10 @@ async function checkHarnessConfig(projectRoot) {
 }
 async function checkHooksJson(pluginRoot) {
   const label = "hooks.json";
-  const path2 = join20(pluginRoot, "hooks", "hooks.json");
+  const path2 = join21(pluginRoot, "hooks", "hooks.json");
   let body;
   try {
-    body = await fs22.readFile(path2, "utf8");
+    body = await fs23.readFile(path2, "utf8");
   } catch (err) {
     if (errCode(err) === "ENOENT") {
       return { id: 7, label, status: "warn", issues: ["hooks/hooks.json missing"] };
@@ -19838,17 +20706,17 @@ async function checkHooksJson(pluginRoot) {
 }
 async function checkAgents(pluginRoot) {
   const label = "plugin agents";
-  const dir = join20(pluginRoot, "agents");
+  const dir = join21(pluginRoot, "agents");
   let entries;
   try {
-    entries = (await fs22.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs23.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 8, label, status: "fail", issues: ["agents/ directory missing"] };
   }
   const issues = [];
   for (const name of entries) {
-    const path2 = join20(dir, name);
-    const body = await fs22.readFile(path2, "utf8");
+    const path2 = join21(dir, name);
+    const body = await fs23.readFile(path2, "utf8");
     const fmErr = validateFrontmatter(body, ["name"]);
     if (fmErr) {
       issues.push(`agents/${name}: ${fmErr}`);
@@ -19863,17 +20731,17 @@ async function checkAgents(pluginRoot) {
 }
 async function checkRules(pluginRoot) {
   const label = "plugin rules";
-  const dir = join20(pluginRoot, "rules");
+  const dir = join21(pluginRoot, "rules");
   let entries;
   try {
-    entries = (await fs22.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs23.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 9, label, status: "fail", issues: ["rules/ directory missing"] };
   }
   const issues = [];
   for (const rel of entries) {
-    const path2 = join20(dir, rel);
-    const body = await fs22.readFile(path2, "utf8");
+    const path2 = join21(dir, rel);
+    const body = await fs23.readFile(path2, "utf8");
     const fmErr = validateFrontmatter(body, ["name"]);
     if (fmErr) issues.push(`rules/${rel}: ${fmErr}`);
   }
@@ -19882,21 +20750,21 @@ async function checkRules(pluginRoot) {
 }
 async function checkWorkflows(pluginRoot, projectRoot) {
   const label = "plugin workflows";
-  const dir = join20(pluginRoot, "workflows");
+  const dir = join21(pluginRoot, "workflows");
   let entries;
   try {
-    entries = (await fs22.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs23.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 10, label, status: "fail", issues: ["workflows/ directory missing"] };
   }
   const issues = [];
   for (const name of entries) {
-    const path2 = join20(dir, name);
+    const path2 = join21(dir, name);
     try {
       const wf = await loadWorkflow(path2);
       for (const step of wf.steps) {
         if (step.agent) {
-          const found = await fileExists(join20(projectRoot, ".claude", "agents", `${step.agent}.md`)) || await fileExists(join20(pluginRoot, "agents", `${step.agent}.md`));
+          const found = await fileExists(join21(projectRoot, ".claude", "agents", `${step.agent}.md`)) || await fileExists(join21(pluginRoot, "agents", `${step.agent}.md`));
           if (!found) {
             issues.push(
               `workflows/${name}: step '${step.name}' references missing agent '${step.agent}'`
@@ -19904,10 +20772,10 @@ async function checkWorkflows(pluginRoot, projectRoot) {
           }
         }
         for (const ruleName of step.rules ?? []) {
-          const pluginMatches = await findRuleFiles2(ruleName, join20(pluginRoot, "rules"));
+          const pluginMatches = await findRuleFiles2(ruleName, join21(pluginRoot, "rules"));
           const projectMatches = await findRuleFiles2(
             ruleName,
-            join20(projectRoot, ".claude", "rules")
+            join21(projectRoot, ".claude", "rules")
           );
           if (pluginMatches.length === 0 && projectMatches.length === 0) {
             issues.push(
@@ -19925,13 +20793,13 @@ async function checkWorkflows(pluginRoot, projectRoot) {
 }
 async function checkDesignSmoke(pluginRoot) {
   const label = "smoke: design session";
-  const bin = join20(pluginRoot, "bin", "ewh.mjs");
+  const bin = join21(pluginRoot, "bin", "ewh.mjs");
   try {
-    await fs22.access(bin, fs22.constants.R_OK);
+    await fs23.access(bin, fs23.constants.R_OK);
   } catch {
     return { id: 12, label, status: "fail", issues: [`${bin}: not readable (see check #2)`] };
   }
-  const projectDir = await fs22.mkdtemp(join20(tmpdir(), "ewh-smoke-design-"));
+  const projectDir = await fs23.mkdtemp(join21(tmpdir(), "ewh-smoke-design-"));
   const roots = ["--plugin-root", pluginRoot, "--project-root", projectDir];
   try {
     const s1 = await spawnCollect(
@@ -19972,8 +20840,8 @@ async function checkDesignSmoke(pluginRoot) {
         }
       ]
     };
-    await fs22.mkdir(join20(shapePath, ".."), { recursive: true });
-    await fs22.writeFile(shapePath, JSON.stringify(shape, null, 2), "utf8");
+    await fs23.mkdir(join21(shapePath, ".."), { recursive: true });
+    await fs23.writeFile(shapePath, JSON.stringify(shape, null, 2), "utf8");
     const s2 = await spawnCollect(
       process.execPath,
       [bin, "report", "--run", runId, "--step", "0", "--result", shapePath, ...roots],
@@ -20012,8 +20880,8 @@ async function checkDesignSmoke(pluginRoot) {
       };
     }
     const stagedContent = "---\nname: doctor-smoke-rule\ndescription: Doctor smoke test rule\n---\n\nDoctor smoke rule body.\n";
-    await fs22.mkdir(join20(stagedPath, ".."), { recursive: true });
-    await fs22.writeFile(stagedPath, stagedContent, "utf8");
+    await fs23.mkdir(join21(stagedPath, ".."), { recursive: true });
+    await fs23.writeFile(stagedPath, stagedContent, "utf8");
     const s4 = await spawnCollect(
       process.execPath,
       [bin, "report", "--run", runId, "--step", "0", "--result", stagedPath, ...roots],
@@ -20042,9 +20910,9 @@ async function checkDesignSmoke(pluginRoot) {
         issues: [`approve file gate: expected done, got exit=${s5.exitCode}: ${(s5.stderr || s5.stdout).trim().slice(0, 200)}`]
       };
     }
-    const finalPath = join20(projectDir, ".claude", "rules", "doctor-smoke-rule.md");
+    const finalPath = join21(projectDir, ".claude", "rules", "doctor-smoke-rule.md");
     try {
-      await fs22.access(finalPath);
+      await fs23.access(finalPath);
     } catch {
       return {
         id: 12,
@@ -20057,14 +20925,14 @@ async function checkDesignSmoke(pluginRoot) {
   } catch (err) {
     return { id: 12, label, status: "fail", issues: [errMsg(err)] };
   } finally {
-    await fs22.rm(projectDir, { recursive: true, force: true });
+    await fs23.rm(projectDir, { recursive: true, force: true });
   }
 }
 async function checkSmoke(pluginRoot) {
   const label = "smoke: ewh start list";
-  const bin = join20(pluginRoot, "bin", "ewh.mjs");
+  const bin = join21(pluginRoot, "bin", "ewh.mjs");
   try {
-    await fs22.access(bin, fs22.constants.R_OK);
+    await fs23.access(bin, fs23.constants.R_OK);
   } catch {
     return {
       id: 11,
@@ -20073,7 +20941,7 @@ async function checkSmoke(pluginRoot) {
       issues: [`${bin}: not readable (see check #2)`]
     };
   }
-  const projectDir = await fs22.mkdtemp(join20(tmpdir(), "ewh-smoke-"));
+  const projectDir = await fs23.mkdtemp(join21(tmpdir(), "ewh-smoke-"));
   try {
     const { stdout, stderr, exitCode } = await spawnCollect(
       process.execPath,
@@ -20103,7 +20971,7 @@ async function checkSmoke(pluginRoot) {
   } catch (err) {
     return { id: 11, label, status: "fail", issues: [errMsg(err)] };
   } finally {
-    await fs22.rm(projectDir, { recursive: true, force: true });
+    await fs23.rm(projectDir, { recursive: true, force: true });
   }
 }
 function spawnCollect(cmd, args, cwd, timeoutMs) {
@@ -20154,7 +21022,7 @@ function validateFrontmatter(raw, required) {
 async function findRuleFiles2(name, dir) {
   let entries;
   try {
-    entries = (await fs22.readdir(dir, { recursive: true })).map(String);
+    entries = (await fs23.readdir(dir, { recursive: true })).map(String);
   } catch {
     return [];
   }
@@ -20163,7 +21031,7 @@ async function findRuleFiles2(name, dir) {
 }
 async function fileExists(path2) {
   try {
-    await fs22.access(path2);
+    await fs23.access(path2);
     return true;
   } catch {
     return false;
@@ -20211,7 +21079,7 @@ async function runStart(opts) {
   const manageTasks = opts.manageTasks ?? inlineFlags.has("manage-tasks");
   const name = parsed.workflow;
   if (isBuiltinSubcommand(name)) {
-    const projectOverridePath = join21(
+    const projectOverridePath = join22(
       opts.projectRoot,
       ".claude",
       "workflows",
@@ -20348,7 +21216,7 @@ function isBuiltinSubcommand(name) {
 }
 async function fileExists2(path2) {
   try {
-    await fs23.access(path2);
+    await fs24.access(path2);
     return true;
   } catch {
     return false;
@@ -20554,11 +21422,11 @@ async function main2(argv) {
 
 // src/commands/record-tool-use.ts
 import { parseArgs as parseArgs3 } from "node:util";
-import { promises as fs24 } from "node:fs";
-import { join as join22 } from "node:path";
+import { promises as fs25 } from "node:fs";
+import { join as join23 } from "node:path";
 import { glob as glob2 } from "node:fs/promises";
 async function findActiveRunDir(projectRoot) {
-  const artifactsDir = join22(projectRoot, ".ewh-artifacts");
+  const artifactsDir = join23(projectRoot, ".ewh-artifacts");
   let matches = [];
   try {
     const iter = glob2("*/ACTIVE", { cwd: artifactsDir });
@@ -20571,7 +21439,7 @@ async function findActiveRunDir(projectRoot) {
   if (matches.length === 0) return null;
   const first = matches[0];
   const runDirName = first.split("/")[0];
-  return join22(artifactsDir, runDirName);
+  return join23(artifactsDir, runDirName);
 }
 async function readStdin() {
   const chunks = [];
@@ -20624,9 +21492,9 @@ async function main3(argv) {
   } else {
     return;
   }
-  const logPath = join22(runDir2, "turn-log.jsonl");
+  const logPath = join23(runDir2, "turn-log.jsonl");
   const line = JSON.stringify(record) + "\n";
-  await fs24.appendFile(logPath, line, "utf8");
+  await fs25.appendFile(logPath, line, "utf8");
 }
 
 // src/index.ts
