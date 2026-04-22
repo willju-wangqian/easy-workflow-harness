@@ -283,6 +283,25 @@ export type SubcommandState =
       workflow_name: string;
       shape_path: string;
       written?: string[];
+    }
+  // `manage <workflow>` — walk each step, asking about every runtime field.
+  // Ordering: context → produces → gate → requires → chunked → script →
+  // script_fallback. On completion, atomically write JSON and re-render md.
+  | {
+      kind: 'manage';
+      phase: 'field';
+      workflow_name: string;
+      contract_path: string;
+      draft_path: string;
+      step_index: number;
+      field:
+        | 'context'
+        | 'produces'
+        | 'gate'
+        | 'requires'
+        | 'chunked'
+        | 'script'
+        | 'script_fallback';
     };
 
 /**

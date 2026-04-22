@@ -18,6 +18,7 @@ import type { Instruction, Report, RunState } from '../state/types.js';
 import { continueCleanup } from './cleanup.js';
 import { continueInit } from './init.js';
 import { continueDesign } from './design.js';
+import { continueManage } from './manage.js';
 import { continueExpandTools } from './expand-tools.js';
 import { continueResume } from './resume.js';
 
@@ -209,6 +210,8 @@ async function dispatchSubcommandReport(
       return continueInit(run, report, ctx);
     case 'design':
       return continueDesign(run, report, ctx);
+    case 'manage':
+      return continueManage(run, report, ctx);
     case 'expand-tools':
       return continueExpandTools(run, report, ctx);
     case 'resume':

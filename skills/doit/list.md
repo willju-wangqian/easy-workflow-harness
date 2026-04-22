@@ -10,6 +10,7 @@ Subcommands (lightweight, interactive):
   /ewh:doit init                    — bootstrap project and show onboarding guide
   /ewh:doit cleanup                 — run user-configured cleanup tasks
   /ewh:doit design "<desc>"         — design a rule, agent, or workflow conversationally
+  /ewh:doit manage <workflow>       — fill runtime fields (context, produces, gate, …) for a workflow contract
   /ewh:doit expand-tools [desc]     — discover and assign agent tools
   /ewh:doit status                  — report in-flight runs from .ewh-artifacts/
   /ewh:doit resume [<run-id>]       — re-emit the stored instruction for a run
