@@ -137,6 +137,13 @@ export type Step = {
   reads?: string[];
   artifact?: string;
   context?: ContextRef[];
+  /**
+   * Typed context entries sourced from a JSON contract. When present,
+   * prompt-builder groups entries by type at assembly time: `rule` →
+   * Active Rules; `artifact` + `file` → Required Reading. Legacy YAML
+   * workflows leave this undefined and fall back to `rules` + `reads`.
+   */
+  context_entries?: import('../workflow/contract.js').ContextEntry[];
   // Parsed and stored; acted on in Phase 3+ (preconditions), Phase 4 (scripts), Phase 5 (chunked):
   requires?: unknown;
   chunked?: boolean;

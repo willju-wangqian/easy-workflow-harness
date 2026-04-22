@@ -53,8 +53,11 @@ export async function buildPrompt(params: {
   // 1. Agent template
   parts.push(agent.body);
 
-  // 2. Required Reading
-  const reads = step.reads ?? [];
+  // 2. Required Reading — typed context entries (JSON contract) take
+  //    precedence when present. Rule entries are skipped here (they
+  //    surface under ## Active Rules, loaded by the state machine);
+  //    artifact + file entries land in this section.
+  const reads = collectRequiredReading(step);
   if (reads.length > 0) {
     const paths = reads.map((r) => resolve(projectRoot, r));
     parts.push(
@@ -99,6 +102,24 @@ export async function buildPrompt(params: {
   await fs.writeFile(promptPath, promptContent, 'utf8');
 
   return { promptPath, resultPath };
+}
+
+/**
+ * Pick the paths that belong under ## Required Reading.
+ *
+ * When a step carries typed `context_entries` (JSON-contract path),
+ * the entries themselves are the source of truth: artifact + file refs
+ * flow into Required Reading; rule refs are handled separately via the
+ * `rules` parameter (loaded by the state machine). Legacy YAML workflows
+ * have no `context_entries` and fall back to `step.reads`.
+ */
+function collectRequiredReading(step: Step): string[] {
+  if (step.context_entries && step.context_entries.length > 0) {
+    return step.context_entries
+      .filter((e) => e.type === 'artifact' || e.type === 'file')
+      .map((e) => e.ref);
+  }
+  return step.reads ?? [];
 }
 
 function formatPriorStep(ref: ContextRef, summary: StepSummary): string {

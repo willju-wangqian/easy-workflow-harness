@@ -23,6 +23,11 @@ import {
   loadWorkflow,
   resolveWorkflowPath,
 } from '../workflow/parse.js';
+import {
+  loadContract,
+  resolveContractPath,
+} from '../workflow/contract-loader.js';
+import { contractToWorkflowDef } from '../workflow/contract-adapter.js';
 import { transitionStep, advanceRun, type TransitionOpts } from '../state/machine.js';
 import { readWorkflowSettings, writeWorkflowSettings, readArtifactRetention } from '../state/workflow-settings.js';
 import { formatInstruction } from '../instruction/emit.js';
@@ -124,12 +129,11 @@ export async function runStart(opts: StartOptions): Promise<string> {
     }
   }
 
-  const workflowPath = await resolveWorkflowPath(
+  const wf = await resolveWorkflow(
     opts.projectRoot,
     opts.pluginRoot,
     parsed.workflow,
   );
-  const wf = await loadWorkflow(workflowPath);
 
   const settings = await readWorkflowSettings(opts.projectRoot, wf.name);
 
@@ -273,6 +277,31 @@ async function fileExists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * JSON contract wins over YAML when both exist. The JSON path is the
+ * Session-2 target (`.claude/ewh-workflows/<name>.json`); the YAML path
+ * is the legacy pre-contract format, kept until Session 6 removes it.
+ */
+async function resolveWorkflow(
+  projectRoot: string,
+  pluginRoot: string,
+  name: string,
+) {
+  const contractPath = await resolveContractPath(projectRoot, name);
+  if (contractPath) {
+    process.stderr.write(
+      `[ewh] workflow '${name}' loaded from JSON contract (${contractPath})\n`,
+    );
+    const contract = await loadContract(contractPath);
+    return contractToWorkflowDef(contract);
+  }
+  const workflowPath = await resolveWorkflowPath(projectRoot, pluginRoot, name);
+  process.stderr.write(
+    `[ewh] workflow '${name}' loaded from YAML (${workflowPath})\n`,
+  );
+  return loadWorkflow(workflowPath);
 }
 
 async function runStatelessSubcommand(
