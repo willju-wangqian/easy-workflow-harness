@@ -21,6 +21,7 @@ export type LoadedAgent = {
   tools?: string[];
   maxTurns?: number;
   incremental?: boolean;
+  default_rules?: string[];
   body: string;
 };
 
@@ -56,6 +57,7 @@ function parseAgentFile(raw: string): LoadedAgent {
     tools: parseStringArray(fm.tools),
     maxTurns: typeof fm.maxTurns === 'number' ? fm.maxTurns : undefined,
     incremental: typeof fm.incremental === 'boolean' ? fm.incremental : undefined,
+    default_rules: parseStringArray(fm.default_rules),
     body: body.trim(),
   };
 }

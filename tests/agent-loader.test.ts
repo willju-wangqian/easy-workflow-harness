@@ -124,4 +124,24 @@ Agent body goes here.
     expect(agent.name).toBe('');
     expect(agent.body).toContain('name: badfm');
   });
+
+  it('parses default_rules when present', async () => {
+    await fs.writeFile(
+      join(pluginRoot, 'agents', 'withrules.md'),
+      `---\nname: withrules\ndefault_rules: [coding, testing]\n---\n\nbody`,
+      'utf8',
+    );
+    const agent = await loadAgent('withrules', pluginRoot, projectRoot);
+    expect(agent.default_rules).toEqual(['coding', 'testing']);
+  });
+
+  it('leaves default_rules undefined when absent', async () => {
+    await fs.writeFile(
+      join(pluginRoot, 'agents', 'norules.md'),
+      `---\nname: norules\n---\n\nbody`,
+      'utf8',
+    );
+    const agent = await loadAgent('norules', pluginRoot, projectRoot);
+    expect(agent.default_rules).toBeUndefined();
+  });
 });
