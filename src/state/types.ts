@@ -319,6 +319,15 @@ export type SubcommandState =
       contract_path: string | null;
       workflow_name: string | null;
     }
+  // `migrate` — one-shot conversion from legacy `.claude/workflows/*.md`
+  // (old YAML format) to `.claude/ewh-workflows/<name>.{md,json}` pairs.
+  // Single confirm gate: user sees the plan, approves yes/no, binary writes.
+  | {
+      kind: 'migrate';
+      phase: 'confirm';
+      /** Absolute paths to legacy YAML workflow files to convert. */
+      sources: string[];
+    }
   // `manage <workflow>` — walk each step, asking about every runtime field.
   // Ordering: context → produces → gate → requires → chunked → script →
   // script_fallback. On completion, atomically write JSON and re-render md.

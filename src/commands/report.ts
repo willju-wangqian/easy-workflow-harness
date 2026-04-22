@@ -19,6 +19,7 @@ import { continueCleanup } from './cleanup.js';
 import { continueInit } from './init.js';
 import { continueDesign } from './design.js';
 import { continueManage } from './manage.js';
+import { continueMigrate } from './migrate.js';
 import { continueExpandTools } from './expand-tools.js';
 import { continueResume } from './resume.js';
 
@@ -212,6 +213,8 @@ async function dispatchSubcommandReport(
       return continueDesign(run, report, ctx);
     case 'manage':
       return continueManage(run, report, ctx);
+    case 'migrate':
+      return continueMigrate(run, report, ctx);
     case 'expand-tools':
       return continueExpandTools(run, report, ctx);
     case 'resume':

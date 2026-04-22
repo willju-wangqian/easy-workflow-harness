@@ -1,16 +1,20 @@
 Easy Workflow Harness — Available Commands
 
-Workflows (multi-step, agent-driven):
-  /ewh:doit add-feature [desc]      — plan, implement, review, and test a new feature
-  /ewh:doit refine-feature [desc]   — scan, suggest, and apply improvements
-  /ewh:doit update-knowledge [desc] — update CLAUDE.md and project docs
-  /ewh:doit check-fact [desc]       — cross-validate docs against source code
+Workflows run from the project's .claude/ewh-workflows/<name>.json contract.
+Plugin workflows/ files are templates — run /ewh:doit design <name> to create
+your own pair, or /ewh:doit migrate to upgrade a legacy .claude/workflows/*.md
+tree.
+
+Example workflow templates shipped with the plugin (adopt via `design`):
+  add-feature, refine-feature, update-knowledge, check-fact
 
 Subcommands (lightweight, interactive):
   /ewh:doit init                    — bootstrap project and show onboarding guide
   /ewh:doit cleanup                 — run user-configured cleanup tasks
   /ewh:doit design "<desc>"         — design a rule, agent, or workflow conversationally
+  /ewh:doit design modify <target>  — modify an existing agent/rule or workflow step via LLM ferry
   /ewh:doit manage <workflow>       — fill runtime fields (context, produces, gate, …) for a workflow contract
+  /ewh:doit migrate                 — one-shot: .claude/workflows/*.md → .claude/ewh-workflows/*.{md,json}
   /ewh:doit expand-tools [desc]     — discover and assign agent tools
   /ewh:doit status                  — report in-flight runs from .ewh-artifacts/
   /ewh:doit resume [<run-id>]       — re-emit the stored instruction for a run

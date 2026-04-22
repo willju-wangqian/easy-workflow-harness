@@ -5,24 +5,22 @@
  * drives through any auto-completing steps, and emits the first instruction.
  * Output goes to stdout; errors to stderr with a non-zero exit.
  *
- * Name resolution (per spec §Migration Path):
- *   1. project override  — `.claude/workflows/<name>.md`
- *   2. builtin subcommand — list / init / cleanup / design / expand-tools
- *   3. plugin workflow    — `workflows/<name>.md`
+ * Name resolution (Context Contract):
+ *   1. project contract  — `.claude/ewh-workflows/<name>.json`
+ *   2. builtin subcommand — list / init / cleanup / design / manage / migrate /
+ *      expand-tools / doctor / status / resume / abort
+ *
+ * Plugin `workflows/` is templates-only; `design` reads them. A project that
+ * has no `.claude/ewh-workflows/<name>.json` cannot run the workflow directly
+ * — it must create one first via `design` (or `migrate` if upgrading).
  *
  * `--no-override` forces a builtin subcommand when a same-name project
- * workflow exists.
+ * contract exists.
  */
 
-import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { writeRunState, markActive, newRunId, clearActive, pruneOldRuns } from '../state/store.js';
 import { listCachedScripts } from '../scripts/cache.js';
-import {
-  loadWorkflow,
-  resolveWorkflowPath,
-} from '../workflow/parse.js';
 import {
   loadContract,
   resolveContractPath,
@@ -37,6 +35,7 @@ import { startCleanup } from './cleanup.js';
 import { startInit } from './init.js';
 import { startDesign } from './design.js';
 import { startManage } from './manage.js';
+import { startMigrate } from './migrate.js';
 import { startExpandTools } from './expand-tools.js';
 import { buildStatusBody } from './status.js';
 import { runAbort } from './abort.js';
@@ -50,6 +49,7 @@ export const BUILTIN_SUBCOMMANDS = [
   'create',
   'design',
   'manage',
+  'migrate',
   'expand-tools',
   'status',
   'resume',
@@ -110,17 +110,15 @@ export async function runStart(opts: StartOptions): Promise<string> {
   const noOverride = opts.noOverride ?? inlineFlags.has('no-override');
   const manageTasks = opts.manageTasks ?? inlineFlags.has('manage-tasks');
 
-  // Name resolution (spec §Migration Path):
-  //   project override  → builtin subcommand (with --no-override) → plugin workflow
+  // Name resolution (Context Contract):
+  //   project contract → builtin subcommand (with --no-override)
   const name = parsed.workflow;
   if (isBuiltinSubcommand(name)) {
-    const projectOverridePath = join(
+    const projectOverridePath = await resolveContractPath(
       opts.projectRoot,
-      '.claude',
-      'workflows',
-      `${name}.md`,
+      name,
     );
-    const hasProjectOverride = await fileExists(projectOverridePath);
+    const hasProjectOverride = projectOverridePath !== null;
     if (noOverride || !hasProjectOverride) {
       if (STATELESS_SUBCOMMANDS.has(name)) {
         return runStatelessSubcommand(name, stripFlags(parsed.rest), opts, {
@@ -272,38 +270,31 @@ export function isBuiltinSubcommand(name: string): name is BuiltinSubcommand {
   return (BUILTIN_SUBCOMMANDS as readonly string[]).includes(name);
 }
 
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await fs.access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
- * JSON contract wins over YAML when both exist. The JSON path is the
- * Session-2 target (`.claude/ewh-workflows/<name>.json`); the YAML path
- * is the legacy pre-contract format, kept until Session 6 removes it.
+ * Load a project workflow contract. Plugin `workflows/` is templates-only —
+ * the runtime never reads from it. A project without
+ * `.claude/ewh-workflows/<name>.json` cannot run that workflow until it
+ * creates one (via `design` or, if upgrading, `migrate`).
  */
 async function resolveWorkflow(
   projectRoot: string,
-  pluginRoot: string,
+  _pluginRoot: string,
   name: string,
 ) {
   const contractPath = await resolveContractPath(projectRoot, name);
-  if (contractPath) {
-    process.stderr.write(
-      `[ewh] workflow '${name}' loaded from JSON contract (${contractPath})\n`,
+  if (!contractPath) {
+    throw new Error(
+      [
+        `No contract found at .claude/ewh-workflows/${name}.json.`,
+        `Run /ewh:doit migrate if upgrading from the old format, or /ewh:doit design ${name} to create one.`,
+      ].join(' '),
     );
-    const contract = await loadContract(contractPath);
-    return contractToWorkflowDef(contract);
   }
-  const workflowPath = await resolveWorkflowPath(projectRoot, pluginRoot, name);
   process.stderr.write(
-    `[ewh] workflow '${name}' loaded from YAML (${workflowPath})\n`,
+    `[ewh] workflow '${name}' loaded from JSON contract (${contractPath})\n`,
   );
-  return loadWorkflow(workflowPath);
+  const contract = await loadContract(contractPath);
+  return contractToWorkflowDef(contract);
 }
 
 async function runStatelessSubcommand(
@@ -424,6 +415,15 @@ async function startSubcommandRun(
         pluginRoot: opts.pluginRoot,
         runId: run.run_id,
         workflowName: positionalRest.join(' ').trim(),
+      });
+      state = r.state;
+      instruction = r.instruction;
+      break;
+    }
+    case 'migrate': {
+      const r = await startMigrate({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot,
       });
       state = r.state;
       instruction = r.instruction;

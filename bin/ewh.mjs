@@ -7546,8 +7546,6 @@ var require_brace_expansion = __commonJS({
 });
 
 // src/commands/start.ts
-import { promises as fs24 } from "node:fs";
-import { join as join22 } from "node:path";
 import { parseArgs as parseArgs2 } from "node:util";
 
 // src/state/store.ts
@@ -7764,132 +7762,13 @@ async function listCachedScripts(projectRoot, workflow) {
   }
 }
 
-// src/workflow/parse.ts
-var import_yaml = __toESM(require_dist(), 1);
+// src/workflow/contract-loader.ts
 import { promises as fs3 } from "node:fs";
 import { join as join3 } from "node:path";
-async function resolveWorkflowPath(projectRoot, pluginRoot, name) {
-  const candidates = [
-    join3(projectRoot, ".claude", "workflows", `${name}.md`),
-    join3(pluginRoot, "workflows", `${name}.md`)
-  ];
-  for (const path2 of candidates) {
-    try {
-      await fs3.access(path2);
-      return path2;
-    } catch {
-    }
-  }
-  throw new Error(
-    `workflow '${name}' not found in ${candidates.join(" or ")}`
-  );
-}
-async function loadWorkflow(path2) {
-  const body = await fs3.readFile(path2, "utf8");
-  const { frontmatter, rest } = splitFrontmatter(body);
-  const fm = import_yaml.default.parse(frontmatter) ?? {};
-  const name = requireString(fm.name, "workflow frontmatter: name");
-  const steps = parseSteps(rest);
-  return {
-    name,
-    description: typeof fm.description === "string" ? fm.description : void 0,
-    trigger: typeof fm.trigger === "string" ? fm.trigger : void 0,
-    steps
-  };
-}
-function splitFrontmatter(body) {
-  if (!body.startsWith("---\n")) {
-    throw new Error("workflow file missing YAML frontmatter");
-  }
-  const end = body.indexOf("\n---\n", 4);
-  if (end === -1) {
-    throw new Error("workflow file has unterminated YAML frontmatter");
-  }
-  return {
-    frontmatter: body.slice(4, end),
-    rest: body.slice(end + 5)
-  };
-}
-function parseSteps(body) {
-  const headingMatch = body.match(/^##\s+Steps\b[^\n]*\n/m);
-  if (!headingMatch) {
-    throw new Error("workflow missing '## Steps' section");
-  }
-  const start = headingMatch.index + headingMatch[0].length;
-  const nextHeadingRel = body.slice(start).search(/^##\s+\S/m);
-  const sectionBody = nextHeadingRel === -1 ? body.slice(start) : body.slice(start, start + nextHeadingRel);
-  let parsed;
-  try {
-    parsed = import_yaml.default.parse(sectionBody);
-  } catch (err) {
-    throw new Error(
-      `workflow '## Steps' section is not valid YAML: ${err instanceof Error ? err.message : String(err)}`
-    );
-  }
-  if (!Array.isArray(parsed)) {
-    throw new Error(
-      "workflow '## Steps' section must be a YAML sequence of step mappings"
-    );
-  }
-  const steps = parsed.map((raw, i) => {
-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-      throw new Error(`step #${i + 1}: must be a YAML mapping`);
-    }
-    const r = raw;
-    return {
-      name: requireString(r.name, `step #${i + 1}: name`),
-      agent: typeof r.agent === "string" ? r.agent : void 0,
-      gate: r.gate === "structural" ? "structural" : "auto",
-      description: typeof r.description === "string" ? r.description : void 0,
-      message: typeof r.message === "string" ? r.message : void 0,
-      rules: parseStringArray(r.rules),
-      reads: parseStringArray(r.reads),
-      artifact: typeof r.artifact === "string" ? r.artifact : void 0,
-      context: parseContextRefs(r.context),
-      // Deferred fields — parsed and stored, acted on in Phase 3+ :
-      requires: r.requires ?? void 0,
-      chunked: typeof r.chunked === "boolean" ? r.chunked : void 0,
-      script: typeof r.script === "string" ? r.script : void 0,
-      script_fallback: r.script_fallback === "auto" ? "auto" : r.script_fallback === "gate" ? "gate" : void 0,
-      state: { phase: "pending" }
-    };
-  });
-  if (steps.length === 0) {
-    throw new Error("workflow '## Steps' section has no steps");
-  }
-  return steps;
-}
-function requireString(v, ctx) {
-  if (typeof v !== "string" || v.length === 0) {
-    throw new Error(`${ctx} must be a non-empty string`);
-  }
-  return v;
-}
-function parseStringArray(v) {
-  if (!Array.isArray(v)) return void 0;
-  const items = v.filter((x) => typeof x === "string");
-  return items.length > 0 ? items : void 0;
-}
-function parseContextRefs(v) {
-  if (!Array.isArray(v) || v.length === 0) return void 0;
-  const refs = [];
-  for (const item of v) {
-    if (item === null || typeof item !== "object" || Array.isArray(item)) continue;
-    const r = item;
-    if (typeof r.step !== "string") continue;
-    const detail = r.detail === "raw" || r.detail === "full" || r.detail === "summary" ? r.detail : "summary";
-    refs.push({ step: r.step, detail });
-  }
-  return refs.length > 0 ? refs : void 0;
-}
-
-// src/workflow/contract-loader.ts
-import { promises as fs4 } from "node:fs";
-import { join as join4 } from "node:path";
 async function loadContract(path2) {
   let raw;
   try {
-    raw = await fs4.readFile(path2, "utf8");
+    raw = await fs3.readFile(path2, "utf8");
   } catch (err) {
     throw new Error(
       `contract '${path2}' could not be read: ${err instanceof Error ? err.message : String(err)}`
@@ -7906,9 +7785,9 @@ async function loadContract(path2) {
   return validateContract(data, path2);
 }
 async function resolveContractPath(projectRoot, name) {
-  const path2 = join4(projectRoot, ".claude", "ewh-workflows", `${name}.json`);
+  const path2 = join3(projectRoot, ".claude", "ewh-workflows", `${name}.json`);
   try {
-    await fs4.access(path2);
+    await fs3.access(path2);
     return path2;
   } catch {
     return null;
@@ -8074,8 +7953,8 @@ function cloneEntry(e) {
 }
 
 // src/state/machine.ts
-import { join as join10, resolve as resolve6, dirname as dirname5 } from "node:path";
-import { promises as fs12 } from "node:fs";
+import { join as join9, resolve as resolve6, dirname as dirname5 } from "node:path";
+import { promises as fs11 } from "node:fs";
 import { exec as execCb } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -8089,18 +7968,18 @@ function checkSentinel(content, scanLines = DEFAULT_SCAN_LINES) {
 }
 
 // src/workflow/agent-loader.ts
-var import_yaml2 = __toESM(require_dist(), 1);
-import { promises as fs5 } from "node:fs";
-import { join as join5 } from "node:path";
+var import_yaml = __toESM(require_dist(), 1);
+import { promises as fs4 } from "node:fs";
+import { join as join4 } from "node:path";
 async function loadAgent(agentName, pluginRoot, projectRoot) {
   const candidates = [
-    join5(projectRoot, ".claude", "agents", `${agentName}.md`),
-    join5(pluginRoot, "agents", `${agentName}.md`)
+    join4(projectRoot, ".claude", "agents", `${agentName}.md`),
+    join4(pluginRoot, "agents", `${agentName}.md`)
   ];
   for (const path2 of candidates) {
     try {
-      await fs5.access(path2);
-      return parseAgentFile(await fs5.readFile(path2, "utf8"));
+      await fs4.access(path2);
+      return parseAgentFile(await fs4.readFile(path2, "utf8"));
     } catch {
     }
   }
@@ -8109,17 +7988,73 @@ async function loadAgent(agentName, pluginRoot, projectRoot) {
   );
 }
 function parseAgentFile(raw) {
+  const { frontmatter, body } = splitFrontmatter(raw);
+  const fm = import_yaml.default.parse(frontmatter) ?? {};
+  return {
+    name: typeof fm.name === "string" ? fm.name : "",
+    description: typeof fm.description === "string" ? fm.description : void 0,
+    model: typeof fm.model === "string" ? fm.model : void 0,
+    tools: parseStringArray(fm.tools),
+    maxTurns: typeof fm.maxTurns === "number" ? fm.maxTurns : void 0,
+    incremental: typeof fm.incremental === "boolean" ? fm.incremental : void 0,
+    default_rules: parseStringArray(fm.default_rules),
+    body: body.trim()
+  };
+}
+function splitFrontmatter(raw) {
+  if (!raw.startsWith("---\n")) return { frontmatter: "", body: raw };
+  const end = raw.indexOf("\n---\n", 4);
+  if (end === -1) return { frontmatter: "", body: raw };
+  return { frontmatter: raw.slice(4, end), body: raw.slice(end + 5) };
+}
+function parseStringArray(v) {
+  if (!Array.isArray(v)) return void 0;
+  const items = v.filter((x) => typeof x === "string");
+  return items.length > 0 ? items : void 0;
+}
+
+// src/workflow/rule-loader.ts
+var import_yaml2 = __toESM(require_dist(), 1);
+import { promises as fs5 } from "node:fs";
+import { join as join5 } from "node:path";
+async function loadRulesForStep(ruleNames, pluginRoot, projectRoot) {
+  const results = [];
+  for (const name of ruleNames) {
+    const pluginMatches = await findRuleFiles(name, join5(pluginRoot, "rules"));
+    const projectMatches = await findRuleFiles(
+      name,
+      join5(projectRoot, ".claude", "rules")
+    );
+    for (const path2 of [...pluginMatches, ...projectMatches]) {
+      results.push(await loadRuleFile(path2));
+    }
+  }
+  return results;
+}
+async function findRuleFiles(name, dir) {
+  let entries;
+  try {
+    const raw = await fs5.readdir(dir, { recursive: true });
+    entries = raw.map(String);
+  } catch {
+    return [];
+  }
+  const target = `${name}.md`;
+  return entries.filter((e) => e === target || e.endsWith(`/${target}`)).sort().map((e) => join5(dir, e));
+}
+async function loadRuleFile(path2) {
+  const raw = await fs5.readFile(path2, "utf8");
   const { frontmatter, body } = splitFrontmatter2(raw);
   const fm = import_yaml2.default.parse(frontmatter) ?? {};
   return {
     name: typeof fm.name === "string" ? fm.name : "",
     description: typeof fm.description === "string" ? fm.description : void 0,
-    model: typeof fm.model === "string" ? fm.model : void 0,
-    tools: parseStringArray2(fm.tools),
-    maxTurns: typeof fm.maxTurns === "number" ? fm.maxTurns : void 0,
-    incremental: typeof fm.incremental === "boolean" ? fm.incremental : void 0,
-    default_rules: parseStringArray2(fm.default_rules),
-    body: body.trim()
+    severity: typeof fm.severity === "string" ? fm.severity : void 0,
+    scope: parseStringArray2(fm.scope),
+    inject_into: parseStringArray2(fm.inject_into),
+    verify: fm.verify === null ? null : typeof fm.verify === "string" ? fm.verify : void 0,
+    body: body.trim(),
+    path: path2
   };
 }
 function splitFrontmatter2(raw) {
@@ -8134,69 +8069,13 @@ function parseStringArray2(v) {
   return items.length > 0 ? items : void 0;
 }
 
-// src/workflow/rule-loader.ts
-var import_yaml3 = __toESM(require_dist(), 1);
+// src/workflow/harness-config.ts
 import { promises as fs6 } from "node:fs";
 import { join as join6 } from "node:path";
-async function loadRulesForStep(ruleNames, pluginRoot, projectRoot) {
-  const results = [];
-  for (const name of ruleNames) {
-    const pluginMatches = await findRuleFiles(name, join6(pluginRoot, "rules"));
-    const projectMatches = await findRuleFiles(
-      name,
-      join6(projectRoot, ".claude", "rules")
-    );
-    for (const path2 of [...pluginMatches, ...projectMatches]) {
-      results.push(await loadRuleFile(path2));
-    }
-  }
-  return results;
-}
-async function findRuleFiles(name, dir) {
-  let entries;
-  try {
-    const raw = await fs6.readdir(dir, { recursive: true });
-    entries = raw.map(String);
-  } catch {
-    return [];
-  }
-  const target = `${name}.md`;
-  return entries.filter((e) => e === target || e.endsWith(`/${target}`)).sort().map((e) => join6(dir, e));
-}
-async function loadRuleFile(path2) {
-  const raw = await fs6.readFile(path2, "utf8");
-  const { frontmatter, body } = splitFrontmatter3(raw);
-  const fm = import_yaml3.default.parse(frontmatter) ?? {};
-  return {
-    name: typeof fm.name === "string" ? fm.name : "",
-    description: typeof fm.description === "string" ? fm.description : void 0,
-    severity: typeof fm.severity === "string" ? fm.severity : void 0,
-    scope: parseStringArray3(fm.scope),
-    inject_into: parseStringArray3(fm.inject_into),
-    verify: fm.verify === null ? null : typeof fm.verify === "string" ? fm.verify : void 0,
-    body: body.trim(),
-    path: path2
-  };
-}
-function splitFrontmatter3(raw) {
-  if (!raw.startsWith("---\n")) return { frontmatter: "", body: raw };
-  const end = raw.indexOf("\n---\n", 4);
-  if (end === -1) return { frontmatter: "", body: raw };
-  return { frontmatter: raw.slice(4, end), body: raw.slice(end + 5) };
-}
-function parseStringArray3(v) {
-  if (!Array.isArray(v)) return void 0;
-  const items = v.filter((x) => typeof x === "string");
-  return items.length > 0 ? items : void 0;
-}
-
-// src/workflow/harness-config.ts
-import { promises as fs7 } from "node:fs";
-import { join as join7 } from "node:path";
 async function loadHarnessConfig(projectRoot) {
   let content;
   try {
-    content = await fs7.readFile(join7(projectRoot, "CLAUDE.md"), "utf8");
+    content = await fs6.readFile(join6(projectRoot, "CLAUDE.md"), "utf8");
   } catch {
     return void 0;
   }
@@ -8216,8 +8095,8 @@ function escapeRegex(s) {
 }
 
 // src/workflow/prompt-builder.ts
-import { promises as fs8 } from "node:fs";
-import { join as join8, resolve as resolve3 } from "node:path";
+import { promises as fs7 } from "node:fs";
+import { join as join7, resolve as resolve3 } from "node:path";
 async function buildPrompt(params) {
   const {
     step,
@@ -8272,10 +8151,10 @@ ${taskBody}${artifactNote}`);
 ${harnessConfig}`);
   }
   const promptContent = parts.join("\n\n") + "\n";
-  const promptPath = join8(runDirPath, `step-${stepIndex}-prompt.md`);
-  const resultPath = join8(runDirPath, `step-${stepIndex}-output.md`);
-  await fs8.mkdir(runDirPath, { recursive: true });
-  await fs8.writeFile(promptPath, promptContent, "utf8");
+  const promptPath = join7(runDirPath, `step-${stepIndex}-prompt.md`);
+  const resultPath = join7(runDirPath, `step-${stepIndex}-output.md`);
+  await fs7.mkdir(runDirPath, { recursive: true });
+  await fs7.writeFile(promptPath, promptContent, "utf8");
   return { promptPath, resultPath };
 }
 function collectRequiredReading(step) {
@@ -8351,21 +8230,21 @@ async function evaluateScript(projectRoot, workflow, step) {
 }
 
 // src/state/workflow-settings.ts
-import { promises as fs9 } from "node:fs";
-import { join as join9, dirname as dirname3 } from "node:path";
+import { promises as fs8 } from "node:fs";
+import { join as join8, dirname as dirname3 } from "node:path";
 import { randomBytes as randomBytes2 } from "node:crypto";
 var DEFAULTS = {
   auto_structural: false,
   max_error_retries: 2
 };
-var STATE_FILE = join9(".claude", "ewh-state.json");
+var STATE_FILE = join8(".claude", "ewh-state.json");
 function ewhStatePath(projectRoot) {
-  return join9(projectRoot, STATE_FILE);
+  return join8(projectRoot, STATE_FILE);
 }
 async function readEwhStateFile(projectRoot) {
   const path2 = ewhStatePath(projectRoot);
   try {
-    const content = await fs9.readFile(path2, "utf8");
+    const content = await fs8.readFile(path2, "utf8");
     return JSON.parse(content);
   } catch {
     return {};
@@ -8404,16 +8283,16 @@ async function readArtifactRetention(projectRoot) {
   return { maxRuns };
 }
 async function atomicWriteStateFile(path2, raw) {
-  await fs9.mkdir(dirname3(path2), { recursive: true });
+  await fs8.mkdir(dirname3(path2), { recursive: true });
   const tmp = `${path2}.tmp-${randomBytes2(4).toString("hex")}`;
-  const fh = await fs9.open(tmp, "w");
+  const fh = await fs8.open(tmp, "w");
   try {
     await fh.writeFile(JSON.stringify(raw, null, 2), "utf8");
     await fh.sync();
   } finally {
     await fh.close();
   }
-  await fs9.rename(tmp, path2);
+  await fs8.rename(tmp, path2);
 }
 
 // node_modules/glob/node_modules/minimatch/dist/esm/index.js
@@ -15050,16 +14929,16 @@ function parsePatternsContent(content) {
 }
 
 // src/chunking/merge.ts
-import { promises as fs10 } from "node:fs";
+import { promises as fs9 } from "node:fs";
 import { dirname as dirname4, resolve as resolve5 } from "node:path";
 var INCREMENTAL_ANCHOR = "<!-- EWH_APPEND_HERE -->";
 async function writeIncrementalAnchor(chunkArtifactPath, header) {
-  await fs10.mkdir(dirname4(chunkArtifactPath), { recursive: true });
+  await fs9.mkdir(dirname4(chunkArtifactPath), { recursive: true });
   const body = `${header.trimEnd()}
 
 ${INCREMENTAL_ANCHOR}
 `;
-  await fs10.writeFile(chunkArtifactPath, body, "utf8");
+  await fs9.writeFile(chunkArtifactPath, body, "utf8");
 }
 async function mergeChunkArtifacts(params) {
   const { chunkArtifactPaths, targetArtifact, projectRoot, incremental } = params;
@@ -15071,7 +14950,7 @@ async function mergeChunkArtifacts(params) {
     const path2 = chunkArtifactPaths[i];
     let body;
     try {
-      body = await fs10.readFile(path2, "utf8");
+      body = await fs9.readFile(path2, "utf8");
       present += 1;
     } catch {
       body = `_(chunk ${i + 1}: no output on disk)_
@@ -15085,8 +14964,8 @@ ${body.trimEnd()}
 `);
   }
   const merged = parts.join("\n");
-  await fs10.mkdir(dirname4(absTarget), { recursive: true });
-  await fs10.writeFile(absTarget, merged, "utf8");
+  await fs9.mkdir(dirname4(absTarget), { recursive: true });
+  await fs9.writeFile(absTarget, merged, "utf8");
   return { mergedPath: absTarget, present, missing };
 }
 
@@ -15102,9 +14981,9 @@ function detectListItems(partial) {
 }
 
 // src/continuation/build-prompt.ts
-import { promises as fs11 } from "node:fs";
+import { promises as fs10 } from "node:fs";
 async function buildContinuationPrompt(params) {
-  const original = await fs11.readFile(params.originalPromptPath, "utf8");
+  const original = await fs10.readFile(params.originalPromptPath, "utf8");
   return [
     original.trimEnd(),
     ``,
@@ -15121,7 +15000,7 @@ async function buildContinuationPrompt(params) {
   ].join("\n") + "\n";
 }
 async function buildSplitChunkPrompt(params) {
-  const original = await fs11.readFile(params.originalPromptPath, "utf8");
+  const original = await fs10.readFile(params.originalPromptPath, "utf8");
   const { items, chunkIndex, totalChunks } = params;
   if (items.length === 0) {
     return original;
@@ -15272,7 +15151,7 @@ function generateScriptTemplate(step, workflow) {
 function enterScriptPropose(step, run, opts) {
   const template = generateScriptTemplate(step, run.workflow);
   const rationale = `Step has an agent but no reads/artifact/context \u2014 eligible for scripting.`;
-  const proposedPath = join10(
+  const proposedPath = join9(
     runDir(opts.projectRoot, run.run_id),
     `step-${run.current_step_index}-script-proposal.sh`
   );
@@ -15320,7 +15199,7 @@ async function handleScriptProposeReport(step, state, event, run, opts) {
   }
   let scriptBody = state.script;
   try {
-    scriptBody = await fs12.readFile(state.proposed_path, "utf8");
+    scriptBody = await fs11.readFile(state.proposed_path, "utf8");
   } catch {
   }
   const hash = hashStep(step);
@@ -15517,7 +15396,7 @@ async function handleAgentRunReport(step, state, event, run, opts) {
   const resultPath = event.report.result_path ?? state.result_path;
   let content;
   try {
-    content = await fs12.readFile(resultPath, "utf8");
+    content = await fs11.readFile(resultPath, "utf8");
   } catch (err) {
     return {
       next: state,
@@ -15670,19 +15549,19 @@ async function enterChunkPlan(step, run, opts) {
     return beginChunkRunning(step, cached, run, opts);
   }
   const rdPath = runDir(opts.projectRoot, run.run_id);
-  const patternsPath = join10(
+  const patternsPath = join9(
     rdPath,
     `step-${run.current_step_index}-chunk-patterns.json`
   );
-  await fs12.mkdir(rdPath, { recursive: true });
+  await fs11.mkdir(rdPath, { recursive: true });
   try {
-    await fs12.access(patternsPath);
+    await fs11.access(patternsPath);
   } catch {
     const example = {
       include: ["src/**/*.ts"],
       exclude: ["**/node_modules/**"]
     };
-    await fs12.writeFile(patternsPath, JSON.stringify(example, null, 2) + "\n", "utf8");
+    await fs11.writeFile(patternsPath, JSON.stringify(example, null, 2) + "\n", "utf8");
   }
   const runId = run.run_id;
   const stepIdx = run.current_step_index;
@@ -15726,7 +15605,7 @@ async function handleChunkPlanEvent(step, event, run, opts) {
   }
   let raw;
   try {
-    raw = await fs12.readFile(patternsPath, "utf8");
+    raw = await fs11.readFile(patternsPath, "utf8");
   } catch (err) {
     return {
       next: { phase: "chunk_plan" },
@@ -15778,13 +15657,13 @@ async function beginChunkRunning(step, patterns, run, opts) {
   const rdPath = runDir(opts.projectRoot, run.run_id);
   const stepIdx = run.current_step_index;
   const chunk_prompt_paths = chunks.map(
-    (_c, i) => join10(rdPath, `step-${stepIdx}-chunk-${i + 1}-prompt.md`)
+    (_c, i) => join9(rdPath, `step-${stepIdx}-chunk-${i + 1}-prompt.md`)
   );
   const chunk_result_paths = chunks.map(
-    (_c, i) => join10(rdPath, `step-${stepIdx}-chunk-${i + 1}-output.md`)
+    (_c, i) => join9(rdPath, `step-${stepIdx}-chunk-${i + 1}-output.md`)
   );
   const chunk_artifact_paths = chunks.map(
-    (_c, i) => join10(rdPath, `step-${stepIdx}-chunk-${i + 1}-artifact.md`)
+    (_c, i) => join9(rdPath, `step-${stepIdx}-chunk-${i + 1}-artifact.md`)
   );
   const { agent, loadedRules } = await loadAgentAndRules(step, run, opts);
   const rules = loadedRules.map((r) => ({
@@ -15880,7 +15759,7 @@ async function handleChunkRunningEvent(step, state, event, run, opts) {
   const resultPath = event.report.result_path ?? state.chunk_result_paths[idx];
   let content;
   try {
-    content = await fs12.readFile(resultPath, "utf8");
+    content = await fs11.readFile(resultPath, "utf8");
   } catch (err) {
     return {
       next: state,
@@ -15992,10 +15871,10 @@ async function buildChunkInstruction(step, state, idx, run, opts, extra) {
     // The default naming in buildPrompt is step-N-prompt.md; we route into
     // per-chunk paths manually below by writing to the desired path after.
   });
-  const defaultPromptPath = join10(rdPath, `step-${stepIdx}-prompt.md`);
+  const defaultPromptPath = join9(rdPath, `step-${stepIdx}-prompt.md`);
   try {
-    const body = await fs12.readFile(defaultPromptPath, "utf8");
-    await fs12.writeFile(promptPath, body, "utf8");
+    const body = await fs11.readFile(defaultPromptPath, "utf8");
+    await fs11.writeFile(promptPath, body, "utf8");
   } catch {
   }
   const toolsList = agent.tools ? agent.tools.join(", ") : "default";
@@ -16047,14 +15926,14 @@ function buildChunkDescription(step, idx, total, files, artifactPath, incrementa
 async function enterContinuation(step, agentRunState, partialPath, partialOutput, run, opts) {
   const rdPath = runDir(opts.projectRoot, run.run_id);
   const stepIdx = run.current_step_index;
-  await fs12.mkdir(rdPath, { recursive: true });
-  const continuationPromptPath = join10(rdPath, `step-${stepIdx}-continuation-prompt.md`);
-  const continuationResultPath = join10(rdPath, `step-${stepIdx}-continuation-output.md`);
+  await fs11.mkdir(rdPath, { recursive: true });
+  const continuationPromptPath = join9(rdPath, `step-${stepIdx}-continuation-prompt.md`);
+  const continuationResultPath = join9(rdPath, `step-${stepIdx}-continuation-output.md`);
   const promptContent = await buildContinuationPrompt({
     originalPromptPath: agentRunState.prompt_path,
     partialOutput
   });
-  await fs12.writeFile(continuationPromptPath, promptContent, "utf8");
+  await fs11.writeFile(continuationPromptPath, promptContent, "utf8");
   const next = {
     phase: "continuation",
     partial_path: partialPath,
@@ -16117,7 +15996,7 @@ async function handleContinuationEvent(step, state, event, run, opts) {
   const resultPath = event.report.result_path ?? state.continuation_result_path;
   let content;
   try {
-    content = await fs12.readFile(resultPath, "utf8");
+    content = await fs11.readFile(resultPath, "utf8");
   } catch {
     return enterSplit(step, state, run, opts);
   }
@@ -16135,10 +16014,10 @@ async function handleContinuationEvent(step, state, event, run, opts) {
 async function enterSplit(step, contState, run, opts) {
   const rdPath = runDir(opts.projectRoot, run.run_id);
   const stepIdx = run.current_step_index;
-  await fs12.mkdir(rdPath, { recursive: true });
+  await fs11.mkdir(rdPath, { recursive: true });
   let partial = "";
   try {
-    partial = await fs12.readFile(contState.partial_path, "utf8");
+    partial = await fs11.readFile(contState.partial_path, "utf8");
   } catch {
   }
   const items = detectListItems(partial);
@@ -16146,8 +16025,8 @@ async function enterSplit(step, contState, run, opts) {
   const chunks = itemGroups.map((chunkItems, i) => ({
     index: i,
     items: chunkItems,
-    prompt_path: join10(rdPath, `step-${stepIdx}-split-${i + 1}-prompt.md`),
-    result_path: join10(rdPath, `step-${stepIdx}-split-${i + 1}-output.md`)
+    prompt_path: join9(rdPath, `step-${stepIdx}-split-${i + 1}-prompt.md`),
+    result_path: join9(rdPath, `step-${stepIdx}-split-${i + 1}-output.md`)
   }));
   await Promise.all(
     chunks.map(
@@ -16156,7 +16035,7 @@ async function enterSplit(step, contState, run, opts) {
         items: chunk.items,
         chunkIndex: chunk.index,
         totalChunks: chunks.length
-      }).then((content) => fs12.writeFile(chunk.prompt_path, content, "utf8"))
+      }).then((content) => fs11.writeFile(chunk.prompt_path, content, "utf8"))
     )
   );
   const next = {
@@ -16240,7 +16119,7 @@ async function handleSplitEvent(step, state, event, run, opts) {
   const resultPath = event.report.result_path ?? chunk.result_path;
   let content;
   try {
-    content = await fs12.readFile(resultPath, "utf8");
+    content = await fs11.readFile(resultPath, "utf8");
   } catch (err) {
     return {
       next: state,
@@ -16303,7 +16182,7 @@ async function executeSplitMerge(step, state, run, opts) {
     const chunk = state.chunks[i];
     let body;
     try {
-      body = await fs12.readFile(chunk.result_path, "utf8");
+      body = await fs11.readFile(chunk.result_path, "utf8");
       body = body.split("\n").filter((l) => l.trim() !== SENTINEL).join("\n").trimEnd();
       present += 1;
     } catch {
@@ -16318,8 +16197,8 @@ ${body}
   const merged = parts.join("\n");
   if (step.artifact) {
     const absTarget = resolve6(opts.projectRoot, step.artifact);
-    await fs12.mkdir(dirname5(absTarget), { recursive: true });
-    await fs12.writeFile(absTarget, merged, "utf8");
+    await fs11.mkdir(dirname5(absTarget), { recursive: true });
+    await fs11.writeFile(absTarget, merged, "utf8");
   }
   const mergeNote = step.artifact ? `split results merged \u2192 ${step.artifact} (${present} present, ${missing} missing)` : `split results combined (${present} present, ${missing} missing; no artifact declared)`;
   const summary = {
@@ -16335,7 +16214,7 @@ async function enterArtifactVerify(step, rules, summary, run, opts) {
   }
   const artifactPath = resolve6(opts.projectRoot, step.artifact);
   try {
-    await fs12.access(artifactPath);
+    await fs11.access(artifactPath);
     return runComplianceCheck(step, rules, summary, run, opts);
   } catch {
     const next = {
@@ -16429,8 +16308,8 @@ function formatInstruction(instr) {
 }
 
 // src/commands/list.ts
-import { promises as fs13 } from "node:fs";
-import { join as join11 } from "node:path";
+import { promises as fs12 } from "node:fs";
+import { join as join10 } from "node:path";
 var INLINE_FALLBACK = `Easy Workflow Harness \u2014 Available Commands
 
 Workflows (multi-step, agent-driven):
@@ -16443,9 +16322,12 @@ Subcommands (lightweight, interactive):
   /ewh:doit init                    \u2014 bootstrap project and show onboarding guide
   /ewh:doit cleanup                 \u2014 run user-configured cleanup tasks
   /ewh:doit design "<desc>"         \u2014 design a rule, agent, or workflow conversationally
+  /ewh:doit design modify <target>  \u2014 modify an existing agent/rule or a workflow step via LLM ferry
   /ewh:doit manage <workflow>       \u2014 fill runtime fields (context, produces, gate, \u2026) for a workflow contract
+  /ewh:doit migrate                 \u2014 one-shot upgrade: convert .claude/workflows/*.md \u2192 .claude/ewh-workflows/*.{md,json}
   /ewh:doit expand-tools [desc]     \u2014 discover and assign agent tools
   /ewh:doit list                    \u2014 show this catalog
+  /ewh:doit doctor [--smoke]        \u2014 environment health check
 
 Flags:
   --trust                           \u2014 auto-approve structural gates this run (use with --save to persist)
@@ -16469,9 +16351,9 @@ async function buildListBody(opts) {
 ${footer}` : staticContent.trimEnd();
 }
 async function readListCatalog(pluginRoot) {
-  const path2 = join11(pluginRoot, "skills", "doit", "list.md");
+  const path2 = join10(pluginRoot, "skills", "doit", "list.md");
   try {
-    return await fs13.readFile(path2, "utf8");
+    return await fs12.readFile(path2, "utf8");
   } catch {
     process.stderr.write(
       `[ewh] warning: catalog file ${path2} missing \u2014 using inline fallback.
@@ -16481,23 +16363,45 @@ async function readListCatalog(pluginRoot) {
   }
 }
 async function buildOverrideFooter(projectRoot) {
-  const workflows = await listMdBasenames(join11(projectRoot, ".claude", "workflows"), false);
-  const rules = await listMdBasenames(join11(projectRoot, ".claude", "rules"), true);
-  const agents = await listMdBasenames(join11(projectRoot, ".claude", "agents"), false);
-  if (workflows.length === 0 && rules.length === 0 && agents.length === 0) {
+  const contracts = await listJsonBasenames(
+    join10(projectRoot, ".claude", "ewh-workflows")
+  );
+  const rules = await listMdBasenames(join10(projectRoot, ".claude", "rules"), true);
+  const agents = await listMdBasenames(join10(projectRoot, ".claude", "agents"), false);
+  const legacyYaml = await listMdBasenames(
+    join10(projectRoot, ".claude", "workflows"),
+    false
+  );
+  if (contracts.length === 0 && rules.length === 0 && agents.length === 0 && legacyYaml.length === 0) {
     return null;
   }
   const fmt = (names) => names.length > 0 ? names.join(", ") : "\u2014";
-  return [
-    "Project overrides:",
-    `  workflows: ${fmt(workflows)}`,
+  const lines = [
+    "Project contracts and overrides:",
+    `  workflows: ${fmt(contracts)}`,
     `  rules:     ${fmt(rules)}`,
     `  agents:    ${fmt(agents)}`
-  ].join("\n");
+  ];
+  if (legacyYaml.length > 0) {
+    lines.push(
+      `  (legacy .claude/workflows/: ${fmt(legacyYaml)} \u2014 run /ewh:doit migrate)`
+    );
+  }
+  return lines.join("\n");
+}
+async function listJsonBasenames(dir) {
+  try {
+    await fs12.access(dir);
+  } catch {
+    return [];
+  }
+  const matches = await glob("*.json", { cwd: dir, nodir: true });
+  const names = matches.map((m) => m.split(/[\\/]/).pop() ?? m).filter((m) => m.endsWith(".json")).map((m) => m.slice(0, -5));
+  return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
 }
 async function listMdBasenames(dir, recursive) {
   try {
-    await fs13.access(dir);
+    await fs12.access(dir);
   } catch {
     return [];
   }
@@ -16508,8 +16412,8 @@ async function listMdBasenames(dir, recursive) {
 }
 
 // src/commands/cleanup.ts
-import { promises as fs14 } from "node:fs";
-import { join as join12 } from "node:path";
+import { promises as fs13 } from "node:fs";
+import { join as join11 } from "node:path";
 async function startCleanup(opts) {
   if (opts.manageTasks) {
     return startManageTasks(opts);
@@ -16721,10 +16625,10 @@ async function continueManageTasks(run, sub, report, opts) {
   throw new Error(`cleanup-manage: unhandled phase ${sub.phase}`);
 }
 function manageScanPath(projectRoot) {
-  return join12(projectRoot, ".ewh-artifacts", "cleanup-candidates.json");
+  return join11(projectRoot, ".ewh-artifacts", "cleanup-candidates.json");
 }
 async function parseCandidates(path2) {
-  const content = await fs14.readFile(path2, "utf8");
+  const content = await fs13.readFile(path2, "utf8");
   const parsed = JSON.parse(content);
   if (!Array.isArray(parsed)) {
     throw new Error(`cleanup candidates file ${path2} is not a JSON array`);
@@ -16758,8 +16662,8 @@ function formatTaskTable(tasks) {
 }
 
 // src/commands/init.ts
-import { promises as fs15 } from "node:fs";
-import { join as join13 } from "node:path";
+import { promises as fs14 } from "node:fs";
+import { join as join12 } from "node:path";
 async function startInit(opts) {
   const scanPath = initScanPath(opts.projectRoot);
   const state = { kind: "init", phase: "scan" };
@@ -16843,10 +16747,10 @@ async function continueInit(run, report, opts) {
   throw new Error(`init: unhandled phase ${sub.phase}`);
 }
 function initScanPath(projectRoot) {
-  return join13(projectRoot, ".ewh-artifacts", "init-scan.json");
+  return join12(projectRoot, ".ewh-artifacts", "init-scan.json");
 }
 async function readScanFile(path2) {
-  const content = await fs15.readFile(path2, "utf8");
+  const content = await fs14.readFile(path2, "utf8");
   const parsed = JSON.parse(content);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(`init scan file ${path2} is not a JSON object`);
@@ -16878,15 +16782,15 @@ function buildHarnessConfigSection(scan) {
   ].join("\n");
 }
 async function upsertHarnessConfig(projectRoot, section) {
-  const path2 = join13(projectRoot, "CLAUDE.md");
+  const path2 = join12(projectRoot, "CLAUDE.md");
   let existing = "";
   try {
-    existing = await fs15.readFile(path2, "utf8");
+    existing = await fs14.readFile(path2, "utf8");
   } catch {
     existing = "";
   }
   const updated = replaceOrAppendSection(existing, section);
-  await fs15.writeFile(path2, updated, "utf8");
+  await fs14.writeFile(path2, updated, "utf8");
 }
 function replaceOrAppendSection(existing, section) {
   const headingRx = /^##\s+Harness Config\s*$/m;
@@ -16911,11 +16815,11 @@ ${tail.replace(/^\n+/, "")}` : "\n";
   return existing.slice(0, start) + prefix + section + replacedTail;
 }
 async function ensureGitignoreEntries(projectRoot) {
-  const path2 = join13(projectRoot, ".gitignore");
+  const path2 = join12(projectRoot, ".gitignore");
   const required = [".ewh-artifacts/", ".claude/ewh-state.json"];
   let current = "";
   try {
-    current = await fs15.readFile(path2, "utf8");
+    current = await fs14.readFile(path2, "utf8");
   } catch {
     current = "";
   }
@@ -16925,7 +16829,7 @@ async function ensureGitignoreEntries(projectRoot) {
   if (toAdd.length === 0) return;
   const needsLeadingNewline = current.length > 0 && !current.endsWith("\n");
   const addition = (needsLeadingNewline ? "\n" : "") + toAdd.join("\n") + "\n";
-  await fs15.writeFile(path2, current + addition, "utf8");
+  await fs14.writeFile(path2, current + addition, "utf8");
 }
 function buildOnboardingSummary() {
   return [
@@ -16953,16 +16857,16 @@ function buildOnboardingSummary() {
 // src/commands/design.ts
 import { promises as fs18 } from "node:fs";
 import { randomBytes as randomBytes3 } from "node:crypto";
-import { dirname as dirname6, join as join16 } from "node:path";
+import { dirname as dirname6, join as join15 } from "node:path";
 
 // src/commands/design-catalog.ts
-var import_yaml4 = __toESM(require_dist(), 1);
-import { promises as fs16 } from "node:fs";
-import { join as join14 } from "node:path";
+var import_yaml3 = __toESM(require_dist(), 1);
+import { promises as fs15 } from "node:fs";
+import { join as join13 } from "node:path";
 async function readFrontmatter(filePath) {
   let content;
   try {
-    content = await fs16.readFile(filePath, "utf8");
+    content = await fs15.readFile(filePath, "utf8");
   } catch {
     return null;
   }
@@ -16971,7 +16875,7 @@ async function readFrontmatter(filePath) {
   if (end === -1) return null;
   const raw = content.slice(3, end).trim();
   try {
-    return (0, import_yaml4.parse)(raw);
+    return (0, import_yaml3.parse)(raw);
   } catch {
     return null;
   }
@@ -16980,15 +16884,15 @@ async function walkDir(dir) {
   const results = [];
   let entries;
   try {
-    entries = await fs16.readdir(dir);
+    entries = await fs15.readdir(dir);
   } catch {
     return results;
   }
   for (const name of entries) {
-    const full = join14(dir, name);
+    const full = join13(dir, name);
     let stat;
     try {
-      stat = await fs16.stat(full);
+      stat = await fs15.stat(full);
     } catch {
       continue;
     }
@@ -17026,12 +16930,12 @@ async function buildCatalog(projectRoot, pluginRoot) {
     projectAgents,
     projectRules
   ] = await Promise.all([
-    collectEntries(join14(pluginRoot, "workflows"), "workflow", "plugin", pluginRoot + "/"),
-    collectEntries(join14(pluginRoot, "agents"), "agent", "plugin", pluginRoot + "/"),
-    collectEntries(join14(pluginRoot, "rules"), "rule", "plugin", pluginRoot + "/"),
-    collectEntries(join14(projectRoot, ".claude", "workflows"), "workflow", "project", projectRoot + "/.claude/"),
-    collectEntries(join14(projectRoot, ".claude", "agents"), "agent", "project", projectRoot + "/.claude/"),
-    collectEntries(join14(projectRoot, ".claude", "rules"), "rule", "project", projectRoot + "/.claude/")
+    collectEntries(join13(pluginRoot, "workflows"), "workflow", "plugin", pluginRoot + "/"),
+    collectEntries(join13(pluginRoot, "agents"), "agent", "plugin", pluginRoot + "/"),
+    collectEntries(join13(pluginRoot, "rules"), "rule", "plugin", pluginRoot + "/"),
+    collectEntries(join13(projectRoot, ".claude", "workflows"), "workflow", "project", projectRoot + "/.claude/"),
+    collectEntries(join13(projectRoot, ".claude", "agents"), "agent", "project", projectRoot + "/.claude/"),
+    collectEntries(join13(projectRoot, ".claude", "rules"), "rule", "project", projectRoot + "/.claude/")
   ]);
   const dedupeWithProjectWin = (plugin, project) => {
     const projectNames = new Set(project.map((e) => e.name));
@@ -17044,8 +16948,8 @@ async function buildCatalog(projectRoot, pluginRoot) {
 }
 
 // src/workflow/contract-diff.ts
-import { promises as fs17 } from "node:fs";
-import { join as join15 } from "node:path";
+import { promises as fs16 } from "node:fs";
+import { join as join14 } from "node:path";
 function parseProposedInput(raw) {
   let steps;
   let order;
@@ -17419,8 +17323,8 @@ async function checkIntegrity(merged, opts) {
 }
 async function agentExists(name, opts) {
   const candidates = [
-    join15(opts.projectRoot, ".claude", "agents", `${name}.md`),
-    join15(opts.pluginRoot, "agents", `${name}.md`)
+    join14(opts.projectRoot, ".claude", "agents", `${name}.md`),
+    join14(opts.pluginRoot, "agents", `${name}.md`)
   ];
   for (const p of candidates) {
     if (await pathExists(p)) return true;
@@ -17429,8 +17333,8 @@ async function agentExists(name, opts) {
 }
 async function ruleExists(name, opts) {
   const roots = [
-    join15(opts.projectRoot, ".claude", "rules"),
-    join15(opts.pluginRoot, "rules")
+    join14(opts.projectRoot, ".claude", "rules"),
+    join14(opts.pluginRoot, "rules")
   ];
   for (const root of roots) {
     if (await findRuleIn(root, `${name}.md`)) return true;
@@ -17440,7 +17344,7 @@ async function ruleExists(name, opts) {
 async function findRuleIn(dir, target) {
   let entries;
   try {
-    const raw = await fs17.readdir(dir, { recursive: true });
+    const raw = await fs16.readdir(dir, { recursive: true });
     entries = raw.map(String);
   } catch {
     return false;
@@ -17449,7 +17353,7 @@ async function findRuleIn(dir, target) {
 }
 async function pathExists(p) {
   try {
-    await fs17.access(p);
+    await fs16.access(p);
     return true;
   } catch {
     return false;
@@ -17484,16 +17388,16 @@ function renderDiffSummary(diff, integrity) {
 }
 
 // src/workflow/render-md.ts
-var import_yaml5 = __toESM(require_dist(), 1);
+var import_yaml4 = __toESM(require_dist(), 1);
 function renderWorkflowMd(contract) {
-  const frontmatter = import_yaml5.default.stringify(
+  const frontmatter = import_yaml4.default.stringify(
     {
       name: contract.name,
       description: contract.description
     },
     { sortMapEntries: false }
   ).trimEnd();
-  const stepsYaml = import_yaml5.default.stringify(
+  const stepsYaml = import_yaml4.default.stringify(
     contract.steps.map((s) => ({
       name: s.name,
       agent: s.agent,
@@ -17512,6 +17416,108 @@ function renderWorkflowMd(contract) {
     ""
   ];
   return lines.join("\n");
+}
+
+// src/workflow/parse.ts
+import { promises as fs17 } from "node:fs";
+var import_yaml5 = __toESM(require_dist(), 1);
+async function loadWorkflow(path2) {
+  const body = await fs17.readFile(path2, "utf8");
+  const { frontmatter, rest } = splitFrontmatter3(body);
+  const fm = import_yaml5.default.parse(frontmatter) ?? {};
+  const name = requireString(fm.name, "workflow frontmatter: name");
+  const steps = parseSteps(rest);
+  return {
+    name,
+    description: typeof fm.description === "string" ? fm.description : void 0,
+    trigger: typeof fm.trigger === "string" ? fm.trigger : void 0,
+    steps
+  };
+}
+function splitFrontmatter3(body) {
+  if (!body.startsWith("---\n")) {
+    throw new Error("workflow file missing YAML frontmatter");
+  }
+  const end = body.indexOf("\n---\n", 4);
+  if (end === -1) {
+    throw new Error("workflow file has unterminated YAML frontmatter");
+  }
+  return {
+    frontmatter: body.slice(4, end),
+    rest: body.slice(end + 5)
+  };
+}
+function parseSteps(body) {
+  const headingMatch = body.match(/^##\s+Steps\b[^\n]*\n/m);
+  if (!headingMatch) {
+    throw new Error("workflow missing '## Steps' section");
+  }
+  const start = headingMatch.index + headingMatch[0].length;
+  const nextHeadingRel = body.slice(start).search(/^##\s+\S/m);
+  const sectionBody = nextHeadingRel === -1 ? body.slice(start) : body.slice(start, start + nextHeadingRel);
+  let parsed;
+  try {
+    parsed = import_yaml5.default.parse(sectionBody);
+  } catch (err) {
+    throw new Error(
+      `workflow '## Steps' section is not valid YAML: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error(
+      "workflow '## Steps' section must be a YAML sequence of step mappings"
+    );
+  }
+  const steps = parsed.map((raw, i) => {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error(`step #${i + 1}: must be a YAML mapping`);
+    }
+    const r = raw;
+    return {
+      name: requireString(r.name, `step #${i + 1}: name`),
+      agent: typeof r.agent === "string" ? r.agent : void 0,
+      gate: r.gate === "structural" ? "structural" : "auto",
+      description: typeof r.description === "string" ? r.description : void 0,
+      message: typeof r.message === "string" ? r.message : void 0,
+      rules: parseStringArray3(r.rules),
+      reads: parseStringArray3(r.reads),
+      artifact: typeof r.artifact === "string" ? r.artifact : void 0,
+      context: parseContextRefs(r.context),
+      // Deferred fields — parsed and stored, acted on in Phase 3+ :
+      requires: r.requires ?? void 0,
+      chunked: typeof r.chunked === "boolean" ? r.chunked : void 0,
+      script: typeof r.script === "string" ? r.script : void 0,
+      script_fallback: r.script_fallback === "auto" ? "auto" : r.script_fallback === "gate" ? "gate" : void 0,
+      state: { phase: "pending" }
+    };
+  });
+  if (steps.length === 0) {
+    throw new Error("workflow '## Steps' section has no steps");
+  }
+  return steps;
+}
+function requireString(v, ctx) {
+  if (typeof v !== "string" || v.length === 0) {
+    throw new Error(`${ctx} must be a non-empty string`);
+  }
+  return v;
+}
+function parseStringArray3(v) {
+  if (!Array.isArray(v)) return void 0;
+  const items = v.filter((x) => typeof x === "string");
+  return items.length > 0 ? items : void 0;
+}
+function parseContextRefs(v) {
+  if (!Array.isArray(v) || v.length === 0) return void 0;
+  const refs = [];
+  for (const item of v) {
+    if (item === null || typeof item !== "object" || Array.isArray(item)) continue;
+    const r = item;
+    if (typeof r.step !== "string") continue;
+    const detail = r.detail === "raw" || r.detail === "full" || r.detail === "summary" ? r.detail : "summary";
+    refs.push({ step: r.step, detail });
+  }
+  return refs.length > 0 ? refs : void 0;
 }
 
 // src/commands/design.ts
@@ -17948,33 +17954,33 @@ async function readCatalog(path2) {
 }
 function designPaths(projectRoot, runId) {
   const runRoot = runDir(projectRoot, runId);
-  const proposedDir = join16(runRoot, "proposed");
+  const proposedDir = join15(runRoot, "proposed");
   return {
     runRoot,
     proposedDir,
-    catalog: join16(runRoot, "catalog.json"),
-    description: join16(runRoot, "description.txt"),
-    shape: join16(proposedDir, "shape.json"),
-    edit: join16(runRoot, "shape-edit.txt"),
-    workflowShape: join16(proposedDir, "workflow-shape.json"),
-    workflowEdit: join16(runRoot, "workflow-edit.txt")
+    catalog: join15(runRoot, "catalog.json"),
+    description: join15(runRoot, "description.txt"),
+    shape: join15(proposedDir, "shape.json"),
+    edit: join15(runRoot, "shape-edit.txt"),
+    workflowShape: join15(proposedDir, "workflow-shape.json"),
+    workflowEdit: join15(runRoot, "workflow-edit.txt")
   };
 }
 function safeFilename(artifactPath) {
   return artifactPath.replace(/[/\\]/g, "_");
 }
 function stagedPathForArtifact(proposedDir, artifact) {
-  return join16(proposedDir, safeFilename(artifact.path));
+  return join15(proposedDir, safeFilename(artifact.path));
 }
 function existingPathForArtifact(artifact, opts) {
   if (artifact.scope === "plugin") {
-    return join16(opts.pluginRoot, artifact.path);
+    return join15(opts.pluginRoot, artifact.path);
   }
-  return join16(opts.projectRoot, ".claude", artifact.path);
+  return join15(opts.projectRoot, ".claude", artifact.path);
 }
 async function isInsidePluginRepo(projectRoot) {
   try {
-    const body = await fs18.readFile(join16(projectRoot, "package.json"), "utf8");
+    const body = await fs18.readFile(join15(projectRoot, "package.json"), "utf8");
     const pkg = JSON.parse(body);
     return pkg.name === "easy-workflow-harness";
   } catch {
@@ -18022,7 +18028,7 @@ async function continueWrite(run, sub, opts) {
   const written = [...sub.written ?? []];
   const summaryLines = [];
   for (const artifact of sorted) {
-    const targetPath = artifact.scope === "plugin" ? join16(opts.pluginRoot, artifact.path) : join16(opts.projectRoot, ".claude", artifact.path);
+    const targetPath = artifact.scope === "plugin" ? join15(opts.pluginRoot, artifact.path) : join15(opts.projectRoot, ".claude", artifact.path);
     const displayPath = artifact.scope === "plugin" ? artifact.path : `.claude/${artifact.path}`;
     const sigil = artifact.op === "create" ? "+" : "~";
     const suffix = artifact.op === "update" ? "  (updated)" : "";
@@ -18128,7 +18134,7 @@ async function renderFileGate(run, proposal, fileIndex, paths) {
   const artifact = proposal.artifacts[fileIndex];
   const stagedPath = stagedPathForArtifact(paths.proposedDir, artifact);
   const total = proposal.artifacts.length;
-  const editInstructionPath = join16(paths.runRoot, `file-gate-${fileIndex}-edit.txt`);
+  const editInstructionPath = join15(paths.runRoot, `file-gate-${fileIndex}-edit.txt`);
   const lines = [];
   lines.push(`EWH design \u2014 file gate (${fileIndex + 1}/${total})`);
   lines.push("");
@@ -18467,7 +18473,7 @@ async function bounceWorkflowInterview(run, sub, paths, errors) {
   });
 }
 async function findPluginTemplate(pluginRoot, workflowName) {
-  const candidate = join16(pluginRoot, "workflows", `${workflowName}.md`);
+  const candidate = join15(pluginRoot, "workflows", `${workflowName}.md`);
   try {
     await fs18.access(candidate);
     return candidate;
@@ -18622,15 +18628,15 @@ async function continueWorkflowWrite(run, sub, opts) {
   const draft = parsed.draft;
   const contract = draftToContract(draft);
   const mdBody = renderWorkflowMd(contract);
-  const workflowsDir = join16(opts.projectRoot, ".claude", "ewh-workflows");
-  const agentsDir = join16(opts.projectRoot, ".claude", "agents");
-  const jsonPath = join16(workflowsDir, `${draft.name}.json`);
-  const mdPath = join16(workflowsDir, `${draft.name}.md`);
+  const workflowsDir = join15(opts.projectRoot, ".claude", "ewh-workflows");
+  const agentsDir = join15(opts.projectRoot, ".claude", "agents");
+  const jsonPath = join15(workflowsDir, `${draft.name}.json`);
+  const mdPath = join15(workflowsDir, `${draft.name}.md`);
   const uniqueAgents = Array.from(new Set(draft.steps.map((s) => s.agent)));
   const stubTargets = [];
   for (const agent of uniqueAgents) {
-    const pluginPath = join16(opts.pluginRoot, "agents", `${agent}.md`);
-    const projectPath = join16(opts.projectRoot, ".claude", "agents", `${agent}.md`);
+    const pluginPath = join15(opts.pluginRoot, "agents", `${agent}.md`);
+    const projectPath = join15(opts.projectRoot, ".claude", "agents", `${agent}.md`);
     const existsPlugin = await pathExists2(pluginPath);
     const existsProject = await pathExists2(projectPath);
     if (!existsPlugin && !existsProject) {
@@ -18741,10 +18747,10 @@ async function startDesignModify(opts) {
     }
   }
   const runRoot = runDir(opts.projectRoot, opts.runId);
-  const modifyDir = join16(runRoot, `modify-${opts.runId}`);
+  const modifyDir = join15(runRoot, `modify-${opts.runId}`);
   await fs18.mkdir(modifyDir, { recursive: true });
-  const contextPath = join16(modifyDir, "context.md");
-  const proposedPath = join16(modifyDir, "proposed.json");
+  const contextPath = join15(modifyDir, "context.md");
+  const proposedPath = join15(modifyDir, "proposed.json");
   await writeModifyContext({
     target,
     contractPath,
@@ -18816,8 +18822,8 @@ async function writeModifyContext(args) {
     const step = contract.steps.find((s) => s.name === target.step);
     if (step) {
       const agentBody = await tryLoadAssetBody([
-        join16(args.projectRoot, ".claude", "agents", `${step.agent}.md`),
-        join16(args.pluginRoot, "agents", `${step.agent}.md`)
+        join15(args.projectRoot, ".claude", "agents", `${step.agent}.md`),
+        join15(args.pluginRoot, "agents", `${step.agent}.md`)
       ]);
       if (agentBody) {
         sections.push(`## Target agent: \`${step.agent}\``);
@@ -18837,8 +18843,8 @@ async function writeModifyContext(args) {
     }
   } else if (args.target.kind === "agent") {
     const body = await tryLoadAssetBody([
-      join16(args.projectRoot, ".claude", "agents", `${args.target.name}.md`),
-      join16(args.pluginRoot, "agents", `${args.target.name}.md`)
+      join15(args.projectRoot, ".claude", "agents", `${args.target.name}.md`),
+      join15(args.pluginRoot, "agents", `${args.target.name}.md`)
     ]);
     sections.push(`## Target agent: \`${args.target.name}\``);
     sections.push("```markdown");
@@ -18847,8 +18853,8 @@ async function writeModifyContext(args) {
     sections.push("");
   } else if (args.target.kind === "rule") {
     const body = await tryLoadAssetBody([
-      join16(args.projectRoot, ".claude", "rules", `${args.target.name}.md`),
-      join16(args.pluginRoot, "rules", `${args.target.name}.md`)
+      join15(args.projectRoot, ".claude", "rules", `${args.target.name}.md`),
+      join15(args.pluginRoot, "rules", `${args.target.name}.md`)
     ]);
     sections.push(`## Target rule: \`${args.target.name}\``);
     sections.push("```markdown");
@@ -18918,7 +18924,7 @@ async function tryLoadAssetBody(candidates) {
   return null;
 }
 async function collectDeclaredArtifacts(projectRoot) {
-  const dir = join16(projectRoot, ".claude", "ewh-workflows");
+  const dir = join15(projectRoot, ".claude", "ewh-workflows");
   let entries;
   try {
     entries = await fs18.readdir(dir);
@@ -18929,7 +18935,7 @@ async function collectDeclaredArtifacts(projectRoot) {
   for (const name of entries) {
     if (!name.endsWith(".json")) continue;
     try {
-      const contract = await loadContract(join16(dir, name));
+      const contract = await loadContract(join15(dir, name));
       for (const step of contract.steps) {
         for (const p of step.produces) out.add(p);
       }
@@ -19031,7 +19037,7 @@ async function continueModifyFerry(run, sub, report, opts) {
   lines.push("On approve: atomically update");
   lines.push(`  - ${sub.contract_path}`);
   lines.push(
-    `  - ${join16(".claude", "ewh-workflows", `${sub.workflow_name}.md`)}`
+    `  - ${join15(".claude", "ewh-workflows", `${sub.workflow_name}.md`)}`
   );
   lines.push("On reject: discard proposed.json and re-run the ferry.");
   lines.push("");
@@ -19093,7 +19099,7 @@ async function continueModifyReview(run, sub, report, opts) {
   const raw = await fs18.readFile(sub.proposed_path, "utf8");
   const parsed = parseProposedInput(JSON.parse(raw));
   const diff = diffContract(current, parsed);
-  const mdPath = join16(
+  const mdPath = join15(
     opts.projectRoot,
     ".claude",
     "ewh-workflows",
@@ -19165,7 +19171,7 @@ function renderAgentStub(agentName, stepDescription) {
 // src/commands/manage.ts
 import { promises as fs19 } from "node:fs";
 import { randomBytes as randomBytes4 } from "node:crypto";
-import { dirname as dirname7, join as join17 } from "node:path";
+import { dirname as dirname7, join as join16 } from "node:path";
 var FIELD_ORDER = [
   "context",
   "produces",
@@ -19290,7 +19296,7 @@ async function continueManage(run, report, opts) {
   }
   const finalContract = await readDraft(sub.draft_path);
   await atomicWriteJson(sub.contract_path, finalContract);
-  const mdPath = join17(
+  const mdPath = join16(
     opts.projectRoot,
     ".claude",
     "ewh-workflows",
@@ -19616,15 +19622,15 @@ async function atomicWriteText(path2, body) {
 }
 function managePaths(projectRoot, runId) {
   const runRoot = runDir(projectRoot, runId);
-  return { runRoot, draft: join17(runRoot, "manage-draft.json") };
+  return { runRoot, draft: join16(runRoot, "manage-draft.json") };
 }
 function fieldEditPath(runRoot, stepIndex, field) {
-  return join17(runRoot, `manage-step-${stepIndex}-${field}.json`);
+  return join16(runRoot, `manage-step-${stepIndex}-${field}.json`);
 }
 async function listAvailableRules(projectRoot, pluginRoot) {
   const dirs = [
-    join17(pluginRoot, "rules"),
-    join17(projectRoot, ".claude", "rules")
+    join16(pluginRoot, "rules"),
+    join16(projectRoot, ".claude", "rules")
   ];
   const names = /* @__PURE__ */ new Set();
   for (const dir of dirs) {
@@ -19713,9 +19719,222 @@ function validateRequiresArray2(input) {
   return { ok: true, value: out };
 }
 
-// src/commands/expand-tools.ts
+// src/commands/migrate.ts
 import { promises as fs20 } from "node:fs";
-import { dirname as dirname8, join as join18 } from "node:path";
+import { basename, dirname as dirname8, join as join17 } from "node:path";
+import { randomBytes as randomBytes5 } from "node:crypto";
+async function startMigrate(opts) {
+  const legacyDir = join17(opts.projectRoot, ".claude", "workflows");
+  let names;
+  try {
+    names = (await fs20.readdir(legacyDir)).filter((n) => n.endsWith(".md")).sort();
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      return {
+        state: void 0,
+        instruction: {
+          kind: "done",
+          body: [
+            "ewh migrate: nothing to do.",
+            "",
+            `No legacy workflows found at .claude/workflows/.`,
+            "Use /ewh:doit design <workflow> to author a new contract."
+          ].join("\n")
+        }
+      };
+    }
+    throw err;
+  }
+  if (names.length === 0) {
+    return {
+      state: void 0,
+      instruction: {
+        kind: "done",
+        body: "ewh migrate: nothing to do (.claude/workflows/ is empty)."
+      }
+    };
+  }
+  const sources = names.map((n) => join17(legacyDir, n));
+  const planLines = [];
+  for (const src of sources) {
+    const name = basename(src, ".md");
+    const jsonTarget = join17(
+      opts.projectRoot,
+      ".claude",
+      "ewh-workflows",
+      `${name}.json`
+    );
+    const mdTarget = jsonTarget.replace(/\.json$/, ".md");
+    const existing = await pathExists3(jsonTarget) || await pathExists3(mdTarget);
+    planLines.push(
+      `  ${existing ? "~ OVERWRITE" : "+ NEW      "} .claude/ewh-workflows/${name}.{md,json}  \u2190 .claude/workflows/${name}.md`
+    );
+  }
+  const subState = {
+    kind: "migrate",
+    phase: "confirm",
+    sources
+  };
+  const body = [
+    `ewh migrate \u2014 convert ${sources.length} legacy workflow${sources.length === 1 ? "" : "s"} to the Context Contract format.`,
+    "",
+    "Plan:",
+    ...planLines,
+    "",
+    "Mapping:",
+    '  rules: [foo]              \u2192 context: [{type: "rule", ref: "foo"}]',
+    '  reads: [path]             \u2192 context: [{type: "artifact", ref: "path"}]',
+    '  artifact: path            \u2192 produces: ["path"]',
+    "  gate/requires/chunked/script/script_fallback: preserved",
+    "",
+    "Legacy .claude/workflows/*.md files are left in place.",
+    "After verifying the new contracts, delete the old files.",
+    "",
+    "Proceed?  yes = write all, no = abort."
+  ].join("\n");
+  return {
+    state: subState,
+    instruction: { kind: "user-prompt", body }
+  };
+}
+async function continueMigrate(run, report, opts) {
+  const sub = run.subcommand_state;
+  if (!sub || sub.kind !== "migrate") {
+    throw new Error("migrate report called with non-migrate state");
+  }
+  if (report.kind !== "decision") {
+    throw new Error(`migrate expects --decision yes|no, got ${report.kind}`);
+  }
+  if (report.decision === "no") {
+    run.subcommand_state = void 0;
+    return {
+      kind: "done",
+      body: "ewh migrate: aborted. No files written."
+    };
+  }
+  const converted = [];
+  const skipped = [];
+  for (const source of sub.sources) {
+    const name = basename(source, ".md");
+    const workflowsDir = join17(opts.projectRoot, ".claude", "ewh-workflows");
+    const jsonTarget = join17(workflowsDir, `${name}.json`);
+    const mdTarget = join17(workflowsDir, `${name}.md`);
+    let legacy;
+    try {
+      legacy = await loadWorkflow(source);
+    } catch (err) {
+      skipped.push({
+        source,
+        reason: `parse failed: ${err instanceof Error ? err.message : String(err)}`
+      });
+      continue;
+    }
+    let contract;
+    try {
+      contract = legacyToContract(legacy);
+    } catch (err) {
+      skipped.push({
+        source,
+        reason: err instanceof Error ? err.message : String(err)
+      });
+      continue;
+    }
+    await atomicWriteJson2(jsonTarget, contract);
+    await atomicWriteText2(mdTarget, renderWorkflowMd(contract));
+    converted.push(name);
+  }
+  run.subcommand_state = void 0;
+  const summary = [];
+  summary.push(`ewh migrate \u2014 converted ${converted.length} workflow${converted.length === 1 ? "" : "s"}:`);
+  for (const n of converted) {
+    summary.push(`  + .claude/ewh-workflows/${n}.json`);
+    summary.push(`  + .claude/ewh-workflows/${n}.md`);
+  }
+  if (skipped.length > 0) {
+    summary.push("");
+    summary.push(`Skipped ${skipped.length}:`);
+    for (const s of skipped) {
+      summary.push(`  ! ${basename(s.source)}: ${s.reason}`);
+    }
+  }
+  summary.push("");
+  summary.push("Legacy .claude/workflows/*.md left in place. Delete after verifying.");
+  summary.push("Run `/ewh:doit doctor` to validate the new contracts.");
+  return { kind: "done", body: summary.join("\n") };
+}
+function legacyToContract(legacy) {
+  const steps = legacy.steps.map((s, i) => legacyStepToContract(s, i));
+  return {
+    name: legacy.name,
+    description: legacy.description ?? "",
+    steps
+  };
+}
+function legacyStepToContract(step, index) {
+  const agent = typeof step.agent === "string" && step.agent.length > 0 ? step.agent : "(unset)";
+  const context = [];
+  for (const r of step.rules ?? []) {
+    context.push({ type: "rule", ref: r });
+  }
+  for (const p of step.reads ?? []) {
+    context.push({ type: "artifact", ref: p });
+  }
+  const produces = step.artifact ? [step.artifact] : [];
+  const gate = step.gate === "structural" ? "structural" : "auto";
+  return {
+    name: step.name || `step-${index + 1}`,
+    agent,
+    description: step.description ?? "",
+    gate,
+    produces,
+    context,
+    requires: normalizeRequires(step.requires),
+    chunked: step.chunked === true,
+    script: typeof step.script === "string" && step.script.length > 0 ? step.script : null,
+    script_fallback: step.script_fallback === "auto" ? "auto" : "gate"
+  };
+}
+function normalizeRequires(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const r = item;
+    if (typeof r.file_exists === "string") {
+      out.push({ file_exists: r.file_exists });
+    } else if (typeof r.prior_step === "string" && typeof r.has === "string") {
+      out.push({ prior_step: r.prior_step, has: r.has });
+    }
+  }
+  return out;
+}
+async function atomicWriteJson2(path2, value) {
+  await atomicWriteText2(path2, JSON.stringify(value, null, 2) + "\n");
+}
+async function atomicWriteText2(path2, body) {
+  await fs20.mkdir(dirname8(path2), { recursive: true });
+  const tmp = `${path2}.tmp-${randomBytes5(4).toString("hex")}`;
+  const fh = await fs20.open(tmp, "w");
+  try {
+    await fh.writeFile(body, "utf8");
+    await fh.sync();
+  } finally {
+    await fh.close();
+  }
+  await fs20.rename(tmp, path2);
+}
+async function pathExists3(path2) {
+  try {
+    await fs20.access(path2);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// src/commands/expand-tools.ts
+import { promises as fs21 } from "node:fs";
+import { dirname as dirname9, join as join18 } from "node:path";
 async function startExpandTools(opts) {
   const toolsPath = toolsScratchPath(opts.projectRoot);
   const existing = await readExistingAgentTools(opts.projectRoot);
@@ -19856,7 +20075,7 @@ function proposalScratchPath(projectRoot) {
   return join18(projectRoot, ".ewh-artifacts", "expand-tools-proposal.json");
 }
 async function readProposal(path2) {
-  const content = await fs20.readFile(path2, "utf8");
+  const content = await fs21.readFile(path2, "utf8");
   const parsed = JSON.parse(content);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(`expand-tools proposal ${path2} is not a JSON object`);
@@ -19907,9 +20126,9 @@ async function generateAgentOverrides(projectRoot, pluginRoot, agents, merged) {
     const baseTools = await readPluginAgentTools(pluginRoot, agent);
     const allTools = Array.from(/* @__PURE__ */ new Set([...baseTools, ...entry.add]));
     const path2 = join18(projectRoot, ".claude", "agents", `${agent}.md`);
-    await fs20.mkdir(dirname8(path2), { recursive: true });
+    await fs21.mkdir(dirname9(path2), { recursive: true });
     const content = buildOverrideFile(agent, allTools);
-    await fs20.writeFile(path2, content, "utf8");
+    await fs21.writeFile(path2, content, "utf8");
     out.push({ agent, path: path2, toolsAdded: entry.add.length });
   }
   return out;
@@ -20001,11 +20220,11 @@ import { parseArgs } from "node:util";
 import { join as join20 } from "node:path";
 
 // src/hooks/tool-use-log.ts
-import { promises as fs21 } from "node:fs";
+import { promises as fs22 } from "node:fs";
 async function readTurnLogSince(logPath, offset) {
   let buf;
   try {
-    const fh = await fs21.open(logPath, "r");
+    const fh = await fs22.open(logPath, "r");
     try {
       const stat = await fh.stat();
       const size = stat.size;
@@ -20061,7 +20280,7 @@ function compareDrift(expectedTool, entries) {
 }
 
 // src/commands/resume.ts
-import { promises as fs22 } from "node:fs";
+import { promises as fs23 } from "node:fs";
 import { join as join19 } from "node:path";
 var RESUMABLE_PHASES = /* @__PURE__ */ new Set([
   "pending",
@@ -20149,7 +20368,7 @@ async function buildResumeInstruction(projectRoot, pluginRoot, runId) {
 async function emitResumePickGate(projectRoot, active, now) {
   const resumeRunId = newRunId();
   const rd = runDir(projectRoot, resumeRunId);
-  await fs22.mkdir(rd, { recursive: true });
+  await fs23.mkdir(rd, { recursive: true });
   const pickPath = join19(rd, "pick.txt");
   const subState = {
     kind: "resume",
@@ -20206,7 +20425,7 @@ async function continueResume(run, report, ctx) {
   if (report.kind !== "result" || !report.result_path) {
     throw new Error("resume_pick: expected --result <path>");
   }
-  const raw = (await fs22.readFile(report.result_path, "utf8")).trim();
+  const raw = (await fs23.readFile(report.result_path, "utf8")).trim();
   if (!sub.active_ids.includes(raw)) {
     throw new Error(
       `'${raw}' is not in the active run list; expected one of: ${sub.active_ids.join(", ")}`
@@ -20393,6 +20612,8 @@ async function dispatchSubcommandReport(run, report, opts) {
       return continueDesign(run, report, ctx);
     case "manage":
       return continueManage(run, report, ctx);
+    case "migrate":
+      return continueMigrate(run, report, ctx);
     case "expand-tools":
       return continueExpandTools(run, report, ctx);
     case "resume":
@@ -20516,10 +20737,10 @@ async function delegateAbort(opts, runId, stepIndex) {
 
 // src/commands/doctor.ts
 var import_yaml6 = __toESM(require_dist(), 1);
-import { promises as fs23 } from "node:fs";
+import { promises as fs24 } from "node:fs";
 import { join as join21 } from "node:path";
 import { tmpdir } from "node:os";
-import { randomBytes as randomBytes5 } from "node:crypto";
+import { randomBytes as randomBytes6 } from "node:crypto";
 import { spawn } from "node:child_process";
 async function runDoctor(opts) {
   const results = [];
@@ -20533,6 +20754,7 @@ async function runDoctor(opts) {
   results.push(await checkAgents(opts.pluginRoot));
   results.push(await checkRules(opts.pluginRoot));
   results.push(await checkWorkflows(opts.pluginRoot, opts.projectRoot));
+  results.push(await checkProjectContracts(opts.projectRoot, opts.pluginRoot));
   if (opts.smoke) {
     results.push(await checkSmoke(opts.pluginRoot));
     results.push(await checkDesignSmoke(opts.pluginRoot));
@@ -20568,7 +20790,7 @@ async function checkNodeVersion(pluginRoot) {
   let requiredMajor = null;
   try {
     const pkg = JSON.parse(
-      await fs23.readFile(join21(pluginRoot, "package.json"), "utf8")
+      await fs24.readFile(join21(pluginRoot, "package.json"), "utf8")
     );
     const spec = pkg.engines?.node;
     if (typeof spec === "string") {
@@ -20592,7 +20814,7 @@ async function checkBinaryPresent(pluginRoot) {
   const path2 = join21(pluginRoot, "bin", "ewh.mjs");
   const label = "binary present";
   try {
-    const st = await fs23.stat(path2);
+    const st = await fs24.stat(path2);
     if (!st.isFile()) {
       return { id: 2, label, status: "fail", issues: [`${path2}: not a regular file`] };
     }
@@ -20605,7 +20827,7 @@ async function checkBinaryPresent(pluginRoot) {
     };
   }
   try {
-    await fs23.access(path2, fs23.constants.X_OK);
+    await fs24.access(path2, fs24.constants.X_OK);
   } catch {
     return {
       id: 2,
@@ -20623,7 +20845,7 @@ async function checkPluginDirs(pluginRoot) {
   for (const name of required) {
     const path2 = join21(pluginRoot, name);
     try {
-      const st = await fs23.stat(path2);
+      const st = await fs24.stat(path2);
       if (!st.isDirectory()) issues.push(`${name}/: not a directory`);
     } catch {
       issues.push(`${name}/: missing`);
@@ -20635,11 +20857,11 @@ async function checkPluginDirs(pluginRoot) {
 async function checkArtifactsWritable(projectRoot) {
   const label = ".ewh-artifacts writable";
   const dir = join21(projectRoot, ".ewh-artifacts");
-  const probe = join21(dir, `.doctor-probe-${randomBytes5(4).toString("hex")}`);
+  const probe = join21(dir, `.doctor-probe-${randomBytes6(4).toString("hex")}`);
   try {
-    await fs23.mkdir(dir, { recursive: true });
-    await fs23.writeFile(probe, "doctor-probe\n", "utf8");
-    await fs23.unlink(probe);
+    await fs24.mkdir(dir, { recursive: true });
+    await fs24.writeFile(probe, "doctor-probe\n", "utf8");
+    await fs24.unlink(probe);
   } catch (err) {
     return { id: 4, label, status: "fail", issues: [errMsg(err)] };
   }
@@ -20650,7 +20872,7 @@ async function checkEwhState(projectRoot) {
   const path2 = join21(projectRoot, ".claude", "ewh-state.json");
   let body;
   try {
-    body = await fs23.readFile(path2, "utf8");
+    body = await fs24.readFile(path2, "utf8");
   } catch (err) {
     if (errCode(err) === "ENOENT") {
       return { id: 5, label, status: "pass", detail: "not present" };
@@ -20668,7 +20890,7 @@ async function checkHarnessConfig(projectRoot) {
   const label = "CLAUDE.md Harness Config";
   const path2 = join21(projectRoot, "CLAUDE.md");
   try {
-    const body = await fs23.readFile(path2, "utf8");
+    const body = await fs24.readFile(path2, "utf8");
     if (!/^##\s+Harness Config\b/m.test(body)) {
       return {
         id: 6,
@@ -20690,7 +20912,7 @@ async function checkHooksJson(pluginRoot) {
   const path2 = join21(pluginRoot, "hooks", "hooks.json");
   let body;
   try {
-    body = await fs23.readFile(path2, "utf8");
+    body = await fs24.readFile(path2, "utf8");
   } catch (err) {
     if (errCode(err) === "ENOENT") {
       return { id: 7, label, status: "warn", issues: ["hooks/hooks.json missing"] };
@@ -20709,14 +20931,14 @@ async function checkAgents(pluginRoot) {
   const dir = join21(pluginRoot, "agents");
   let entries;
   try {
-    entries = (await fs23.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs24.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 8, label, status: "fail", issues: ["agents/ directory missing"] };
   }
   const issues = [];
   for (const name of entries) {
     const path2 = join21(dir, name);
-    const body = await fs23.readFile(path2, "utf8");
+    const body = await fs24.readFile(path2, "utf8");
     const fmErr = validateFrontmatter(body, ["name"]);
     if (fmErr) {
       issues.push(`agents/${name}: ${fmErr}`);
@@ -20734,14 +20956,14 @@ async function checkRules(pluginRoot) {
   const dir = join21(pluginRoot, "rules");
   let entries;
   try {
-    entries = (await fs23.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs24.readdir(dir, { recursive: true })).map(String).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 9, label, status: "fail", issues: ["rules/ directory missing"] };
   }
   const issues = [];
   for (const rel of entries) {
     const path2 = join21(dir, rel);
-    const body = await fs23.readFile(path2, "utf8");
+    const body = await fs24.readFile(path2, "utf8");
     const fmErr = validateFrontmatter(body, ["name"]);
     if (fmErr) issues.push(`rules/${rel}: ${fmErr}`);
   }
@@ -20753,7 +20975,7 @@ async function checkWorkflows(pluginRoot, projectRoot) {
   const dir = join21(pluginRoot, "workflows");
   let entries;
   try {
-    entries = (await fs23.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
+    entries = (await fs24.readdir(dir)).filter((n) => n.endsWith(".md")).sort();
   } catch {
     return { id: 10, label, status: "fail", issues: ["workflows/ directory missing"] };
   }
@@ -20791,15 +21013,150 @@ async function checkWorkflows(pluginRoot, projectRoot) {
   if (issues.length > 0) return { id: 10, label, status: "fail", issues };
   return { id: 10, label, status: "pass", detail: `${entries.length} ok` };
 }
+async function checkProjectContracts(projectRoot, pluginRoot) {
+  const id = 11;
+  const label = "project contracts";
+  const dir = join21(projectRoot, ".claude", "ewh-workflows");
+  let names;
+  try {
+    names = (await fs24.readdir(dir)).filter((n) => n.endsWith(".json")).sort();
+  } catch (err) {
+    if (errCode(err) === "ENOENT") {
+      return { id, label, status: "pass", detail: "none" };
+    }
+    return { id, label, status: "warn", issues: [errMsg(err)] };
+  }
+  if (names.length === 0) {
+    return { id, label, status: "pass", detail: "none" };
+  }
+  const fails = [];
+  const warns = [];
+  for (const fname of names) {
+    const jsonPath = join21(dir, fname);
+    const where = `ewh-workflows/${fname}`;
+    let contract;
+    try {
+      contract = await loadContract(jsonPath);
+    } catch (err) {
+      fails.push(`${where}: ${errMsg(err)}`);
+      continue;
+    }
+    const priorProduces = [];
+    for (const step of contract.steps) {
+      const agentFound = await fileExists(
+        join21(projectRoot, ".claude", "agents", `${step.agent}.md`)
+      ) || await fileExists(join21(pluginRoot, "agents", `${step.agent}.md`));
+      if (!agentFound) {
+        fails.push(
+          `${where}: step '${step.name}' references missing agent '${step.agent}'`
+        );
+      }
+      for (let i = 0; i < step.context.length; i++) {
+        const entry = step.context[i];
+        if (entry.type === "rule") {
+          const pluginMatches = await findRuleFiles2(
+            entry.ref,
+            join21(pluginRoot, "rules")
+          );
+          const projectMatches = await findRuleFiles2(
+            entry.ref,
+            join21(projectRoot, ".claude", "rules")
+          );
+          if (pluginMatches.length === 0 && projectMatches.length === 0) {
+            fails.push(
+              `${where}: step '${step.name}' context[${i}] rule '${entry.ref}' not found in rules/ or .claude/rules/`
+            );
+          }
+        } else if (entry.type === "artifact") {
+          if (!priorProduces.includes(entry.ref)) {
+            fails.push(
+              `${where}: step '${step.name}' context[${i}] artifact '${entry.ref}' not produced by any earlier step`
+            );
+          }
+        } else {
+          const filePath = join21(projectRoot, entry.ref);
+          if (!await fileExists(filePath)) {
+            fails.push(
+              `${where}: step '${step.name}' context[${i}] file '${entry.ref}' does not exist`
+            );
+          }
+        }
+      }
+      if (agentFound) {
+        try {
+          const agent = await loadAgent(step.agent, pluginRoot, projectRoot);
+          const defaults2 = new Set(agent.default_rules ?? []);
+          const stepRules = new Set(
+            step.context.filter((e) => e.type === "rule").map((e) => e.ref)
+          );
+          const missing = [...defaults2].filter((r) => !stepRules.has(r));
+          const extra = [...stepRules].filter((r) => !defaults2.has(r));
+          if (missing.length > 0 || extra.length > 0) {
+            const parts = [];
+            if (missing.length > 0) {
+              parts.push(`agent default_rules missing from step: [${missing.join(", ")}]`);
+            }
+            if (extra.length > 0) {
+              parts.push(`step rules not in agent default_rules: [${extra.join(", ")}]`);
+            }
+            warns.push(
+              `${where}: step '${step.name}' agent '${step.agent}' default_rules drift: ${parts.join("; ")}`
+            );
+          }
+        } catch {
+        }
+      }
+      priorProduces.push(...step.produces);
+    }
+    const mdPath = jsonPath.replace(/\.json$/, ".md");
+    if (!await fileExists(mdPath)) {
+      warns.push(`${where}: no companion .md summary`);
+    } else {
+      try {
+        const md = await loadWorkflow(mdPath);
+        const count = Math.max(md.steps.length, contract.steps.length);
+        for (let i = 0; i < count; i++) {
+          const jStep = contract.steps[i];
+          const mStep = md.steps[i];
+          if (!jStep || !mStep) {
+            warns.push(
+              `${where}: step count drift (json=${contract.steps.length} md=${md.steps.length})`
+            );
+            break;
+          }
+          if (jStep.name !== mStep.name) {
+            warns.push(
+              `${where}: step #${i + 1} name drift (json='${jStep.name}' md='${mStep.name}')`
+            );
+          }
+          if (mStep.agent && jStep.agent !== mStep.agent) {
+            warns.push(
+              `${where}: step '${jStep.name}' agent drift (json='${jStep.agent}' md='${mStep.agent}')`
+            );
+          }
+        }
+      } catch (err) {
+        warns.push(`${where}: md sibling unparseable: ${errMsg(err)}`);
+      }
+    }
+  }
+  if (fails.length > 0) {
+    return { id, label, status: "fail", issues: [...fails, ...warns] };
+  }
+  if (warns.length > 0) {
+    return { id, label, status: "warn", issues: warns };
+  }
+  return { id, label, status: "pass", detail: `${names.length} ok` };
+}
 async function checkDesignSmoke(pluginRoot) {
   const label = "smoke: design session";
   const bin = join21(pluginRoot, "bin", "ewh.mjs");
   try {
-    await fs23.access(bin, fs23.constants.R_OK);
+    await fs24.access(bin, fs24.constants.R_OK);
   } catch {
-    return { id: 12, label, status: "fail", issues: [`${bin}: not readable (see check #2)`] };
+    return { id: 13, label, status: "fail", issues: [`${bin}: not readable (see check #2)`] };
   }
-  const projectDir = await fs23.mkdtemp(join21(tmpdir(), "ewh-smoke-design-"));
+  const projectDir = await fs24.mkdtemp(join21(tmpdir(), "ewh-smoke-design-"));
   const roots = ["--plugin-root", pluginRoot, "--project-root", projectDir];
   try {
     const s1 = await spawnCollect(
@@ -20810,7 +21167,7 @@ async function checkDesignSmoke(pluginRoot) {
     );
     if (s1.exitCode !== 0) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: "fail",
         issues: [`start design: exit ${s1.exitCode}: ${(s1.stderr || s1.stdout).trim().slice(0, 200)}`]
@@ -20820,7 +21177,7 @@ async function checkDesignSmoke(pluginRoot) {
     const shapePath = s1.stdout.match(/--result (\S+)/)?.[1];
     if (!runId || !shapePath) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: "fail",
         issues: [`start design: could not parse runId/shapePath from: ${s1.stdout.trim().slice(0, 300)}`]
@@ -20840,8 +21197,8 @@ async function checkDesignSmoke(pluginRoot) {
         }
       ]
     };
-    await fs23.mkdir(join21(shapePath, ".."), { recursive: true });
-    await fs23.writeFile(shapePath, JSON.stringify(shape, null, 2), "utf8");
+    await fs24.mkdir(join21(shapePath, ".."), { recursive: true });
+    await fs24.writeFile(shapePath, JSON.stringify(shape, null, 2), "utf8");
     const s2 = await spawnCollect(
       process.execPath,
       [bin, "report", "--run", runId, "--step", "0", "--result", shapePath, ...roots],
@@ -20850,7 +21207,7 @@ async function checkDesignSmoke(pluginRoot) {
     );
     if (s2.exitCode !== 0 || !s2.stdout.startsWith("ACTION: user-prompt")) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: "fail",
         issues: [`shape gate: expected user-prompt, got exit=${s2.exitCode}: ${(s2.stderr || s2.stdout).trim().slice(0, 200)}`]
@@ -20864,7 +21221,7 @@ async function checkDesignSmoke(pluginRoot) {
     );
     if (s3.exitCode !== 0 || !s3.stdout.startsWith("ACTION: tool-call")) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: "fail",
         issues: [`approve shape gate: expected tool-call, got exit=${s3.exitCode}: ${(s3.stderr || s3.stdout).trim().slice(0, 200)}`]
@@ -20873,15 +21230,15 @@ async function checkDesignSmoke(pluginRoot) {
     const stagedPath = s3.stdout.match(/--result (\S+)/)?.[1];
     if (!stagedPath) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: "fail",
         issues: [`approve shape gate: could not parse stagedPath from: ${s3.stdout.trim().slice(0, 300)}`]
       };
     }
     const stagedContent = "---\nname: doctor-smoke-rule\ndescription: Doctor smoke test rule\n---\n\nDoctor smoke rule body.\n";
-    await fs23.mkdir(join21(stagedPath, ".."), { recursive: true });
-    await fs23.writeFile(stagedPath, stagedContent, "utf8");
+    await fs24.mkdir(join21(stagedPath, ".."), { recursive: true });
+    await fs24.writeFile(stagedPath, stagedContent, "utf8");
     const s4 = await spawnCollect(
       process.execPath,
       [bin, "report", "--run", runId, "--step", "0", "--result", stagedPath, ...roots],
@@ -20890,7 +21247,7 @@ async function checkDesignSmoke(pluginRoot) {
     );
     if (s4.exitCode !== 0 || !s4.stdout.startsWith("ACTION: user-prompt")) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: "fail",
         issues: [`file gate: expected user-prompt, got exit=${s4.exitCode}: ${(s4.stderr || s4.stdout).trim().slice(0, 200)}`]
@@ -20904,7 +21261,7 @@ async function checkDesignSmoke(pluginRoot) {
     );
     if (s5.exitCode !== 0 || !s5.stdout.startsWith("ACTION: done")) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: "fail",
         issues: [`approve file gate: expected done, got exit=${s5.exitCode}: ${(s5.stderr || s5.stdout).trim().slice(0, 200)}`]
@@ -20912,36 +21269,36 @@ async function checkDesignSmoke(pluginRoot) {
     }
     const finalPath = join21(projectDir, ".claude", "rules", "doctor-smoke-rule.md");
     try {
-      await fs23.access(finalPath);
+      await fs24.access(finalPath);
     } catch {
       return {
-        id: 12,
+        id: 13,
         label,
         status: "fail",
         issues: [`final file not written at ${finalPath}`]
       };
     }
-    return { id: 12, label, status: "pass" };
+    return { id: 13, label, status: "pass" };
   } catch (err) {
-    return { id: 12, label, status: "fail", issues: [errMsg(err)] };
+    return { id: 13, label, status: "fail", issues: [errMsg(err)] };
   } finally {
-    await fs23.rm(projectDir, { recursive: true, force: true });
+    await fs24.rm(projectDir, { recursive: true, force: true });
   }
 }
 async function checkSmoke(pluginRoot) {
   const label = "smoke: ewh start list";
   const bin = join21(pluginRoot, "bin", "ewh.mjs");
   try {
-    await fs23.access(bin, fs23.constants.R_OK);
+    await fs24.access(bin, fs24.constants.R_OK);
   } catch {
     return {
-      id: 11,
+      id: 12,
       label,
       status: "fail",
       issues: [`${bin}: not readable (see check #2)`]
     };
   }
-  const projectDir = await fs23.mkdtemp(join21(tmpdir(), "ewh-smoke-"));
+  const projectDir = await fs24.mkdtemp(join21(tmpdir(), "ewh-smoke-"));
   try {
     const { stdout, stderr, exitCode } = await spawnCollect(
       process.execPath,
@@ -20951,7 +21308,7 @@ async function checkSmoke(pluginRoot) {
     );
     if (exitCode !== 0) {
       return {
-        id: 11,
+        id: 12,
         label,
         status: "fail",
         issues: [`node ${bin} exited ${exitCode}: ${(stderr || stdout).trim().slice(0, 200)}`]
@@ -20959,7 +21316,7 @@ async function checkSmoke(pluginRoot) {
     }
     if (!stdout.startsWith("ACTION: done")) {
       return {
-        id: 11,
+        id: 12,
         label,
         status: "fail",
         issues: [
@@ -20967,11 +21324,11 @@ async function checkSmoke(pluginRoot) {
         ]
       };
     }
-    return { id: 11, label, status: "pass" };
+    return { id: 12, label, status: "pass" };
   } catch (err) {
-    return { id: 11, label, status: "fail", issues: [errMsg(err)] };
+    return { id: 12, label, status: "fail", issues: [errMsg(err)] };
   } finally {
-    await fs23.rm(projectDir, { recursive: true, force: true });
+    await fs24.rm(projectDir, { recursive: true, force: true });
   }
 }
 function spawnCollect(cmd, args, cwd, timeoutMs) {
@@ -21022,7 +21379,7 @@ function validateFrontmatter(raw, required) {
 async function findRuleFiles2(name, dir) {
   let entries;
   try {
-    entries = (await fs23.readdir(dir, { recursive: true })).map(String);
+    entries = (await fs24.readdir(dir, { recursive: true })).map(String);
   } catch {
     return [];
   }
@@ -21031,7 +21388,7 @@ async function findRuleFiles2(name, dir) {
 }
 async function fileExists(path2) {
   try {
-    await fs23.access(path2);
+    await fs24.access(path2);
     return true;
   } catch {
     return false;
@@ -21052,6 +21409,7 @@ var BUILTIN_SUBCOMMANDS = [
   "create",
   "design",
   "manage",
+  "migrate",
   "expand-tools",
   "status",
   "resume",
@@ -21079,13 +21437,11 @@ async function runStart(opts) {
   const manageTasks = opts.manageTasks ?? inlineFlags.has("manage-tasks");
   const name = parsed.workflow;
   if (isBuiltinSubcommand(name)) {
-    const projectOverridePath = join22(
+    const projectOverridePath = await resolveContractPath(
       opts.projectRoot,
-      ".claude",
-      "workflows",
-      `${name}.md`
+      name
     );
-    const hasProjectOverride = await fileExists2(projectOverridePath);
+    const hasProjectOverride = projectOverridePath !== null;
     if (noOverride || !hasProjectOverride) {
       if (STATELESS_SUBCOMMANDS.has(name)) {
         return runStatelessSubcommand(name, stripFlags(parsed.rest), opts, {
@@ -21214,30 +21570,22 @@ function stripFlags(rest) {
 function isBuiltinSubcommand(name) {
   return BUILTIN_SUBCOMMANDS.includes(name);
 }
-async function fileExists2(path2) {
-  try {
-    await fs24.access(path2);
-    return true;
-  } catch {
-    return false;
-  }
-}
-async function resolveWorkflow(projectRoot, pluginRoot, name) {
+async function resolveWorkflow(projectRoot, _pluginRoot, name) {
   const contractPath = await resolveContractPath(projectRoot, name);
-  if (contractPath) {
-    process.stderr.write(
-      `[ewh] workflow '${name}' loaded from JSON contract (${contractPath})
-`
+  if (!contractPath) {
+    throw new Error(
+      [
+        `No contract found at .claude/ewh-workflows/${name}.json.`,
+        `Run /ewh:doit migrate if upgrading from the old format, or /ewh:doit design ${name} to create one.`
+      ].join(" ")
     );
-    const contract = await loadContract(contractPath);
-    return contractToWorkflowDef(contract);
   }
-  const workflowPath = await resolveWorkflowPath(projectRoot, pluginRoot, name);
   process.stderr.write(
-    `[ewh] workflow '${name}' loaded from YAML (${workflowPath})
+    `[ewh] workflow '${name}' loaded from JSON contract (${contractPath})
 `
   );
-  return loadWorkflow(workflowPath);
+  const contract = await loadContract(contractPath);
+  return contractToWorkflowDef(contract);
 }
 async function runStatelessSubcommand(name, positionalRest, opts, extras = {}) {
   switch (name) {
@@ -21349,6 +21697,15 @@ async function startSubcommandRun(name, positionalRest, opts, manageTasks) {
       instruction = r.instruction;
       break;
     }
+    case "migrate": {
+      const r = await startMigrate({
+        projectRoot: opts.projectRoot,
+        pluginRoot: opts.pluginRoot
+      });
+      state = r.state;
+      instruction = r.instruction;
+      break;
+    }
     case "expand-tools": {
       const r = await startExpandTools({
         projectRoot: opts.projectRoot,
@@ -21423,10 +21780,10 @@ async function main2(argv) {
 // src/commands/record-tool-use.ts
 import { parseArgs as parseArgs3 } from "node:util";
 import { promises as fs25 } from "node:fs";
-import { join as join23 } from "node:path";
+import { join as join22 } from "node:path";
 import { glob as glob2 } from "node:fs/promises";
 async function findActiveRunDir(projectRoot) {
-  const artifactsDir = join23(projectRoot, ".ewh-artifacts");
+  const artifactsDir = join22(projectRoot, ".ewh-artifacts");
   let matches = [];
   try {
     const iter = glob2("*/ACTIVE", { cwd: artifactsDir });
@@ -21439,7 +21796,7 @@ async function findActiveRunDir(projectRoot) {
   if (matches.length === 0) return null;
   const first = matches[0];
   const runDirName = first.split("/")[0];
-  return join23(artifactsDir, runDirName);
+  return join22(artifactsDir, runDirName);
 }
 async function readStdin() {
   const chunks = [];
@@ -21492,7 +21849,7 @@ async function main3(argv) {
   } else {
     return;
   }
-  const logPath = join23(runDir2, "turn-log.jsonl");
+  const logPath = join22(runDir2, "turn-log.jsonl");
   const line = JSON.stringify(record) + "\n";
   await fs25.appendFile(logPath, line, "utf8");
 }

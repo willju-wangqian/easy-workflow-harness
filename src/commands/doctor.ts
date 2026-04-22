@@ -18,6 +18,9 @@ import { spawn } from 'node:child_process';
 import YAML from 'yaml';
 import { SENTINEL, checkSentinel } from '../state/sentinel.js';
 import { loadWorkflow } from '../workflow/parse.js';
+import { loadContract } from '../workflow/contract-loader.js';
+import { loadAgent } from '../workflow/agent-loader.js';
+import type { WorkflowContract } from '../workflow/contract.js';
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
 
@@ -56,6 +59,7 @@ export async function runDoctor(opts: DoctorOptions): Promise<DoctorOutput> {
   results.push(await checkAgents(opts.pluginRoot));
   results.push(await checkRules(opts.pluginRoot));
   results.push(await checkWorkflows(opts.pluginRoot, opts.projectRoot));
+  results.push(await checkProjectContracts(opts.projectRoot, opts.pluginRoot));
   if (opts.smoke) {
     results.push(await checkSmoke(opts.pluginRoot));
     results.push(await checkDesignSmoke(opts.pluginRoot));
@@ -340,13 +344,171 @@ async function checkWorkflows(
   return { id: 10, label, status: 'pass', detail: `${entries.length} ok` };
 }
 
+async function checkProjectContracts(
+  projectRoot: string,
+  pluginRoot: string,
+): Promise<CheckResult> {
+  const id = 11;
+  const label = 'project contracts';
+  const dir = join(projectRoot, '.claude', 'ewh-workflows');
+  let names: string[];
+  try {
+    names = (await fs.readdir(dir))
+      .filter((n) => n.endsWith('.json'))
+      .sort();
+  } catch (err) {
+    if (errCode(err) === 'ENOENT') {
+      return { id, label, status: 'pass', detail: 'none' };
+    }
+    return { id, label, status: 'warn', issues: [errMsg(err)] };
+  }
+  if (names.length === 0) {
+    return { id, label, status: 'pass', detail: 'none' };
+  }
+
+  const fails: string[] = [];
+  const warns: string[] = [];
+
+  for (const fname of names) {
+    const jsonPath = join(dir, fname);
+    const where = `ewh-workflows/${fname}`;
+    let contract: WorkflowContract;
+    try {
+      contract = await loadContract(jsonPath);
+    } catch (err) {
+      fails.push(`${where}: ${errMsg(err)}`);
+      continue;
+    }
+
+    const priorProduces: string[] = [];
+    for (const step of contract.steps) {
+      // agent existence
+      const agentFound =
+        (await fileExists(
+          join(projectRoot, '.claude', 'agents', `${step.agent}.md`),
+        )) ||
+        (await fileExists(join(pluginRoot, 'agents', `${step.agent}.md`)));
+      if (!agentFound) {
+        fails.push(
+          `${where}: step '${step.name}' references missing agent '${step.agent}'`,
+        );
+      }
+
+      // context refs
+      for (let i = 0; i < step.context.length; i++) {
+        const entry = step.context[i]!;
+        if (entry.type === 'rule') {
+          const pluginMatches = await findRuleFiles(
+            entry.ref,
+            join(pluginRoot, 'rules'),
+          );
+          const projectMatches = await findRuleFiles(
+            entry.ref,
+            join(projectRoot, '.claude', 'rules'),
+          );
+          if (pluginMatches.length === 0 && projectMatches.length === 0) {
+            fails.push(
+              `${where}: step '${step.name}' context[${i}] rule '${entry.ref}' not found in rules/ or .claude/rules/`,
+            );
+          }
+        } else if (entry.type === 'artifact') {
+          if (!priorProduces.includes(entry.ref)) {
+            fails.push(
+              `${where}: step '${step.name}' context[${i}] artifact '${entry.ref}' not produced by any earlier step`,
+            );
+          }
+        } else {
+          const filePath = join(projectRoot, entry.ref);
+          if (!(await fileExists(filePath))) {
+            fails.push(
+              `${where}: step '${step.name}' context[${i}] file '${entry.ref}' does not exist`,
+            );
+          }
+        }
+      }
+
+      // drift vs agent default_rules (warn)
+      if (agentFound) {
+        try {
+          const agent = await loadAgent(step.agent, pluginRoot, projectRoot);
+          const defaults = new Set(agent.default_rules ?? []);
+          const stepRules = new Set(
+            step.context
+              .filter((e) => e.type === 'rule')
+              .map((e) => e.ref),
+          );
+          const missing = [...defaults].filter((r) => !stepRules.has(r));
+          const extra = [...stepRules].filter((r) => !defaults.has(r));
+          if (missing.length > 0 || extra.length > 0) {
+            const parts: string[] = [];
+            if (missing.length > 0) {
+              parts.push(`agent default_rules missing from step: [${missing.join(', ')}]`);
+            }
+            if (extra.length > 0) {
+              parts.push(`step rules not in agent default_rules: [${extra.join(', ')}]`);
+            }
+            warns.push(
+              `${where}: step '${step.name}' agent '${step.agent}' default_rules drift: ${parts.join('; ')}`,
+            );
+          }
+        } catch {
+          // loadAgent failure is reported above via agentFound
+        }
+      }
+
+      priorProduces.push(...step.produces);
+    }
+
+    // workflow.md ↔ JSON drift (warn)
+    const mdPath = jsonPath.replace(/\.json$/, '.md');
+    if (!(await fileExists(mdPath))) {
+      warns.push(`${where}: no companion .md summary`);
+    } else {
+      try {
+        const md = await loadWorkflow(mdPath);
+        const count = Math.max(md.steps.length, contract.steps.length);
+        for (let i = 0; i < count; i++) {
+          const jStep = contract.steps[i];
+          const mStep = md.steps[i];
+          if (!jStep || !mStep) {
+            warns.push(
+              `${where}: step count drift (json=${contract.steps.length} md=${md.steps.length})`,
+            );
+            break;
+          }
+          if (jStep.name !== mStep.name) {
+            warns.push(
+              `${where}: step #${i + 1} name drift (json='${jStep.name}' md='${mStep.name}')`,
+            );
+          }
+          if (mStep.agent && jStep.agent !== mStep.agent) {
+            warns.push(
+              `${where}: step '${jStep.name}' agent drift (json='${jStep.agent}' md='${mStep.agent}')`,
+            );
+          }
+        }
+      } catch (err) {
+        warns.push(`${where}: md sibling unparseable: ${errMsg(err)}`);
+      }
+    }
+  }
+
+  if (fails.length > 0) {
+    return { id, label, status: 'fail', issues: [...fails, ...warns] };
+  }
+  if (warns.length > 0) {
+    return { id, label, status: 'warn', issues: warns };
+  }
+  return { id, label, status: 'pass', detail: `${names.length} ok` };
+}
+
 async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
   const label = 'smoke: design session';
   const bin = join(pluginRoot, 'bin', 'ewh.mjs');
   try {
     await fs.access(bin, fs.constants.R_OK);
   } catch {
-    return { id: 12, label, status: 'fail', issues: [`${bin}: not readable (see check #2)`] };
+    return { id: 13, label, status: 'fail', issues: [`${bin}: not readable (see check #2)`] };
   }
 
   const projectDir = await fs.mkdtemp(join(tmpdir(), 'ewh-smoke-design-'));
@@ -362,7 +524,7 @@ async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
     );
     if (s1.exitCode !== 0) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: 'fail',
         issues: [`start design: exit ${s1.exitCode}: ${(s1.stderr || s1.stdout).trim().slice(0, 200)}`],
@@ -372,7 +534,7 @@ async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
     const shapePath = s1.stdout.match(/--result (\S+)/)?.[1];
     if (!runId || !shapePath) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: 'fail',
         issues: [`start design: could not parse runId/shapePath from: ${s1.stdout.trim().slice(0, 300)}`],
@@ -406,7 +568,7 @@ async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
     );
     if (s2.exitCode !== 0 || !s2.stdout.startsWith('ACTION: user-prompt')) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: 'fail',
         issues: [`shape gate: expected user-prompt, got exit=${s2.exitCode}: ${(s2.stderr || s2.stdout).trim().slice(0, 200)}`],
@@ -422,7 +584,7 @@ async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
     );
     if (s3.exitCode !== 0 || !s3.stdout.startsWith('ACTION: tool-call')) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: 'fail',
         issues: [`approve shape gate: expected tool-call, got exit=${s3.exitCode}: ${(s3.stderr || s3.stdout).trim().slice(0, 200)}`],
@@ -431,7 +593,7 @@ async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
     const stagedPath = s3.stdout.match(/--result (\S+)/)?.[1];
     if (!stagedPath) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: 'fail',
         issues: [`approve shape gate: could not parse stagedPath from: ${s3.stdout.trim().slice(0, 300)}`],
@@ -453,7 +615,7 @@ async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
     );
     if (s4.exitCode !== 0 || !s4.stdout.startsWith('ACTION: user-prompt')) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: 'fail',
         issues: [`file gate: expected user-prompt, got exit=${s4.exitCode}: ${(s4.stderr || s4.stdout).trim().slice(0, 200)}`],
@@ -469,7 +631,7 @@ async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
     );
     if (s5.exitCode !== 0 || !s5.stdout.startsWith('ACTION: done')) {
       return {
-        id: 12,
+        id: 13,
         label,
         status: 'fail',
         issues: [`approve file gate: expected done, got exit=${s5.exitCode}: ${(s5.stderr || s5.stdout).trim().slice(0, 200)}`],
@@ -482,16 +644,16 @@ async function checkDesignSmoke(pluginRoot: string): Promise<CheckResult> {
       await fs.access(finalPath);
     } catch {
       return {
-        id: 12,
+        id: 13,
         label,
         status: 'fail',
         issues: [`final file not written at ${finalPath}`],
       };
     }
 
-    return { id: 12, label, status: 'pass' };
+    return { id: 13, label, status: 'pass' };
   } catch (err) {
-    return { id: 12, label, status: 'fail', issues: [errMsg(err)] };
+    return { id: 13, label, status: 'fail', issues: [errMsg(err)] };
   } finally {
     await fs.rm(projectDir, { recursive: true, force: true });
   }
@@ -504,7 +666,7 @@ async function checkSmoke(pluginRoot: string): Promise<CheckResult> {
     await fs.access(bin, fs.constants.R_OK);
   } catch {
     return {
-      id: 11,
+      id: 12,
       label,
       status: 'fail',
       issues: [`${bin}: not readable (see check #2)`],
@@ -520,7 +682,7 @@ async function checkSmoke(pluginRoot: string): Promise<CheckResult> {
     );
     if (exitCode !== 0) {
       return {
-        id: 11,
+        id: 12,
         label,
         status: 'fail',
         issues: [`node ${bin} exited ${exitCode}: ${(stderr || stdout).trim().slice(0, 200)}`],
@@ -528,7 +690,7 @@ async function checkSmoke(pluginRoot: string): Promise<CheckResult> {
     }
     if (!stdout.startsWith('ACTION: done')) {
       return {
-        id: 11,
+        id: 12,
         label,
         status: 'fail',
         issues: [
@@ -536,9 +698,9 @@ async function checkSmoke(pluginRoot: string): Promise<CheckResult> {
         ],
       };
     }
-    return { id: 11, label, status: 'pass' };
+    return { id: 12, label, status: 'pass' };
   } catch (err) {
-    return { id: 11, label, status: 'fail', issues: [errMsg(err)] };
+    return { id: 12, label, status: 'fail', issues: [errMsg(err)] };
   } finally {
     await fs.rm(projectDir, { recursive: true, force: true });
   }

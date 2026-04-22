@@ -92,6 +92,9 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 /ewh:doit cleanup                                     # run configured cleanup tasks
 /ewh:doit cleanup --manage-tasks                      # configure cleanup tasks
 /ewh:doit design "<description>"                        # design a rule, agent, or workflow conversationally
+/ewh:doit design modify <target>                       # edit an agent/rule/workflow-step via LLM ferry + diff
+/ewh:doit manage <workflow>                            # fill runtime fields for a workflow contract
+/ewh:doit migrate                                      # upgrade legacy .claude/workflows/*.md → .claude/ewh-workflows/*.{md,json}
 /ewh:doit expand-tools [description]                   # discover and persist agent tool expansions
 /ewh:doit list                                         # list all workflows and subcommands
 
@@ -106,7 +109,7 @@ The dispatcher walks you through each step, pausing at **gates** where your inpu
 /ewh:doit <name> --strict [description]                # strict drift detection: halt on tool-call mismatch
 
 # Override control
-/ewh:doit <subcommand> --no-override                   # force built-in subcommand when a same-name project workflow exists
+/ewh:doit <subcommand> --no-override                   # force built-in subcommand when a same-name project contract exists
 ```
 
 See [Subcommands](#subcommands), [Auto-Approve Start](#auto-approve-start), [Script Proposal](#script-proposal), and [Extending Agent Tool Pools](#extending-agent-tool-pools) for details.
@@ -185,13 +188,16 @@ Subcommands are lightweight, interactive operations handled directly by the disp
 | `init` | Bootstrap a project — detect language/framework, write Harness Config, show onboarding guide | [docs](docs/subcommand-init.md) |
 | `cleanup` | Run user-configured cleanup tasks (tests, linting, formatting) | [docs](docs/subcommand-cleanup.md) |
 | `design "<desc>"` | Design a rule, agent, or workflow through a conversational interview | [docs](docs/subcommand-design.md) |
+| `design modify <target>` | Modify an existing agent/rule or a workflow step via an LLM ferry pattern | [docs](docs/subcommand-design.md) |
+| `manage <workflow>` | Fill runtime fields (context, produces, gate, requires, chunked, script, script_fallback) for a workflow contract | [docs](docs/customization.md) |
+| `migrate` | One-shot upgrade: convert legacy `.claude/workflows/*.md` → `.claude/ewh-workflows/*.{md,json}` | — |
 | `expand-tools` | Discover MCP/plugin tools and persist per-agent expansions | [docs](docs/expand-agent-tools.md) |
 | `status` / `resume` / `abort` / `doctor` | Inspect active/stale runs, resume a crashed run, abort a stuck one, validate the plugin environment | [docs](docs/subcommand-run-control.md) |
 
-**Override control:** If you create a project workflow with the same name as a subcommand (e.g., `.claude/workflows/init.md`), the project workflow takes precedence. Use `--no-override` to force the built-in subcommand:
+**Override control:** If you author a project contract with the same name as a subcommand (e.g., `.claude/ewh-workflows/init.json`), the project workflow takes precedence. Use `--no-override` to force the built-in subcommand:
 
 ```bash
-/ewh:doit init --no-override    # run built-in init even if .claude/workflows/init.md exists
+/ewh:doit init --no-override    # run built-in init even if .claude/ewh-workflows/init.json exists
 ```
 
 ## Agents
@@ -344,7 +350,7 @@ Add project-specific overrides in your `.claude/` directory:
 |---|---|---|
 | Agents | `.claude/agents/<name>.md` | Replaces the plugin agent, or extends it |
 | Rules | `.claude/rules/<name>.md` (subfolders allowed, e.g. `.claude/rules/ewh/<name>.md`) | Concatenated with the plugin rule (both apply); discovered recursively |
-| Workflows | `.claude/workflows/<name>.md` | Replaces the plugin workflow entirely |
+| Workflows | `.claude/ewh-workflows/<name>.{md,json}` | Project contract pair. `design` creates it; `manage` fills runtime fields; `design modify` iterates |
 
 #### Extend an Agent
 
@@ -376,9 +382,9 @@ Project rules are appended to the plugin rule, so both apply:
 - New files go in `src/app/` not project root
 ```
 
-#### Replace a Workflow
+#### Author a Workflow
 
-Create `.claude/workflows/add-feature.md` with your own step definitions. It completely replaces the plugin's version. See [docs/customization.md](docs/customization.md#creating-your-own-workflow) for the format.
+Workflows live as a two-file pair: a machine-authoritative JSON contract plus a human-facing Markdown summary, both under `.claude/ewh-workflows/`. Run `/ewh:doit design <name>` to adopt a plugin template (or create from scratch) — the interview produces the pair atomically. Then run `/ewh:doit manage <name>` to fill runtime fields (context, produces, gate, requires, chunked, script, script_fallback). Iterate a single step later with `/ewh:doit design modify <name>:<step>`. Upgrading from the legacy `.claude/workflows/*.md` format? Run `/ewh:doit migrate` once and review the generated pair. See [docs/customization.md](docs/customization.md#creating-your-own-workflow) for the format.
 
 ## Extending EWH
 

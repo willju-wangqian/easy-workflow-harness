@@ -26,6 +26,51 @@ async function writeFile(path: string, content: string, mode?: number) {
   await fs.writeFile(path, content, mode !== undefined ? { mode } : 'utf8');
 }
 
+type TestContextEntry =
+  | { type: 'rule'; ref: string }
+  | { type: 'artifact'; ref: string }
+  | { type: 'file'; ref: string };
+
+type TestStepSpec = {
+  name: string;
+  agent?: string;
+  description?: string;
+  gate?: 'structural' | 'auto';
+  produces?: string[];
+  context?: TestContextEntry[];
+  requires?: Array<{ file_exists: string } | { prior_step: string; has: string }>;
+  chunked?: boolean;
+  script?: string | null;
+  script_fallback?: 'gate' | 'auto';
+};
+
+async function writeContract(
+  projectRoot: string,
+  name: string,
+  steps: TestStepSpec[],
+  description = '',
+) {
+  const contract = {
+    name,
+    description,
+    steps: steps.map((s) => ({
+      name: s.name,
+      agent: s.agent ?? 'coder',
+      description: s.description ?? '',
+      gate: s.gate ?? 'auto',
+      produces: s.produces ?? [],
+      context: s.context ?? [],
+      requires: s.requires ?? [],
+      chunked: s.chunked ?? false,
+      script: s.script ?? null,
+      script_fallback: s.script_fallback ?? 'gate',
+    })),
+  };
+  const path = join(projectRoot, '.claude', 'ewh-workflows', `${name}.json`);
+  await fs.mkdir(join(path, '..'), { recursive: true });
+  await fs.writeFile(path, JSON.stringify(contract, null, 2));
+}
+
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(join(tmpdir(), 'ewh-integ-'));
   pluginRoot = join(tmpDir, 'plugin');
@@ -109,10 +154,14 @@ async function doReport(
 
 describe('happy path — single agent step completes on first run', () => {
   it('runStart → agent → result+sentinel → done', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'hello.md'),
-      `---\nname: hello\n---\n\n## Steps\n\n- name: greet\n  gate: auto\n  agent: coder\n  reads: [README.md]\n`,
-    );
+    await writeContract(projectRoot, 'hello', [
+      {
+        name: 'greet',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: 'README.md' }],
+      },
+    ]);
     await writeFile(join(projectRoot, 'README.md'), 'hello');
 
     const out = await runStart({
@@ -136,10 +185,14 @@ describe('happy path — single agent step completes on first run', () => {
 
 describe('no startup gate — first auto-gate step emits tool-call directly', () => {
   it('workflow with only gate: auto steps goes straight to tool-call', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'q.md'),
-      `---\nname: q\n---\n\n## Steps\n\n- name: run\n  gate: auto\n  agent: coder\n  reads: [r.md]\n`,
-    );
+    await writeContract(projectRoot, 'q', [
+      {
+        name: 'run',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: 'r.md' }],
+      },
+    ]);
     await writeFile(join(projectRoot, 'r.md'), 'x');
 
     const autoOut = await runStart({
@@ -153,10 +206,14 @@ describe('no startup gate — first auto-gate step emits tool-call directly', ()
 
 describe('structural gate — per-step pause; --trust auto-skips', () => {
   it('gate=structural emits user-prompt by default', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 's.md'),
-      `---\nname: s\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 's', [
+      {
+        name: 'review',
+        gate: 'structural',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+      },
+    ]);
     const out = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 's' }),
     );
@@ -172,10 +229,14 @@ describe('structural gate — per-step pause; --trust auto-skips', () => {
   });
 
   it('--trust skips structural gate directly to agent', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 's2.md'),
-      `---\nname: s2\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 's2', [
+      {
+        name: 'review',
+        gate: 'structural',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+      },
+    ]);
     const out = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 's2', trust: true }),
     );
@@ -189,10 +250,17 @@ describe('compliance failure — --yolo skip + user override', () => {
       join(pluginRoot, 'rules', 'fail.md'),
       '---\nname: fail\nseverity: critical\nverify: "exit 1"\n---\n\nBody',
     );
-    await writeFile(
-      join(pluginRoot, 'workflows', 'c.md'),
-      `---\nname: c\n---\n\n## Steps\n\n- name: r\n  gate: auto\n  agent: coder\n  rules: [fail]\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'c', [
+      {
+        name: 'r',
+        gate: 'auto',
+        agent: 'coder',
+        context: [
+          { type: 'rule', ref: 'fail' },
+          { type: 'file', ref: '_' },
+        ],
+      },
+    ]);
   });
 
   it('failure gates; user can skip via decision=no', async () => {
@@ -235,10 +303,14 @@ describe('compliance failure — --yolo skip + user override', () => {
 
 describe('error retry exhaustion gate', () => {
   it('gates after default 2 retries', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'e.md'),
-      `---\nname: e\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'e', [
+      {
+        name: 'go',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+      },
+    ]);
     const first = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 'e' }),
     );
@@ -269,10 +341,14 @@ describe('error retry exhaustion gate', () => {
 
 describe('chunked dispatch — first-run pattern prompt; cached on rerun', () => {
   beforeEach(async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'ch.md'),
-      `---\nname: ch\n---\n\n## Steps\n\n- name: scan\n  gate: auto\n  agent: coder\n  chunked: true\n`,
-    );
+    await writeContract(projectRoot, 'ch', [
+      {
+        name: 'scan',
+        gate: 'auto',
+        agent: 'coder',
+        chunked: true,
+      },
+    ]);
     await writeFile(join(projectRoot, 'src', 'a.ts'), 'a');
     await writeFile(join(projectRoot, 'src', 'b.ts'), 'b');
   });
@@ -320,10 +396,9 @@ describe('chunked dispatch — first-run pattern prompt; cached on rerun', () =>
 
 describe('script_eval → propose → approve → cache hit', () => {
   it('scriptable step proposes, caches on approval, reuses cached on rerun', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'sc.md'),
-      `---\nname: sc\n---\n\n## Steps\n\n- name: run\n  gate: auto\n  agent: coder\n`,
-    );
+    await writeContract(projectRoot, 'sc', [
+      { name: 'run', gate: 'auto', agent: 'coder' },
+    ]);
     const first = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 'sc' }),
     );
@@ -354,10 +429,16 @@ describe('script failure — script_fallback gate vs auto', () => {
   async function workflowWith(fallback: 'gate' | 'auto') {
     const scriptPath = join(projectRoot, 'fail.sh');
     await writeFile(scriptPath, '#!/usr/bin/env bash\nexit 1\n', 0o755);
-    await writeFile(
-      join(pluginRoot, 'workflows', `f-${fallback}.md`),
-      `---\nname: f-${fallback}\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [_]\n  script: ${scriptPath}\n  script_fallback: ${fallback}\n`,
-    );
+    await writeContract(projectRoot, `f-${fallback}`, [
+      {
+        name: 'go',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+        script: scriptPath,
+        script_fallback: fallback,
+      },
+    ]);
     return `f-${fallback}`;
   }
 
@@ -381,10 +462,14 @@ describe('script failure — script_fallback gate vs auto', () => {
 
 describe('continuation — partial output → continuation agent → complete', () => {
   it('missing sentinel triggers continuation tool-call', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'co.md'),
-      `---\nname: co\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'co', [
+      {
+        name: 'go',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+      },
+    ]);
     const first = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 'co' }),
     );
@@ -409,10 +494,15 @@ describe('continuation — partial output → continuation agent → complete', 
 
 describe('split-merge — continuation fails → split → merge', () => {
   it('split chunks run and merge into artifact', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'sp.md'),
-      `---\nname: sp\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [_]\n  artifact: out.md\n`,
-    );
+    await writeContract(projectRoot, 'sp', [
+      {
+        name: 'go',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+        produces: ['out.md'],
+      },
+    ]);
     const first = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 'sp' }),
     );
@@ -453,10 +543,14 @@ describe('split-merge — continuation fails → split → merge', () => {
 
 describe('crash resume — re-invoking runReport re-emits same instruction idempotently', () => {
   it('second runReport with identical state replays the tool-call', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'cr.md'),
-      `---\nname: cr\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'cr', [
+      {
+        name: 'go',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+      },
+    ]);
     const first = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 'cr' }),
     );
@@ -473,10 +567,14 @@ describe('crash resume — re-invoking runReport re-emits same instruction idemp
 
 describe('abort mid-flight', () => {
   it('clears ACTIVE marker and marks the run aborted', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'ab.md'),
-      `---\nname: ab\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'ab', [
+      {
+        name: 'go',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+      },
+    ]);
     const first = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 'ab' }),
     );
@@ -496,10 +594,20 @@ describe('drift detection — Level 2 (log only) vs Level 3 (strict gate)', () =
   async function setup() {
     // Two-step workflow: first step completes normally and arms
     // last_instructed_tool for the second step, at which point drift is checked.
-    await writeFile(
-      join(pluginRoot, 'workflows', 'd.md'),
-      `---\nname: d\n---\n\n## Steps\n\n- name: first\n  gate: auto\n  agent: coder\n  reads: [_a]\n- name: second\n  gate: auto\n  agent: coder\n  reads: [_b]\n`,
-    );
+    await writeContract(projectRoot, 'd', [
+      {
+        name: 'first',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_a' }],
+      },
+      {
+        name: 'second',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_b' }],
+      },
+    ]);
   }
 
   async function driveToSecondStep(strict: boolean): Promise<{
@@ -642,10 +750,14 @@ describe('subcommand report routing — cleanup task failure gate resumes', () =
 
 describe('report step-index mismatch', () => {
   it('throws when step_index disagrees with the run cursor', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'mi.md'),
-      `---\nname: mi\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'mi', [
+      {
+        name: 'go',
+        gate: 'auto',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+      },
+    ]);
     const first = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 'mi' }),
     );
@@ -663,10 +775,14 @@ describe('report step-index mismatch', () => {
 
 describe('save flag persists settings across runs', () => {
   it('--trust --save persists auto_structural', async () => {
-    await writeFile(
-      join(pluginRoot, 'workflows', 'sv.md'),
-      `---\nname: sv\n---\n\n## Steps\n\n- name: go\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'sv', [
+      {
+        name: 'go',
+        gate: 'structural',
+        agent: 'coder',
+        context: [{ type: 'file', ref: '_' }],
+      },
+    ]);
     await runStart({
       projectRoot,
       pluginRoot,
@@ -683,21 +799,22 @@ describe('save flag persists settings across runs', () => {
 });
 
 describe('builtin subcommand resolution — --no-override', () => {
-  it('--no-override forces the builtin list subcommand even when a project workflow exists', async () => {
+  it('--no-override forces the builtin list subcommand even when a project contract exists', async () => {
     await writeFile(
       join(pluginRoot, 'skills', 'doit', 'list.md'),
       'plugin catalog',
     );
-    await writeFile(
-      join(projectRoot, '.claude', 'workflows', 'list.md'),
-      `---\nname: list\n---\n\n## Steps\n\n- name: noop\n  gate: auto\n  message: hi\n`,
-    );
-    // Default: project override wins → not builtin.
+    // Project contract named `list` — when present, overrides the builtin.
+    await writeContract(projectRoot, 'list', [
+      { name: 'noop', gate: 'auto', agent: 'coder' },
+    ]);
+    // Default: project contract override wins → reaches the workflow's
+    // step machinery (not the builtin done). The noop step has no script,
+    // so the machinery enters script_eval and emits a user-prompt.
     const override = parseInstruction(
       await runStart({ projectRoot, pluginRoot, rawArgv: 'list' }),
     );
-    // The override is a workflow with a single no-op step → message step completes → done.
-    expect(override.action).toBe('done');
+    expect(override.action).not.toBe('done');
 
     // --no-override forces the builtin list subcommand.
     const builtin = parseInstruction(

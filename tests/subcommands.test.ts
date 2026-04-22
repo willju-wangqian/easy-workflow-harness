@@ -72,14 +72,22 @@ describe('list subcommand', () => {
     expect(body).not.toContain('Project overrides:');
   });
 
-  it('appends override footer for project-level workflows/rules/agents', async () => {
+  it('appends footer for project-level contracts/rules/agents + legacy warning', async () => {
     const pluginRoot = tmpDir;
     const projectRoot = tmpDir;
     await fs.mkdir(join(pluginRoot, 'skills', 'doit'), { recursive: true });
     await fs.writeFile(join(pluginRoot, 'skills', 'doit', 'list.md'), 'HEADER\n');
 
+    // New-format project contract.
+    await fs.mkdir(join(projectRoot, '.claude', 'ewh-workflows'), { recursive: true });
+    await fs.writeFile(
+      join(projectRoot, '.claude', 'ewh-workflows', 'my-flow.json'),
+      '{}\n',
+    );
+
+    // Legacy YAML → should be flagged for migrate.
     await fs.mkdir(join(projectRoot, '.claude', 'workflows'), { recursive: true });
-    await fs.writeFile(join(projectRoot, '.claude', 'workflows', 'my-flow.md'), '---\n');
+    await fs.writeFile(join(projectRoot, '.claude', 'workflows', 'old-flow.md'), '---\n');
 
     await fs.mkdir(join(projectRoot, '.claude', 'rules', 'nested'), { recursive: true });
     await fs.writeFile(join(projectRoot, '.claude', 'rules', 'a.md'), '---\n');
@@ -90,10 +98,12 @@ describe('list subcommand', () => {
 
     const body = await buildListBody({ pluginRoot, projectRoot });
     expect(body).toContain('HEADER');
-    expect(body).toContain('Project overrides:');
+    expect(body).toContain('Project contracts and overrides:');
     expect(body).toContain('workflows: my-flow');
     expect(body).toContain('rules:     a, b');
     expect(body).toContain('agents:    coder');
+    expect(body).toContain('legacy .claude/workflows/: old-flow');
+    expect(body).toContain('/ewh:doit migrate');
   });
 
   it('falls back to inline catalog when list.md is missing', async () => {

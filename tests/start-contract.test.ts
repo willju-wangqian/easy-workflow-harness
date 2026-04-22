@@ -1,6 +1,7 @@
 /**
- * Session 2 coverage: `ewh start` resolves the JSON contract first when
- * present, and falls back to the legacy YAML workflow when it's not.
+ * `ewh start` loads the project contract from `.claude/ewh-workflows/<name>.json`.
+ * Plugin `workflows/` is templates-only after Session 6; a project without
+ * a contract gets a clean error directing them to `migrate` or `design`.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -40,15 +41,8 @@ function parseHeader(raw: string) {
   return { action: actionMatch?.[1] };
 }
 
-describe('workflow resolution: JSON contract vs YAML fallback', () => {
-  it('JSON contract wins when both JSON and YAML exist for the same name', async () => {
-    // Plugin-level YAML says the agent is coder.
-    await writeFile(
-      join(pluginRoot, 'workflows', 'hello.md'),
-      `---\nname: hello\n---\n\n## Steps\n\n- name: yaml-step\n  gate: auto\n  agent: coder\n  reads: [from-yaml.md]\n`,
-    );
-
-    // Project-level JSON contract — should win.
+describe('workflow resolution: JSON contract only', () => {
+  it('loads project JSON contract and identifies the path in stderr', async () => {
     await writeFile(
       join(projectRoot, '.claude', 'ewh-workflows', 'hello.json'),
       JSON.stringify({
@@ -92,12 +86,9 @@ describe('workflow resolution: JSON contract vs YAML fallback', () => {
     const { action } = parseHeader(out);
     expect(action).toBe('tool-call');
 
-    // Debug log identifies JSON path.
     const stderr = stderrChunks.join('');
     expect(stderr).toContain('JSON contract');
 
-    // The step name should be the JSON step, not the YAML step. Check by
-    // inspecting the persisted state.
     const stateDir = join(projectRoot, '.ewh-artifacts');
     const entries = await fs.readdir(stateDir);
     const runDir = entries.find((e) => e.startsWith('run-'))!;
@@ -106,41 +97,26 @@ describe('workflow resolution: JSON contract vs YAML fallback', () => {
     );
     expect(stateJson.steps[0].name).toBe('json-step');
 
-    // Required Reading in the prompt should mention the JSON-declared file,
-    // not the YAML-declared one.
     const promptPath = join(stateDir, runDir, 'step-0-prompt.md');
     const prompt = await fs.readFile(promptPath, 'utf8');
     expect(prompt).toContain('from-json.md');
-    expect(prompt).not.toContain('from-yaml.md');
   });
 
-  it('falls back to YAML when no JSON contract exists', async () => {
+  it('errors cleanly when no contract exists, directing to migrate/design', async () => {
+    // Plugin has a YAML template, but the runtime no longer falls back to it.
     await writeFile(
       join(pluginRoot, 'workflows', 'yamlonly.md'),
       `---\nname: yamlonly\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [yaml.md]\n`,
     );
 
-    const stderrChunks: string[] = [];
-    const origWrite = process.stderr.write.bind(process.stderr);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (process.stderr.write as any) = (chunk: string | Uint8Array) => {
-      stderrChunks.push(typeof chunk === 'string' ? chunk : chunk.toString());
-      return true;
-    };
-    let out: string;
-    try {
-      out = await runStart({
-        projectRoot,
-        pluginRoot,
-        rawArgv: 'yamlonly',
-      });
-    } finally {
-      process.stderr.write = origWrite;
-    }
-
-    expect(parseHeader(out).action).toBe('tool-call');
-    const stderr = stderrChunks.join('');
-    expect(stderr).toContain('loaded from YAML');
-    expect(stderr).not.toContain('JSON contract');
+    await expect(
+      runStart({ projectRoot, pluginRoot, rawArgv: 'yamlonly' }),
+    ).rejects.toThrow(/No contract found at \.claude\/ewh-workflows\/yamlonly\.json/);
+    await expect(
+      runStart({ projectRoot, pluginRoot, rawArgv: 'yamlonly' }),
+    ).rejects.toThrow(/\/ewh:doit migrate/);
+    await expect(
+      runStart({ projectRoot, pluginRoot, rawArgv: 'yamlonly' }),
+    ).rejects.toThrow(/\/ewh:doit design yamlonly/);
   });
 });

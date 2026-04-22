@@ -21,6 +21,40 @@ import type { RunState } from '../src/state/types.js';
  * RunState so the resulting step state is produced by the real state
  * machine (gate_pending prompt, agent_run prompt_path, etc.).
  */
+async function writeContract(
+  projectRoot: string,
+  name: string,
+  step: { gate: 'structural' | 'auto'; stepName?: string },
+): Promise<void> {
+  const path = join(projectRoot, '.claude', 'ewh-workflows', `${name}.json`);
+  await fs.mkdir(join(path, '..'), { recursive: true });
+  await fs.writeFile(
+    path,
+    JSON.stringify(
+      {
+        name,
+        description: '',
+        steps: [
+          {
+            name: step.stepName ?? (step.gate === 'structural' ? 'review' : 'go'),
+            agent: 'coder',
+            description: '',
+            gate: step.gate,
+            produces: [],
+            context: [{ type: 'file', ref: '_' }],
+            requires: [],
+            chunked: false,
+            script: null,
+            script_fallback: 'gate',
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+  );
+}
+
 async function writeFileEnsuring(path: string, content: string): Promise<void> {
   await fs.mkdir(join(path, '..'), { recursive: true });
   await fs.writeFile(path, content, 'utf8');
@@ -212,10 +246,7 @@ describe('runResume — re-emission of workflow runs', () => {
   });
 
   it('gate_pending: re-emits the same structural-gate prompt without mutating state.json', async () => {
-    await writeFileEnsuring(
-      join(pluginRoot, 'workflows', 'g.md'),
-      `---\nname: g\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'g', { gate: 'structural' });
     const first = parseAction(await runStart({ projectRoot, pluginRoot, rawArgv: 'g' }));
     expect(first.action).toBe('user-prompt');
     expect(first.body).toContain('structural gate');
@@ -239,10 +270,7 @@ describe('runResume — re-emission of workflow runs', () => {
   });
 
   it('agent_run: re-emits the same agent tool-call referencing the same prompt path', async () => {
-    await writeFileEnsuring(
-      join(pluginRoot, 'workflows', 'a.md'),
-      `---\nname: a\n---\n\n## Steps\n\n- name: go\n  gate: auto\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'a', { gate: 'auto' });
     const first = parseAction(await runStart({ projectRoot, pluginRoot, rawArgv: 'a' }));
     expect(first.action).toBe('tool-call');
     const runId = first.runId!;
@@ -264,10 +292,7 @@ describe('runResume — re-emission of workflow runs', () => {
   });
 
   it('single active run, no <run-id>: picks it automatically and re-emits', async () => {
-    await writeFileEnsuring(
-      join(pluginRoot, 'workflows', 'q.md'),
-      `---\nname: q\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'q', { gate: 'structural' });
     const first = parseAction(await runStart({ projectRoot, pluginRoot, rawArgv: 'q' }));
     const runId = first.runId!;
 
@@ -278,14 +303,8 @@ describe('runResume — re-emission of workflow runs', () => {
   });
 
   it('>1 active: pick gate → report --result <id> → re-emits chosen run', async () => {
-    await writeFileEnsuring(
-      join(pluginRoot, 'workflows', 'w1.md'),
-      `---\nname: w1\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
-    await writeFileEnsuring(
-      join(pluginRoot, 'workflows', 'w2.md'),
-      `---\nname: w2\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'w1', { gate: 'structural' });
+    await writeContract(projectRoot, 'w2', { gate: 'structural' });
     const run1 = parseAction(await runStart({ projectRoot, pluginRoot, rawArgv: 'w1' }));
     const run2 = parseAction(await runStart({ projectRoot, pluginRoot, rawArgv: 'w2' }));
     expect(run1.runId).toBeDefined();
@@ -331,14 +350,8 @@ describe('runResume — re-emission of workflow runs', () => {
   });
 
   it('>1 active: report with a non-active run-id errors', async () => {
-    await writeFileEnsuring(
-      join(pluginRoot, 'workflows', 'w3.md'),
-      `---\nname: w3\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
-    await writeFileEnsuring(
-      join(pluginRoot, 'workflows', 'w4.md'),
-      `---\nname: w4\n---\n\n## Steps\n\n- name: review\n  gate: structural\n  agent: coder\n  reads: [_]\n`,
-    );
+    await writeContract(projectRoot, 'w3', { gate: 'structural' });
+    await writeContract(projectRoot, 'w4', { gate: 'structural' });
     await runStart({ projectRoot, pluginRoot, rawArgv: 'w3' });
     await runStart({ projectRoot, pluginRoot, rawArgv: 'w4' });
 

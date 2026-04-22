@@ -80,11 +80,12 @@ describe('runDoctor', () => {
   it('all-pass scaffold: exit 0, no fails/warns, summary reflects counts', async () => {
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
     expect(r.exitCode).toBe(0);
-    expect(r.output).toMatch(/SUMMARY: 0 fail, 0 warn, 10 pass/);
+    expect(r.output).toMatch(/SUMMARY: 0 fail, 0 warn, 11 pass/);
     expect(r.output).toContain(`✓ node version (${process.version})`);
     expect(r.output).toContain('✓ plugin agents');
     expect(r.output).toContain('✓ plugin rules');
     expect(r.output).toContain('✓ plugin workflows');
+    expect(r.output).toContain('✓ project contracts');
     for (const r2 of r.results) expect(r2.status).toBe('pass');
   });
 
@@ -257,34 +258,35 @@ describe('runDoctor', () => {
     await fs.writeFile(join(root, 'hooks', 'hooks.json'), 'bad');
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
     expect(r.exitCode).toBe(1);
-    expect(r.output).toMatch(/SUMMARY: 0 fail, 1 warn, 9 pass/);
+    expect(r.output).toMatch(/SUMMARY: 0 fail, 1 warn, 10 pass/);
   });
 
-  it('smoke: skipped by default (10 checks, no check #11)', async () => {
+  it('smoke: skipped by default (11 checks, no smoke IDs)', async () => {
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.results.length).toBe(10);
-    expect(r.results.find((c) => c.id === 11)).toBeUndefined();
+    expect(r.results.length).toBe(11);
+    expect(r.results.find((c) => c.id === 12)).toBeUndefined();
+    expect(r.results.find((c) => c.id === 13)).toBeUndefined();
     expect(r.output).not.toContain('smoke');
   });
 
-  it('smoke: simple stub emits ACTION: done → check #11 pass, check #12 fail, 12 total', async () => {
+  it('smoke: simple stub emits ACTION: done → smoke list passes, design fails, 13 total', async () => {
     await fs.writeFile(
       join(root, 'bin', 'ewh.mjs'),
       "#!/usr/bin/env node\nprocess.stdout.write('ACTION: done\\nCatalog body\\n');\n",
       { mode: 0o755 },
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
-    expect(r.results.length).toBe(12);
-    const c11 = r.results.find((x) => x.id === 11)!;
-    expect(c11.status).toBe('pass');
-    const c12 = r.results.find((x) => x.id === 12)!;
-    expect(c12.status).toBe('fail');
+    expect(r.results.length).toBe(13);
+    const cList = r.results.find((x) => x.id === 12)!;
+    expect(cList.status).toBe('pass');
+    const cDesign = r.results.find((x) => x.id === 13)!;
+    expect(cDesign.status).toBe('fail');
     expect(r.exitCode).toBe(2);
     expect(r.output).toContain('✓ smoke: ewh start list');
     expect(r.output).toContain('✗ smoke: design session');
   });
 
-  it('smoke: multi-step stub → check #11 and #12 both pass, 12 total', async () => {
+  it('smoke: multi-step stub → smoke list and design both pass, 13 total', async () => {
     // Stub uses a per-projectDir step counter to simulate the design protocol.
     const stubSrc = [
       '#!/usr/bin/env node',
@@ -321,11 +323,11 @@ describe('runDoctor', () => {
     ].join('\n');
     await fs.writeFile(join(root, 'bin', 'ewh.mjs'), stubSrc, { mode: 0o755 });
     const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
-    expect(r.results.length).toBe(12);
-    const c11 = r.results.find((x) => x.id === 11)!;
-    expect(c11.status).toBe('pass');
-    const c12 = r.results.find((x) => x.id === 12)!;
-    expect(c12.status).toBe('pass');
+    expect(r.results.length).toBe(13);
+    const cList = r.results.find((x) => x.id === 12)!;
+    expect(cList.status).toBe('pass');
+    const cDesign = r.results.find((x) => x.id === 13)!;
+    expect(cDesign.status).toBe('pass');
     expect(r.exitCode).toBe(0);
     expect(r.output).toContain('✓ smoke: ewh start list');
     expect(r.output).toContain('✓ smoke: design session');
@@ -339,7 +341,7 @@ describe('runDoctor', () => {
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
     expect(r.exitCode).toBe(2);
-    const c = r.results.find((x) => x.id === 11)!;
+    const c = r.results.find((x) => x.id === 12)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.[0]).toMatch(/expected output to start with 'ACTION: done'/);
   });
@@ -352,7 +354,7 @@ describe('runDoctor', () => {
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
     expect(r.exitCode).toBe(2);
-    const c = r.results.find((x) => x.id === 11)!;
+    const c = r.results.find((x) => x.id === 12)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.[0]).toMatch(/exited 3/);
   });
@@ -360,7 +362,7 @@ describe('runDoctor', () => {
   it('smoke: missing bin → fail with check #2 reference', async () => {
     await fs.rm(join(root, 'bin', 'ewh.mjs'));
     const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
-    const c = r.results.find((x) => x.id === 11)!;
+    const c = r.results.find((x) => x.id === 12)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.[0]).toMatch(/see check #2/);
   });

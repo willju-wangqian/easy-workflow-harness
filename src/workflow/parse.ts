@@ -1,15 +1,16 @@
 /**
- * Minimal workflow parser for Phase 1.
+ * Legacy YAML workflow parser.
  *
- * Reads a workflow file (`workflows/<name>.md` or
- * `.claude/workflows/<name>.md`) and produces a `WorkflowDef`. The project
- * override takes precedence over the plugin copy, matching dispatcher §1
- * resolution rules.
+ * Reads a plugin-shipped template (`<pluginRoot>/workflows/<name>.md`) or a
+ * legacy project workflow (`<projectRoot>/.claude/workflows/<name>.md` — the
+ * pre-Context-Contract location) and produces a `WorkflowDef`. The runtime
+ * no longer calls this module directly; it is retained for two consumers:
  *
- * Phase 1 only needs: frontmatter (name/description/trigger) + a `## Steps`
- * list where each step is a YAML block with at minimum `name:` and
- * `gate:`. Richer step fields (agent, rules, reads, requires, etc.) are
- * declared in types.ts but only minimally populated here.
+ *  - `design` reads plugin workflow templates when offering starting points.
+ *  - `migrate` reads legacy project YAML to convert it into Context
+ *    Contracts under `.claude/ewh-workflows/`.
+ *
+ * `doctor` also uses this to lint plugin templates for agent/rule refs.
  */
 
 import { promises as fs } from 'node:fs';
