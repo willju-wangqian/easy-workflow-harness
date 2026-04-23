@@ -9,13 +9,14 @@ tracks: ask-question-ui
 
 # Implementation Plan — AskUserQuestion UI for EWH
 
-Companion to [ask-question-ui](ask-question-ui.md). Three sessions. Session 1 is the foundation (new instruction kind + emit + SKILL.md plumbing); sessions 2–3 convert subcommands and then workflow gates. Each session's Fresh-Session Prompt is self-contained.
+Companion to [ask-question-ui](ask-question-ui.md). Four sessions. Session 1 is the foundation (new instruction kind + emit + SKILL.md plumbing); sessions 2–3 convert existing subcommand and workflow gates; session 4 uses the new primitive to collapse the duplicated LLM-driven design facilitators into a single binary-driven interview. Each session's Fresh-Session Prompt is self-contained.
 
 | # | Session | Scope | Roughly |
 |---|---|---|---|
 | 1 | Foundation | New `ask-question` instruction kind, emit format, SKILL.md dispatch | 2–3 h |
 | 2 | Subcommand conversions | `manage` + `design` binary gates → ask-question | 2–3 h |
 | 3 | Workflow gate conversions + polish | Structural / compliance / error gates + docs + integration test | 2 h |
+| 4 | Binary-driven design interview | Replace both design facilitators with a state-machine interview; fixes the `design "prose"` legacy-output bug | 3–4 h |
 
 ---
 
@@ -185,9 +186,94 @@ Companion to [ask-question-ui](ask-question-ui.md). Three sessions. Session 1 is
 
 ---
 
+## Session 4 — Binary-Driven Design Interview
+
+### Motivation
+
+Today `/ewh:doit design` dispatches one of two LLM subagent prompts to run the requirements interview:
+
+- **Generic facilitator** (`agents/design-facilitator.md`): emits a flat `ShapeProposal` describing rules / agents / workflows.
+- **Workflow facilitator** (same agent, alternate prompt wired in `buildWorkflowFacilitatorInstruction`): emits a `WorkflowDraft` with ordered `steps[]`.
+
+`startDesign` picks between them using `isWorkflowName()` — a regex that only matches a bare kebab identifier. Any prose description (e.g. `"a quick smoke workflow with two steps"`) falls through to the generic path, which still emits the **legacy** workflow schema (`frontmatter: {name, description, trigger}`, `path: workflows/<name>.md`) and silently writes `.claude/workflows/<name>.md` — bypassing the Context Contract entirely. Five places cooperate in the bug: routing, facilitator prompt, shape validation, writer, and the catalog generator (which scans legacy `workflows/` instead of `.claude/ewh-workflows/`).
+
+The root cause is architectural: **two LLM-driven interviews with different output schemas, gated by a fragile routing heuristic.** The `ask-question` primitive from Session 1 lets the binary drive the interview directly, which collapses both facilitators into one state machine and makes the buggy code path literally deletable.
+
+### Deliverables
+
+- **New binary-driven design state machine** in `src/commands/design.ts`:
+  - `design_pick_type` — `ask-question`: `rule` / `agent` / `workflow` (3 options, fits the 4-cap).
+  - `design_pick_op` — `ask-question`: `create` / `update <existing>` (catalog-filtered by chosen type; fall back to file-flow when the catalog has >3 candidates, keeping the 4-cap for the `create` option).
+  - `design_name` — file-based free-text for the identifier (reuse existing `user-prompt` + result-file flow).
+  - `design_description` — file-based free-text for the one-line description.
+  - Type-specific branches:
+    - `rule`: ask `severity` (2 opts: `warning` / `critical`); ask `inject_into` via the existing file-flow (multi-select exceeds 4); author-agent writes body.
+    - `agent`: ask `model` (3 opts: `haiku` / `sonnet` / `opus`); collect `tools` via file-flow; author-agent writes body.
+    - `workflow`: loop — per step collect `name` + `agent` + `description` via file-flow, then `ask-question` `add another step?` (`yes` / `no` / `done-propose`). On `done-propose`, synthesize a `WorkflowDraft` and route through the existing `continueWorkflowWrite` writer (already produces the `.json` + `.md` pair correctly).
+  - Final shape gate uses the ask-question converted in Session 2.
+- **Delete dead code:**
+  - `isWorkflowName` function + its call site.
+  - `buildWorkflowFacilitatorInstruction` + the `design_workflow_*` phases in `SubcommandState` (`design_workflow_interview`, `design_workflow_template_gate`, `design_workflow_gate`, `design_workflow_write`), plus their `continueWorkflow*` handlers — the new state machine replaces them. Keep `draftToContract`, `renderAgentStub`, and `continueWorkflowWrite`'s atomic write block (refactor the write block into a helper the new state machine calls).
+  - The `type: "workflow"` branch of `agents/design-facilitator.md` (schema comment, path guidance). Keep the agent for rule / agent body authorship only — rename description to reflect the narrower role.
+- **Hard-guard** `validateShape`: reject any `type: "workflow"` artifact with a diagnostic saying the design interview is now binary-driven and pointing to `/ewh:doit design` with no special args. (Defense in depth for any stale shape files from a previous run.)
+- **Catalog fix** `src/commands/design-catalog.ts`: scan `.claude/ewh-workflows/*.json` (contracts) instead of `.claude/workflows/*.md` (legacy). One `collectEntries` call path swap; the parse adapter already understands the JSON shape via `loadContract`.
+- **Tests** — new `tests/integration-design-v2.test.ts`:
+  - Full `design` run picking `workflow` writes `.claude/ewh-workflows/<name>.{json,md}` and leaves `.claude/workflows/` absent.
+  - Full `design` run picking `rule` / `agent` produces the expected project file and no workflow artifacts.
+  - Regression: prose description `"a quick smoke workflow"` no longer triggers any legacy-path emission (grep the run transcript for `workflows/` as a negative assertion).
+  - `validateShape` hard-guard: synthetic shape with `type: workflow` → explicit error.
+  - Catalog: fixture project with one contract pair → `buildCatalog` surfaces it under `.claude/ewh-workflows/<name>.json`.
+
+### Acceptance
+
+- `npm run typecheck`, `npm test` pass.
+- `grep -rn "isWorkflowName\|design_workflow_interview\|buildWorkflowFacilitatorInstruction" src/` returns no matches.
+- `grep -rn "\\.claude/workflows/" src/` is limited to `migrate.ts` and `list.ts`'s legacy-count banner — nowhere in the design path.
+- Manual: `/ewh:doit design` (no args) opens with the type picker. Same invocation with prose, with a kebab name, with `modify <target>` — all land on the correct branch; no path produces `.claude/workflows/*`.
+- Manual: the Session 2 shape-gate ask-question still renders identically (no regression from the upstream churn).
+
+### Fresh-Session Prompt
+
+> I'm finishing the AskUserQuestion UI work for EWH at `/Users/willju/development/easy-workflow-harness`. This is **Session 4 of 4: Binary-Driven Design Interview**. Sessions 1–3 complete — the `ask-question` instruction kind is live, `manage` / `design` binary gates use it, workflow gates use it, docs updated.
+>
+> This session collapses the two LLM-driven design facilitators into a single binary-owned state machine, using the `ask-question` primitive. A known bug (`/ewh:doit design "<prose>"` silently emits legacy `.claude/workflows/<name>.md`) falls out when the buggy path is deleted.
+>
+> **Read first:**
+> 1. `specs/ask-question-ui.md` — §1 instruction kind, §4 report parsing.
+> 2. `specs/ask-question-ui-plan.md` — Session 4 deliverables + acceptance.
+> 3. `src/commands/design.ts` — `startDesign`, `isWorkflowName`, the full `SubcommandState { kind: 'design' }` phase set, `continueWorkflowWrite`, `draftToContract`, `validateShape`.
+> 4. `src/commands/design-catalog.ts` — current workflow scan (legacy paths).
+> 5. `agents/design-facilitator.md` — current dual-mode prompt.
+> 6. `src/workflow/contract-loader.ts` + `src/workflow/render-md.ts` — the contract pair writers (reuse verbatim).
+> 7. `CLAUDE.md` — *Architecture* section on the contract pair and `design`-subcommand contract.
+>
+> **Scope (do not exceed):**
+> 1. Add the new state-machine phases per deliverables. Each phase emits exactly one instruction per turn; free-text inputs keep the existing file-flow; binary choices use `ask-question`.
+> 2. For `workflow`, the step-collection loop calls `continueWorkflowWrite` (or a refactored sibling) on `done-propose`, which already produces the `.json` + `.md` pair. Agent stubs keep their current behavior.
+> 3. Delete `isWorkflowName`, `buildWorkflowFacilitatorInstruction`, the `design_workflow_*` phases, and their handlers.
+> 4. Narrow `agents/design-facilitator.md` to rule / agent body authorship only. Drop `type: workflow` from its shape schema.
+> 5. Add the `validateShape` hard-guard (even though live code no longer produces `type: workflow`, belt-and-braces against stale proposals).
+> 6. Fix `design-catalog.ts` to scan `.claude/ewh-workflows/*.json`.
+> 7. Write `tests/integration-design-v2.test.ts` per deliverables. Update any existing test that referenced the deleted phases or the legacy schema.
+>
+> **Do not:**
+> - Change the `ask-question` plumbing from Session 1 or the converted gates from Sessions 2–3.
+> - Move free-text collection (step descriptions, tool lists) into `ask-question` — 4-option cap still binds; file-flow stays.
+> - Keep legacy paths around "for migration." `migrate` already exists and is the only supported path from the old layout.
+>
+> **Verify before reporting done:**
+> - `npm run typecheck`, `npm test` pass including the new integration test.
+> - `grep -rn "isWorkflowName\|design_workflow_interview\|buildWorkflowFacilitatorInstruction" src/` returns zero matches.
+> - `grep -rn "\\.claude/workflows/" src/` appears only in `migrate.ts` and `list.ts`'s legacy-count banner.
+> - Manual smoke: `/ewh:doit design` (no args), `/ewh:doit design "prose"`, `/ewh:doit design smoke` all land on the same type picker and never write under `.claude/workflows/`.
+> - Commit message: `feat(ask-question): session 4 — binary-driven design interview, remove facilitator duplication`.
+
+---
+
 ## Notes for the Human Pilot
 
 - **Session 1 is the load-bearing one.** If its plumbing is wrong, Sessions 2 and 3 compound the bug. Budget extra time to lint the emission format (header lines, escaping, payload-path placement under `.ewh-artifacts/<run>/`).
 - **`AskUserQuestion` caps** at 4 options. Every gate you convert must fit — if it can't, fall back to the file-based flow and note it in the spec's Open Questions.
 - **Backward-compat test**: after each session, run the full `npm test`. Existing tests that assert on prose emission bodies for converted fields must be updated; don't `skip` them.
-- **When to stop**: once gated decisions all render as pickers. Free-text and large-catalog prompts stay prose-based by design, not by bug.
+- **When to stop**: once gated decisions all render as pickers and the design interview runs from the binary. Free-text and large-catalog prompts stay file-based by design, not by bug.
+- **Session 4 is the bug-fix session.** The silent-legacy-output bug (`design "<prose>"` → `.claude/workflows/*.md`) is not fixed until Session 4 lands. If you need the fix sooner, land a standalone hotfix (hard-guard `validateShape` + catalog path swap) and still complete Session 4 afterward — the hotfix becomes vestigial and gets removed alongside the facilitator deletion.
