@@ -4,6 +4,8 @@
 
 - [context-contract](context-contract.md) — Two-file workflow representation (`workflow.md` summary + `workflow.json` contract), typed `{type, ref}` context entries, `/ewh:doit manage` subcommand for runtime config, `/ewh:doit design modify` ferry-pattern with proposed-slice diff. Kills silent rule-injection drift.
 - [context-contract-plan](context-contract-plan.md) — 6-session implementation plan for the context-contract redesign. Status: draft.
+- [ask-question-ui](ask-question-ui.md) — New `ask-question` instruction kind: binary gates and small-catalog pickers route through the outer session's `AskUserQuestion` tool, delivering arrow-key UX while free-text / large catalogs keep the file-based flow. Status: draft.
+- [ask-question-ui-plan](ask-question-ui-plan.md) — 3-session plan: foundation → subcommand gates → workflow gates + docs. Status: draft.
 
 ## Reference
 
