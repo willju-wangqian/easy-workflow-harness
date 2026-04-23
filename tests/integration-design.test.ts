@@ -244,6 +244,36 @@ describe('design subcommand — happy path (2 artifacts)', () => {
   });
 });
 
+describe('design subcommand — scope:plugin auto-rewrite cascades to frontmatter', () => {
+  it('rewrites both top-level scope and frontmatter.scope in a non-plugin project', async () => {
+    const out = await runStart({ projectRoot, pluginRoot, rawArgv: 'design make a rule' });
+    const first = parseInstruction(out);
+    const shapePath = first.resultPath!;
+
+    const proposal = {
+      description: 'make a rule',
+      artifacts: [{
+        type: 'rule',
+        op: 'create',
+        name: 'scoped-rule',
+        scope: 'plugin',
+        path: 'rules/scoped-rule.md',
+        description: 'Scope should be rewritten end-to-end',
+        frontmatter: { name: 'scoped-rule', scope: 'plugin', severity: 'info' },
+      }],
+    };
+    await writeFile(shapePath, JSON.stringify(proposal, null, 2));
+
+    const gate = await doReport(first.runId!, { kind: 'result', step_index: 0, result_path: shapePath });
+    expect(gate.action).toBe('user-prompt');
+    expect(gate.body).toContain('Auto-rewrote');
+
+    const persisted = JSON.parse(await fs.readFile(shapePath, 'utf8')) as typeof proposal;
+    expect(persisted.artifacts[0]!.scope).toBe('project');
+    expect((persisted.artifacts[0]!.frontmatter as { scope?: unknown }).scope).toBe('project');
+  });
+});
+
 describe('design subcommand — shape gate reject', () => {
   it('decision no at shape gate emits done with no files written', async () => {
     const out = await runStart({ projectRoot, pluginRoot, rawArgv: 'design make a rule' });

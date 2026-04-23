@@ -43,7 +43,7 @@ export type DoctorOptions = {
 
 export type DoctorOutput = {
   output: string;
-  exitCode: 0 | 1 | 2;
+  exitCode: 0 | 1;
   results: CheckResult[];
 };
 
@@ -81,7 +81,10 @@ function formatDoctor(results: CheckResult[]): DoctorOutput {
   const warn = results.filter((r) => r.status === 'warn').length;
   const pass = results.filter((r) => r.status === 'pass').length;
   lines.push(`SUMMARY: ${fail} fail, ${warn} warn, ${pass} pass`);
-  const exitCode: 0 | 1 | 2 = fail > 0 ? 2 : warn > 0 ? 1 : 0;
+  // Warnings are advisory — they do not fail the command. Only hard check
+  // failures produce a non-zero exit so shell harnesses don't surface a clean
+  // "1 warn" run as a crash.
+  const exitCode: 0 | 1 = fail > 0 ? 1 : 0;
   return { output: lines.join('\n') + '\n', exitCode, results };
 }
 
@@ -427,29 +430,26 @@ async function checkProjectContracts(
         }
       }
 
-      // drift vs agent default_rules (warn)
+      // drift vs agent default_rules (warn) — only flag the actionable direction:
+      // agent declares a default the step doesn't pick up. Extras (step rules not
+      // in agent default_rules) are additive picks by design (spec §6/§7) and
+      // never drift.
       if (agentFound) {
         try {
           const agent = await loadAgent(step.agent, pluginRoot, projectRoot);
-          const defaults = new Set(agent.default_rules ?? []);
-          const stepRules = new Set(
-            step.context
-              .filter((e) => e.type === 'rule')
-              .map((e) => e.ref),
-          );
-          const missing = [...defaults].filter((r) => !stepRules.has(r));
-          const extra = [...stepRules].filter((r) => !defaults.has(r));
-          if (missing.length > 0 || extra.length > 0) {
-            const parts: string[] = [];
-            if (missing.length > 0) {
-              parts.push(`agent default_rules missing from step: [${missing.join(', ')}]`);
-            }
-            if (extra.length > 0) {
-              parts.push(`step rules not in agent default_rules: [${extra.join(', ')}]`);
-            }
-            warns.push(
-              `${where}: step '${step.name}' agent '${step.agent}' default_rules drift: ${parts.join('; ')}`,
+          const defaults = agent.default_rules ?? [];
+          if (defaults.length > 0) {
+            const stepRules = new Set(
+              step.context
+                .filter((e) => e.type === 'rule')
+                .map((e) => e.ref),
             );
+            const missing = defaults.filter((r) => !stepRules.has(r));
+            if (missing.length > 0) {
+              warns.push(
+                `${where}: step '${step.name}' missing agent '${step.agent}' default_rules: [${missing.join(', ')}] — run /ewh:doit manage ${contract.name} to add, or ignore if intentionally unchecked`,
+              );
+            }
           }
         } catch {
           // loadAgent failure is reported above via agentFound

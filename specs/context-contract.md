@@ -138,7 +138,7 @@ In addition to existing checks (#8/#9/#10 at `src/commands/doctor.ts:241-340`), 
 - Every `context[].ref` resolves (rule filename match, or declared-by-earlier-step artifact, or real file path).
 - Every `produces[]` path is under `.ewh-artifacts/`.
 - Every `agent` in every step has a resolvable `.md`.
-- For each step's `type: rule` refs, warn if they diverge from the agent's current `default_rules` (drift indicator — not an error).
+- For each step, warn if the agent declares a `default_rules` entry that the step's `type: rule` context does not pick up ("missing default"). This is the actionable direction — likely means the agent's defaults changed after the step was authored, or the author forgot. Extras (step rules not in the agent's `default_rules`) are additive picks by design (see §6/§7) and are **not** drift.
 - Warn if `workflow.md` and `workflow.json` disagree on `{name, agent}` per step (drift indicator).
 
 ## Alternatives Considered

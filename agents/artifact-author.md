@@ -3,7 +3,7 @@ name: artifact-author
 description: Authors a single EWH artifact file body (workflow, agent, or rule) from a shape proposal entry; writes a unified diff for updates
 model: sonnet
 tools: [Read, Write]
-maxTurns: 3
+maxTurns: 8
 ---
 
 ## Role
@@ -22,9 +22,9 @@ If any required input is missing, emit AGENT_COMPLETE immediately.
 
 ## Instructions
 
-1. Read the catalog at `catalog_path` to understand conventions (frontmatter fields, structure, sentinel requirements).
-2. For `op: update`: Read the existing file at `existing_path` to understand current content before authoring.
-3. Write the complete file body to `staged_path`. Requirements by artifact type:
+1. Read the catalog at `catalog_path` to understand conventions (frontmatter fields, structure, sentinel requirements). One Read only — do not browse additional example files.
+2. For `op: update` only: Read the existing file at `existing_path` to understand current content. Skip this step entirely for `op: create`.
+3. Write the complete file body to `staged_path` using the Write tool. This step is mandatory — every invocation must produce a file at `staged_path`. The `shape_entry.frontmatter` object gives you the required frontmatter fields; copy them verbatim into the YAML frontmatter. Requirements by artifact type:
    - **Agent**: YAML frontmatter with `name`, `description`, `model`, `tools`, `maxTurns`. Must include a `## Before You Start` self-gate section. Must end with the `AGENT_COMPLETE` sentinel as the final line of the agent body.
    - **Rule**: YAML frontmatter with `name`, `description`, `scope`, `severity`, `inject_into`. Body describes the rule content.
    - **Workflow**: YAML frontmatter with `name`, `description`, `trigger`. Must have a `## Steps` section with valid step definitions.
@@ -32,7 +32,7 @@ If any required input is missing, emit AGENT_COMPLETE immediately.
 
 ## Output Format
 
-After writing all files, emit:
+After writing all files, emit one short line:
 
 - files_modified: [<staged_path>] (plus <staged_path>.diff if applicable)
 

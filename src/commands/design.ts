@@ -657,6 +657,9 @@ async function applyScopeRewrites(proposalPath: string, proposal: ShapeProposal)
   for (const a of proposal.artifacts) {
     if (a.scope === 'plugin') {
       a.scope = 'project';
+      if (a.frontmatter && typeof a.frontmatter === 'object' && a.frontmatter.scope === 'plugin') {
+        a.frontmatter.scope = 'project';
+      }
       count++;
     }
   }

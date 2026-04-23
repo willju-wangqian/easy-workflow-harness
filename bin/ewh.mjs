@@ -17992,6 +17992,9 @@ async function applyScopeRewrites(proposalPath, proposal) {
   for (const a of proposal.artifacts) {
     if (a.scope === "plugin") {
       a.scope = "project";
+      if (a.frontmatter && typeof a.frontmatter === "object" && a.frontmatter.scope === "plugin") {
+        a.frontmatter.scope = "project";
+      }
       count++;
     }
   }
@@ -20775,7 +20778,7 @@ function formatDoctor(results) {
   const warn = results.filter((r) => r.status === "warn").length;
   const pass = results.filter((r) => r.status === "pass").length;
   lines.push(`SUMMARY: ${fail} fail, ${warn} warn, ${pass} pass`);
-  const exitCode = fail > 0 ? 2 : warn > 0 ? 1 : 0;
+  const exitCode = fail > 0 ? 1 : 0;
   return { output: lines.join("\n") + "\n", exitCode, results };
 }
 function renderParen(r) {
@@ -21085,23 +21088,17 @@ async function checkProjectContracts(projectRoot, pluginRoot) {
       if (agentFound) {
         try {
           const agent = await loadAgent(step.agent, pluginRoot, projectRoot);
-          const defaults2 = new Set(agent.default_rules ?? []);
-          const stepRules = new Set(
-            step.context.filter((e) => e.type === "rule").map((e) => e.ref)
-          );
-          const missing = [...defaults2].filter((r) => !stepRules.has(r));
-          const extra = [...stepRules].filter((r) => !defaults2.has(r));
-          if (missing.length > 0 || extra.length > 0) {
-            const parts = [];
-            if (missing.length > 0) {
-              parts.push(`agent default_rules missing from step: [${missing.join(", ")}]`);
-            }
-            if (extra.length > 0) {
-              parts.push(`step rules not in agent default_rules: [${extra.join(", ")}]`);
-            }
-            warns.push(
-              `${where}: step '${step.name}' agent '${step.agent}' default_rules drift: ${parts.join("; ")}`
+          const defaults2 = agent.default_rules ?? [];
+          if (defaults2.length > 0) {
+            const stepRules = new Set(
+              step.context.filter((e) => e.type === "rule").map((e) => e.ref)
             );
+            const missing = defaults2.filter((r) => !stepRules.has(r));
+            if (missing.length > 0) {
+              warns.push(
+                `${where}: step '${step.name}' missing agent '${step.agent}' default_rules: [${missing.join(", ")}] \u2014 run /ewh:doit manage ${contract.name} to add, or ignore if intentionally unchecked`
+              );
+            }
           }
         } catch {
         }

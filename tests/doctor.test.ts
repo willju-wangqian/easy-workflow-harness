@@ -92,7 +92,7 @@ describe('runDoctor', () => {
   it('check #2: bin/ewh.mjs missing → fail with path issue', async () => {
     await fs.rm(join(root, 'bin', 'ewh.mjs'));
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 2)!;
     expect(c.status).toBe('fail');
     expect(r.output).toContain('✗ binary present');
@@ -102,7 +102,7 @@ describe('runDoctor', () => {
   it('check #3: missing workflows/ dir → fail', async () => {
     await fs.rm(join(root, 'workflows'), { recursive: true });
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 3)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.some((i) => i.includes('workflows/'))).toBe(true);
@@ -115,11 +115,11 @@ describe('runDoctor', () => {
     await fs.access(join(root, '.ewh-artifacts'));
   });
 
-  it('check #5: malformed ewh-state.json → warn (exit 1)', async () => {
+  it('check #5: malformed ewh-state.json → warn (exit 0)', async () => {
     await fs.mkdir(join(root, '.claude'), { recursive: true });
     await fs.writeFile(join(root, '.claude', 'ewh-state.json'), '{ not json');
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(1);
+    expect(r.exitCode).toBe(0);
     const c = r.results.find((x) => x.id === 5)!;
     expect(c.status).toBe('warn');
     expect(r.output).toContain('! ewh-state.json (warning:');
@@ -135,7 +135,7 @@ describe('runDoctor', () => {
   it('check #6: CLAUDE.md without Harness Config → warn', async () => {
     await fs.writeFile(join(root, 'CLAUDE.md'), '# project\n\n(no harness config here)\n');
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(1);
+    expect(r.exitCode).toBe(0);
     const c = r.results.find((x) => x.id === 6)!;
     expect(c.status).toBe('warn');
     expect(c.issues?.[0]).toMatch(/## Harness Config/);
@@ -154,7 +154,7 @@ describe('runDoctor', () => {
   it('check #7: invalid hooks.json → warn', async () => {
     await fs.writeFile(join(root, 'hooks', 'hooks.json'), 'not json');
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(1);
+    expect(r.exitCode).toBe(0);
     const c = r.results.find((x) => x.id === 7)!;
     expect(c.status).toBe('warn');
   });
@@ -169,7 +169,7 @@ describe('runDoctor', () => {
       '---\nname: reviewer\n---\n\nalso no sentinel\n',
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 8)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.length).toBe(2);
@@ -181,7 +181,7 @@ describe('runDoctor', () => {
   it('check #8: agent with invalid frontmatter → fail', async () => {
     await fs.writeFile(join(root, 'agents', 'broken.md'), 'no frontmatter at all\n');
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 8)!;
     expect(c.issues?.some((i) => i.includes('missing YAML frontmatter'))).toBe(true);
   });
@@ -192,7 +192,7 @@ describe('runDoctor', () => {
       '---\ndescription: no name\n---\n\nbody\n',
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 9)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.[0]).toMatch(/rules\/sub\/nested\.md/);
@@ -215,7 +215,7 @@ describe('runDoctor', () => {
       ].join('\n'),
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 10)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.some((i) => i.includes("missing agent 'nonexistent'"))).toBe(true);
@@ -239,7 +239,7 @@ describe('runDoctor', () => {
       ].join('\n'),
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 10)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.some((i) => i.includes("missing rule 'no-such-rule'"))).toBe(true);
@@ -248,17 +248,99 @@ describe('runDoctor', () => {
   it('check #10: unparseable workflow → fail', async () => {
     await fs.writeFile(join(root, 'workflows', 'broken.md'), 'no frontmatter\n');
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 10)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.some((i) => i.includes('workflows/broken.md'))).toBe(true);
   });
 
-  it('warn-only scenario yields exit 1 and "1 warn" in summary', async () => {
+  it('warn-only scenario yields exit 0 and "1 warn" in summary', async () => {
     await fs.writeFile(join(root, 'hooks', 'hooks.json'), 'bad');
     const r = await runDoctor({ projectRoot: root, pluginRoot: root });
-    expect(r.exitCode).toBe(1);
+    expect(r.exitCode).toBe(0);
     expect(r.output).toMatch(/SUMMARY: 0 fail, 1 warn, 10 pass/);
+  });
+
+  it('migrated legacy workflow with rules → doctor passes with 0 warn (extras are not drift)', async () => {
+    // Simulate the exact output of `ewh migrate` on a legacy workflow that
+    // carried `rules: [coding]` against a plugin agent that does not declare
+    // `coding` in its default_rules. Extras are additive by design, so drift
+    // must not fire.
+    const contractsDir = join(root, '.claude', 'ewh-workflows');
+    await fs.mkdir(contractsDir, { recursive: true });
+    const contract = {
+      name: 'legacy-demo',
+      description: 'migrated from legacy',
+      steps: [
+        {
+          name: 'plan',
+          agent: 'coder',
+          description: 'plan the thing',
+          gate: 'structural',
+          produces: ['.ewh-artifacts/plan.md'],
+          context: [{ type: 'rule', ref: 'coding' }],
+          requires: [],
+          chunked: false,
+          script: null,
+          script_fallback: 'gate',
+        },
+      ],
+    };
+    await fs.writeFile(
+      join(contractsDir, 'legacy-demo.json'),
+      JSON.stringify(contract, null, 2) + '\n',
+    );
+    await fs.writeFile(
+      join(contractsDir, 'legacy-demo.md'),
+      '---\nname: legacy-demo\n---\n\n## Steps\n\n- name: plan\n  agent: coder\n',
+    );
+    const r = await runDoctor({ projectRoot: root, pluginRoot: root });
+    expect(r.exitCode).toBe(0);
+    expect(r.output).toMatch(/SUMMARY: 0 fail, 0 warn, 11 pass/);
+    const c = r.results.find((x) => x.id === 11)!;
+    expect(c.status).toBe('pass');
+  });
+
+  it('drift check: step missing an agent default_rule → warn names the remedy', async () => {
+    // Give the coder agent a default_rule the step omits.
+    await fs.writeFile(
+      join(root, 'agents', 'coder.md'),
+      '---\nname: coder\ndefault_rules: [coding]\n---\n\nbody\n\nAGENT_COMPLETE\n',
+    );
+    const contractsDir = join(root, '.claude', 'ewh-workflows');
+    await fs.mkdir(contractsDir, { recursive: true });
+    const contract = {
+      name: 'drift-demo',
+      description: 'missing default',
+      steps: [
+        {
+          name: 'plan',
+          agent: 'coder',
+          description: 'plan',
+          gate: 'structural',
+          produces: ['.ewh-artifacts/plan.md'],
+          context: [],
+          requires: [],
+          chunked: false,
+          script: null,
+          script_fallback: 'gate',
+        },
+      ],
+    };
+    await fs.writeFile(
+      join(contractsDir, 'drift-demo.json'),
+      JSON.stringify(contract, null, 2) + '\n',
+    );
+    await fs.writeFile(
+      join(contractsDir, 'drift-demo.md'),
+      '---\nname: drift-demo\n---\n\n## Steps\n\n- name: plan\n  agent: coder\n',
+    );
+    const r = await runDoctor({ projectRoot: root, pluginRoot: root });
+    expect(r.exitCode).toBe(0);
+    const c = r.results.find((x) => x.id === 11)!;
+    expect(c.status).toBe('warn');
+    expect(c.issues?.[0]).toMatch(/missing agent 'coder' default_rules: \[coding\]/);
+    expect(c.issues?.[0]).toMatch(/\/ewh:doit manage drift-demo/);
   });
 
   it('smoke: skipped by default (11 checks, no smoke IDs)', async () => {
@@ -281,7 +363,7 @@ describe('runDoctor', () => {
     expect(cList.status).toBe('pass');
     const cDesign = r.results.find((x) => x.id === 13)!;
     expect(cDesign.status).toBe('fail');
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     expect(r.output).toContain('✓ smoke: ewh start list');
     expect(r.output).toContain('✗ smoke: design session');
   });
@@ -340,7 +422,7 @@ describe('runDoctor', () => {
       { mode: 0o755 },
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 12)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.[0]).toMatch(/expected output to start with 'ACTION: done'/);
@@ -353,7 +435,7 @@ describe('runDoctor', () => {
       { mode: 0o755 },
     );
     const r = await runDoctor({ projectRoot: root, pluginRoot: root, smoke: true });
-    expect(r.exitCode).toBe(2);
+    expect(r.exitCode).toBe(1);
     const c = r.results.find((x) => x.id === 12)!;
     expect(c.status).toBe('fail');
     expect(c.issues?.[0]).toMatch(/exited 3/);
